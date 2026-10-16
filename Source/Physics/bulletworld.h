@@ -225,7 +225,6 @@ class BulletWorld {
     void Reset();
 };
 
-GLuint CreateHullDisplayList(btShapeHull *hull);
 btConvexHullShape *CreateConvexHullShape(const std::string &path, GLuint *display_list, vec3 *offset = NULL);
 btConvexHullShape *CreateConvexHullShape(const std::vector<vec3> &verts);
 mat4 GetBoneMat(const vec3 &start, const vec3 &end);

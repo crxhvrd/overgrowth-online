@@ -98,7 +98,6 @@ class Terrain {
 
     void BakeTerrainTexture(GLuint framebuffer, const TextureRef& light_cube);
     Model& GetModel() const;
-    void drawLayer(int which);
     void Load(const char* name, const std::string& model_override = NULL);
     void LoadMinimal(const char* name, const std::string& model_override = NULL);
     void GetShaderNames(std::map<std::string, int>& preload_shaders);

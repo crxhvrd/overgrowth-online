@@ -74,6 +74,25 @@ void AttachToMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID 
     Object* parent = graph->GetObjectFromID(parent_object_id);
     Object* child = graph->GetObjectFromID(child_object_id);
 
+    Online* online = Online::Instance();
+
+    // Overgrowth Online: the host decides who holds an item. A client grabbing
+    // one that is already in someone else's hand here gets told who has it.
+    if (online->IsHosting() && parent != nullptr && child != nullptr && t->attach &&
+        child->GetType() == EntityType::_item_object && parent->GetType() == EntityType::_movement_object) {
+        int holder = static_cast<ItemObject*>(child)->HeldByWhom();
+        Peer* peer = online->GetPeerFromID(from);
+        if (holder != -1 && holder != parent_object_id && peer != nullptr) {
+            online->SendTo<OnlineMessages::AttachToMessage>(peer->conn_id, parent_object_id, child_object_id, 0, false, false);
+            online->SendTo<OnlineMessages::AttachToMessage>(peer->conn_id, holder, child_object_id, t->bone_id, true, t->mirrored);
+            return;
+        }
+    }
+
+    if (online->IsHosting()) {
+        online->RelayFromPeer(ref, from);  // everyone else sees the pickup or the drop too
+    }
+
     if (parent != nullptr && child != nullptr) {
         if (t->attach) {
             child->SetParent(parent);

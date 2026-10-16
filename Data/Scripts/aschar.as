@@ -10760,6 +10760,23 @@ array<int> GetPlayerCharacterIDs() {
     return ids;
 }
 
+// Overgrowth Online sets this on characters another machine runs (the stock game never does)
+bool online_remote = false;
+
+// The players this machine shows: the shared camera of local two-player frames
+// these, not the other players of an online game
+array<int> LocalPlayerCharacterIDs() {
+    array<int> ids = GetPlayerCharacterIDs();
+
+    for(int i = int(ids.length()) - 1; i >= 0; --i) {
+        if(ReadCharacterID(ids[i]).GetBoolVar("online_remote")) {
+            ids.removeAt(i);
+        }
+    }
+
+    return ids;
+}
+
 bool ThrowTargeting() {
     return false;  // this_mo.controlled;
 }
@@ -10793,7 +10810,7 @@ void ApplyCameraControls(const Timestep &in ts) {
     }
 
     // Get array of players
-    array<int> player_ids = GetPlayerCharacterIDs();
+    array<int> player_ids = LocalPlayerCharacterIDs();  // (online: ours only)
     int num_players = player_ids.size();
 
     bool level_allows_shared_cam = !level.GetScriptParams().HasParam("Shared Camera") || level.GetScriptParams().GetInt("Shared Camera") == 1;

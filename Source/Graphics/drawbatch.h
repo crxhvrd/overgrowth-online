@@ -127,9 +127,7 @@ class DrawBatch {
     enum CreateVBOParam { NO_FACE_VBO,
                           FACE_VBO };
 
-    void Draw();
 
-    void SetupVertexArrays() const;
     void SetEndState() const;
     void SetStartState() const;
     void ApplyIndividualUniforms() const;
@@ -143,12 +141,7 @@ class DrawBatch {
     void VertexPointer(GLfloat *data);
     void NormalPointer(GLfloat *data);
     void DrawElements(GLuint size, const GLuint *data);
-    void AddBatch(const DrawBatch &other);
     void Dispose();
-    void CreateVBO(CreateVBOParam create_vbo_param);
-    void DrawVertexArrays() const;
-    void DrawVertexArrayRange(GLuint start, GLuint end, GLuint start_vertex, GLuint end_vertex) const;
-    void EndVertexArrays() const;
     void AddUniformFloat(std::string _name, GLfloat data);
     void SetUniformFloat(std::string _name, GLfloat data);
     void SetUniformVec3(std::string _name, const vec3 &_data);

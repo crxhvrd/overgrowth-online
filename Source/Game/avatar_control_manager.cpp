@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: avatar_control_manager.cpp
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -31,6 +32,18 @@
 #include <Objects/cameraobject.h>
 #include <Game/level.h>
 #include <Online/online.h>
+#include <UserInput/input.h>
+
+AvatarControlManager::RemoteSlot AvatarControlManager::ClientRemoteSlot(ObjectID avatar) {
+    RemoteSlot& slot = client_remote_slots_[avatar];
+
+    if (slot.controller_id == -1) {
+        slot.controller_id = Input::Instance()->AllocateRemotePlayerInput();
+        slot.camera_id = ActiveCameras::Instance()->CreateVirtualCameraInstance();
+    }
+
+    return slot;
+}
 
 std::vector<Possession> AvatarControlManager::GeneratePossessionList() {
     Engine* engine = Engine::Instance();
@@ -54,6 +67,11 @@ std::vector<Possession> AvatarControlManager::GeneratePossessionList() {
                 camera_id = 0;
                 controller_id = local_player_index;
                 local_player_index++;
+            } else if (online->IsClient()) {
+                // Another player's avatar on a client: our own virtual slot
+                RemoteSlot slot = ClientRemoteSlot(player_state.object_id);
+                camera_id = slot.camera_id;
+                controller_id = slot.controller_id;
             } else {
                 // Virtual controller_id, used for syncing input from remote source
                 camera_id = player_state.camera_id;
@@ -82,6 +100,13 @@ std::vector<Possession> AvatarControlManager::GeneratePossessionList() {
     std::vector<ObjectID> unpossessed_avatars = GetUnpossessedAvatars();
 
     for (int i = 0; i < unpossessed_avatars.size(); i++) {
+        if (online->IsClient()) {
+            // Not ours and no player's: the host runs it, keep it off our input and camera
+            RemoteSlot slot = ClientRemoteSlot(unpossessed_avatars[i]);
+            possessions.push_back(Possession(unpossessed_avatars[i], slot.controller_id, slot.camera_id, false));
+            continue;
+        }
+
         int camera_id = 0;
 
         if (Engine::Instance()->GetSplitScreen()) {
@@ -147,7 +172,8 @@ void AvatarControlManager::Update() {
         }
     } else {
         // If there is no controllable avatars in the scene, create one at the camera position and use it.
-        if (engine->num_avatars == 0) {
+        // Overgrowth Online: not on a client, its character comes from the host (arenas have none at first)
+        if (engine->num_avatars == 0 && !online->IsClient()) {
             int id = scenegraph_->map_editor->CreateObject("Data/Objects/IGF_Characters/IGF_TurnerActor.xml");
             MovementObject* mo = static_cast<MovementObject*>(scenegraph_->GetObjectFromID(id));
             mo->SetTranslation(ActiveCameras::Get()->getCameraObject()->GetTranslation());

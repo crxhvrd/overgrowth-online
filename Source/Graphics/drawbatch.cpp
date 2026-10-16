@@ -103,66 +103,6 @@ DrawBatch::DrawBatch() : visible(true),
     }
 }
 
-void DrawBatch::Draw() {
-    if (to_delete || vertices.empty()) {
-        return;
-    }
-
-    if (!vbo_vertices->valid() && draw_times > _vbo_threshold && !no_vbo) {
-        CreateVBO(DrawBatch::FACE_VBO);
-    }
-
-    if (added_batches.empty()) {
-        SetStartState();
-        SetupVertexArrays();
-
-        Graphics::Instance()->SetModelMatrix(transform, inv_transpose_transform);
-
-        DrawVertexArrays();
-        SetEndState();
-        EndVertexArrays();
-    } else {
-        const Camera &camera = (*ActiveCameras::Get());
-        SetupVertexArrays();
-        for (auto &added_batche : added_batches) {
-            if (camera.checkSphereInFrustum(added_batche.batch->bounding_sphere_center,
-                                            added_batche.batch->bounding_sphere_radius)) {
-                added_batche.batch->SetStartState();
-                // glPushMatrix();
-                // glMultMatrixf(added_batches[i].batch->transform);
-
-                Graphics::Instance()->SetModelMatrix(added_batche.batch->transform, added_batche.batch->inv_transpose_transform);
-
-                DrawVertexArrayRange(added_batche.start_face,
-                                     added_batche.end_face,
-                                     added_batche.start_vertex,
-                                     added_batche.end_vertex);
-                // glPopMatrix();
-                added_batche.batch->SetEndState();
-            }
-        }
-        EndVertexArrays();
-    }
-
-    draw_times++;
-}
-
-void DrawBatch::CreateVBO(CreateVBOParam create_vbo_param) {
-    if (create_vbo_param == FACE_VBO) {
-        vbo_faces->Fill(kVBOElement | kVBOStatic, faces.size() * sizeof(GLuint), &faces[0]);
-    }
-    vbo_vertices->Fill(kVBOFloat | kVBOStatic, vertices.size() * sizeof(GLfloat), &vertices[0]);
-    if (!normals.empty()) {
-        vbo_normals->Fill(kVBOFloat | kVBOStatic, normals.size() * sizeof(GLfloat), &normals[0]);
-    }
-    for (int i = 0; i < 8; i++) {
-        vbo_tex_coords[i]->Dispose();
-        if (!tex_coords[i].empty() && use_vbo_texcoords[i]) {
-            vbo_tex_coords[i]->Fill(kVBOFloat | kVBOStatic, tex_coords[i].size() * sizeof(GLfloat), &tex_coords[i][0]);
-        }
-    }
-}
-
 void DrawBatch::TexCoordPointer(int size, GLfloat *data, int which_tex) {
     tex_coord_ptr[which_tex] = data;
     tex_coord_elements[which_tex] = size;
@@ -212,72 +152,6 @@ void DrawBatch::DrawElements(GLuint size, const GLuint *data) {
     vertex_ptr = NULL;
     for (auto &i : tex_coord_ptr) {
         i = NULL;
-    }
-}
-
-void DrawBatch::AddBatch(const DrawBatch &other) {
-    if (other.to_delete || other.faces.empty()) {
-        return;
-    }
-
-    if (other.added_batches.size()) {
-        for (const auto &added_batche : other.added_batches) {
-            AddBatch(*(added_batche.batch));
-        }
-        return;
-    }
-
-    if (vertices.empty()) {
-        (*this) = other;
-        added_batches.resize(added_batches.size() + 1);
-        added_batches.back().batch = &other;
-        added_batches.back().start_face = 0;
-        added_batches.back().end_face = other.faces.size();
-        added_batches.back().start_vertex = 0;
-        added_batches.back().end_vertex = other.vertices.size() / 3;
-        return;
-    }
-
-    int existing_vertices = vertices.size();
-    int existing_faces = faces.size();
-
-    added_batches.resize(added_batches.size() + 1);
-    added_batches.back().batch = &other;
-    added_batches.back().start_face = existing_faces;
-    added_batches.back().end_face = existing_faces + other.faces.size();
-
-    faces.resize(faces.size() + other.faces.size());
-    memcpy(&faces[existing_faces],
-           &other.faces[0],
-           other.faces.size() * sizeof(GLuint));
-
-    num_face_ids += other.num_face_ids;
-
-    int existing_complete_vertices = existing_vertices / 3;
-    for (unsigned i = existing_faces; i < faces.size(); i++) {
-        faces[i] += existing_complete_vertices;
-    }
-
-    added_batches.back().start_vertex = existing_complete_vertices;
-    added_batches.back().end_vertex = existing_complete_vertices + other.vertices.size() / 3;
-
-    normals.resize(normals.size() + other.normals.size());
-    memcpy(&normals[existing_vertices],
-           &other.normals[0],
-           other.normals.size() * sizeof(GLfloat));
-
-    vertices.resize(vertices.size() + other.vertices.size());
-    memcpy(&vertices[existing_vertices],
-           &other.vertices[0],
-           other.vertices.size() * sizeof(GLfloat));
-
-    for (int i = 0; i < 8; i++) {
-        if (!tex_coords[i].empty()) {
-            tex_coords[i].resize(tex_coords[i].size() + other.tex_coords[i].size());
-            memcpy(&tex_coords[i][existing_vertices],
-                   &other.tex_coords[i][0],
-                   other.tex_coords[i].size() * sizeof(GLfloat));
-        }
     }
 }
 
@@ -372,76 +246,9 @@ void DrawBatch::SetStartState() const {
     }
 }
 
-void DrawBatch::EndVertexArrays() const {
-    for (int i = 1; i < 8; i++) {
-        if (!tex_coords[i].empty()) {
-            Graphics::Instance()->SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY0 + i, false);
-        }
-    }
-    Graphics::Instance()->SetClientActiveTexture(0);
-
-    Graphics::Instance()->BindArrayVBO(0);
-    Graphics::Instance()->BindElementVBO(0);
-}
-
 void DrawBatch::SetEndState() const {
     if (transparent && Graphics::Instance()->use_sample_alpha_to_coverage) {
         glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-    }
-}
-
-void DrawBatch::DrawVertexArrays() const {
-    if (vbo_faces.GetConst().valid()) {
-        Graphics::Instance()->DrawElements(GL_TRIANGLES, num_face_ids, GL_UNSIGNED_INT, 0);
-    } else {
-        Graphics::Instance()->DrawElements(GL_TRIANGLES, num_face_ids, GL_UNSIGNED_INT, &faces[0]);
-    }
-}
-
-void DrawBatch::DrawVertexArrayRange(GLuint start, GLuint end, GLuint start_vertex, GLuint end_vertex) const {
-    if (vbo_faces.GetConst().valid()) {
-        // glDrawElements(GL_TRIANGLES, num_face_ids, GL_UNSIGNED_INT, 0);
-        Graphics::Instance()->DrawRangeElements(GL_TRIANGLES, start_vertex, end_vertex, end - start, GL_UNSIGNED_INT, (char *)NULL + start * sizeof(GLuint));
-    } else {
-        Graphics::Instance()->DrawRangeElements(GL_TRIANGLES, start_vertex, end_vertex, end - start, GL_UNSIGNED_INT, &faces[start]);
-    }
-}
-
-void DrawBatch::SetupVertexArrays() const {
-    Graphics *graphics = Graphics::Instance();
-    graphics->SetClientStates(F_VERTEX_ARRAY | F_NORMAL_ARRAY | F_TEXTURE_COORD_ARRAY0);
-
-    for (int i = 0; i < 8; i++) {
-        if (!tex_coords[i].empty()) {
-            graphics->SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY0 + i, true);
-            if (vbo_tex_coords[i].GetConst().valid()) {
-                vbo_tex_coords[i].GetConst().Bind();
-                glTexCoordPointer(tex_coord_elements[i], GL_FLOAT, 0, 0);
-            } else {
-                graphics->BindArrayVBO(0);
-                glTexCoordPointer(tex_coord_elements[i], GL_FLOAT, 0, &tex_coords[i][0]);
-            }
-        }
-    }
-
-    if (vbo_normals.GetConst().valid()) {
-        vbo_normals.GetConst().Bind();
-        glNormalPointer(GL_FLOAT, 0, 0);
-    } else if (!normals.empty()) {
-        graphics->BindArrayVBO(0);
-        glNormalPointer(GL_FLOAT, 0, &normals[0]);
-    }
-
-    if (vbo_vertices.GetConst().valid()) {
-        vbo_vertices.GetConst().Bind();
-        glVertexPointer(3, GL_FLOAT, 0, 0);
-    } else {
-        graphics->BindArrayVBO(0);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
-    }
-
-    if (vbo_faces.GetConst().valid()) {
-        vbo_faces.GetConst().Bind();
     }
 }
 

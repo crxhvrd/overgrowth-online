@@ -1,0 +1,1138 @@
+<?xml version="2.0" ?>
+<Type>saved</Type>
+    <Name>Rock Cave (battle)</Name>
+    <Description />
+    <Shader>post</Shader>
+    <LoadingScreen>
+        <Image />
+    </LoadingScreen>
+    <Terrain>
+        <Heightmap>Data/Prototypes/CaveArena/Demo/CA_hm.png</Heightmap>
+        <ShaderExtra />
+        <DetailMap />
+        <ColorMap>Data/Prototypes/CaveArena/Demo/CA_Color.tga</ColorMap>
+        <DetailMaps>
+            <DetailMap colorpath="Data/Prototypes/CaveArena/Demo/detail_Color.tga" normalpath="Data/Prototypes/CaveArena/Demo/detail_norm.tga" materialpath="Data/Materials/default.xml" />
+            <DetailMap colorpath="Data/Prototypes/CaveArena/Demo/detail_Color.tga" normalpath="Data/Prototypes/CaveArena/Demo/detail_norm.tga" materialpath="Data/Materials/default.xml" />
+            <DetailMap colorpath="Data/Prototypes/CaveArena/Demo/detail_Color.tga" normalpath="Data/Prototypes/CaveArena/Demo/detail_norm.tga" materialpath="Data/Materials/default.xml" />
+            <DetailMap colorpath="Data/Prototypes/CaveArena/Demo/detail_Color.tga" normalpath="Data/Prototypes/CaveArena/Demo/detail_norm.tga" materialpath="Data/Materials/default.xml" />
+        </DetailMaps>
+        <DetailObjects />
+    </Terrain>
+    <OutOfDate NavMesh="true" NavMeshParamHash="-1674835251" />
+    <AmbientSounds>
+        <Ambient path="Data/Sounds/ambient/amb_deadvolcano_loop" />
+    </AmbientSounds>
+    <Script>level.as</Script>
+    <LevelScriptParameters>
+    </LevelScriptParameters>
+    <NavMeshParameters cell_size="0.3" cell_height="0.2" agent_height="1.7" agent_radius="0.4" agent_max_climb="1.5" agent_max_slope="60" />
+    <Sky>
+        <DomeTexture>Data/Prototypes/CaveArena/Demo/CA_Dome.tga</DomeTexture>
+        <SunAngularRad>0.136</SunAngularRad>
+        <SunColorAngle>137.726</SunColorAngle>
+        <RayToSun r0="-0.676892" r1="0.671306" r2="-0.301936" />
+    </Sky>
+    <ActorObjects>
+        <Group t0="44.4217" t1="109.805" t2="-35.2801" s0="2.23487" s1="2.07498" s2="7.31242" q0="0" q1="-0.792858" q2="0" q3="0.609406" id="1" version="1">
+            <parameters />
+            <EnvObject t0="46.162" t1="109.805" t2="-34.3122" s0="1" s1="1" s2="1" q0="0" q1="0.993065" q2="0" q3="0.117567" id="286" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="42.6613" t1="109.805" t2="-35.8687" s0="1" s1="1" s2="1" q0="0" q1="0.966863" q2="0" q3="0.255296" id="287" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject t0="50.5461" t1="124.981" t2="-65.7335" s0="1" s1="1" s2="1" q0="0" q1="-1" q2="0" q3="0" id="2" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/CaveArena.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="74.6881" t1="78.9463" t2="-176.422" s0="1" s1="1" s2="1" q0="-0.00856184" q1="0.507261" q2="-0.00746621" q3="0.861718" id="3" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Column_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="96.604" t1="78.9666" t2="-153.885" s0="1" s1="1.00441" s2="1" q0="-0.0101863" q1="0.41018" q2="-0.0156912" q3="0.911813" id="4" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Column_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="9.81382" t1="77.1925" t2="-173.285" s0="1" s1="1" s2="1" q0="-0.0170317" q1="-0.507589" q2="0.0155925" q3="0.86129" id="5" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Column_3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="23.6013" t1="77.9022" t2="-268.787" s0="1" s1="1" s2="1" q0="-0.00977891" q1="0.628439" q2="-0.0208755" q3="0.777517" id="6" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Column_4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="13.2249" t1="78.2354" t2="-234.847" s0="1" s1="1" s2="1" q0="0" q1="-0.698705" q2="0" q3="0.71541" id="7" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Column_5.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="68.1568" t1="77.5307" t2="-291.151" s0="1" s1="1" s2="1" q0="-0.00262037" q1="-0.999781" q2="0.0131602" q3="0.0160577" id="8" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Column_6.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="20.8277" t1="101.59" t2="-151.662" s0="0.751746" s1="0.751746" s2="0.751746" q0="-0.0182101" q1="-0.479358" q2="0.0076629" q3="0.877397" id="9" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bridge.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="75.1282" t1="77.9796" t2="-224.991" s0="1" s1="1" s2="1" q0="0.0100245" q1="0.971871" q2="-0.0142241" q3="0.23487" id="10" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Column_3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="70.3302" t1="102.572" t2="-154.332" s0="0.693432" s1="0.92141" s2="0.921407" q0="0" q1="-0.875594" q2="0" q3="0.483048" id="11" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bridge.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-1.96932" t1="116.874" t2="-219.651" s0="0.869818" s1="1" s2="0.999999" q0="0" q1="-0.986066" q2="0" q3="0.166355" id="12" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Arch_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="89.3377" t1="120.102" t2="-190.825" s0="1" s1="1" s2="1" q0="0" q1="0.123838" q2="0" q3="0.992302" id="13" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Arch_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-24.9561" t1="107.602" t2="-211.722" s0="0.999999" s1="0.999999" s2="0.999999" q0="-0.0467631" q1="0.616514" q2="0.0581448" q3="0.7838" id="14" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Column_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="54.6222" t1="110.084" t2="-74.317" s0="1" s1="1" s2="1" q0="0" q1="0.698575" q2="0" q3="0.715537" id="15" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Ground1a.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="13.6992" t1="93.0237" t2="-252.288" s0="1" s1="1" s2="1" q0="0.0221442" q1="0.53648" q2="0.0140843" q3="0.843505" id="16" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="12.8047" t1="93.3621" t2="-213.473" s0="1" s1="1" s2="1" q0="0" q1="-0.572577" q2="0" q3="0.819851" id="17" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="44.7565" t1="96.0076" t2="-138.915" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="18" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_5.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="19.0919" t1="92.6848" t2="-190.504" s0="1" s1="1" s2="1" q0="0" q1="-0.647251" q2="0" q3="0.762277" id="19" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_6.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="68.8082" t1="91.2166" t2="-198.27" s0="1" s1="1" s2="1" q0="0" q1="-0.569037" q2="0" q3="0.822312" id="20" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_7.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="78.3275" t1="93.0375" t2="-259.565" s0="1.00058" s1="1.00058" s2="1.00058" q0="-0.0175716" q1="-0.691862" q2="0.0140483" q3="0.721679" id="21" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="37.8366" t1="109.917" t2="-67.1734" s0="1" s1="1" s2="1" q0="0" q1="1" q2="0" q3="0" id="22" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Ground1b.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-13.7592" t1="93.8266" t2="-153.548" s0="1" s1="1" s2="1" q0="0" q1="0.417637" q2="0" q3="0.908614" id="23" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="14.3209" t1="87.9391" t2="-224.676" s0="1" s1="1" s2="1" q0="0" q1="-0.917959" q2="0" q3="0.396675" id="24" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="27.8067" t1="116.576" t2="-54.699" s0="1" s1="1" s2="1" q0="0" q1="0.703747" q2="0" q3="0.710451" id="25" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Ground2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="44.1009" t1="121.342" t2="-76.5224" s0="1" s1="1" s2="1" q0="0" q1="0.267194" q2="0" q3="0.963643" id="26" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Hanging1a.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="61.3148" t1="123.732" t2="-84.4285" s0="1" s1="1" s2="1" q0="0" q1="-0.074729" q2="0" q3="0.997204" id="27" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Hanging1b.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="87.3127" t1="131.493" t2="-49.5127" s0="1" s1="1" s2="1" q0="0" q1="-0.854958" q2="0" q3="0.518697" id="28" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Hanging2Blue.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="88.5304" t1="131.602" t2="-58.9795" s0="1" s1="1" s2="1" q0="0" q1="-0.718027" q2="0" q3="0.696015" id="29" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Hanging2Red.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="89.5026" t1="131.536" t2="-54.2679" s0="1" s1="1" s2="1" q0="0" q1="-0.725538" q2="0" q3="0.688182" id="30" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Hanging2Green.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="85.8041" t1="131.481" t2="-45.2024" s0="1" s1="1" s2="1" q0="0" q1="-0.801772" q2="0" q3="0.59763" id="31" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Hanging2Yellow.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="84.0339" t1="131.555" t2="-40.7822" s0="1" s1="1" s2="1" q0="0" q1="-0.840615" q2="0" q3="0.541633" id="32" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Hanging2Purple.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="79.618" t1="116.283" t2="-24.4798" s0="1" s1="1" s2="1" q0="0" q1="-0.925358" q2="0" q3="0.379094" id="33" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Pile1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="71.4125" t1="115.516" t2="-19.4552" s0="1" s1="1" s2="1" q0="0" q1="0.198447" q2="0" q3="0.980112" id="34" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Pile2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="44.9245" t1="115.691" t2="-22.5485" s0="1" s1="1" s2="1" q0="0" q1="0.998625" q2="0" q3="0.0524226" id="35" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Pile3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="55.3325" t1="115.662" t2="-16.2174" s0="1" s1="1" s2="1" q0="0" q1="-0.0732089" q2="0" q3="0.997317" id="36" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Pile3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="81.2062" t1="115.717" t2="-32.5018" s0="1" s1="1" s2="1" q0="0" q1="-0.882869" q2="0" q3="0.469619" id="37" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Pile2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="61.5075" t1="112.692" t2="-26.1953" s0="1" s1="1" s2="1" q0="-0.00047815" q1="0.198447" q2="-0.00236142" q3="0.980109" id="38" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Pile2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="90.0343" t1="118.085" t2="-64.4865" s0="1" s1="1" s2="1" q0="0" q1="-0.616311" q2="0" q3="0.787503" id="39" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Pile1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="75.0779" t1="131.232" t2="-35.1548" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="40" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/HangingLamp_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="84.6367" t1="131.232" t2="-66.3401" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="41" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/HangingLamp_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="70.4088" t1="127.126" t2="-83.7279" s0="1" s1="1" s2="1" q0="0" q1="-0.0791483" q2="0" q3="0.996863" id="42" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/HangingLamp_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="31.2222" t1="126.281" t2="-40.3252" s0="1" s1="1" s2="1" q0="0" q1="-0.419228" q2="0" q3="0.907881" id="43" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/HangingLamp_3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="31.3917" t1="126.557" t2="-65.6623" s0="1" s1="1" s2="1" q0="0" q1="0.429333" q2="0" q3="0.903146" id="44" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/HangingLamp_4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="36.5239" t1="110.084" t2="-51.4275" s0="1" s1="1" s2="1" q0="0" q1="-0.853166" q2="0" q3="0.52164" id="45" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Ground1a.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="47.921" t1="110.629" t2="-40.802" s0="1" s1="1" s2="1" q0="0" q1="-0.707107" q2="0" q3="0.707107" id="46" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Ground1b.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="68.1417" t1="109.915" t2="-63.6701" s0="1" s1="1" s2="1" q0="0" q1="0.0122488" q2="0" q3="0.999925" id="47" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Ground1b.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="66.7085" t1="110.009" t2="-46.6534" s0="1" s1="1" s2="1" q0="0" q1="-0.531379" q2="0" q3="0.847134" id="48" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Ground1a.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="39.1626" t1="109.914" t2="-79.7262" s0="1" s1="1" s2="1" q0="0" q1="0.234671" q2="0" q3="0.972075" id="49" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Pile3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="83.3197" t1="147.571" t2="-65.165" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="50" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="77.8982" t1="153.334" t2="-77.9707" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="51" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="62.7157" t1="152.688" t2="-82.9724" s0="1" s1="1" s2="1" q0="0" q1="0.999742" q2="0" q3="0.0227156" id="52" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="42.2938" t1="152.342" t2="-78.5975" s0="1" s1="1" s2="1" q0="0" q1="0.779883" q2="0" q3="0.625925" id="53" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="30.2996" t1="152.688" t2="-70.3937" s0="1" s1="1" s2="1" q0="0" q1="0.61684" q2="0" q3="0.787089" id="54" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="76.7466" t1="153.19" t2="-35.3811" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="55" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="93.3957" t1="143.936" t2="-53.3192" s0="1" s1="1" s2="1" q0="0" q1="0.625494" q2="0" q3="0.780229" id="56" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="86.944" t1="144.337" t2="-41.4219" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="57" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="99.7581" t1="146.633" t2="-65.3334" s0="1" s1="1" s2="1" q0="0" q1="-0.875133" q2="0" q3="0.483882" id="58" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="88.1749" t1="148.595" t2="-73.9524" s0="1" s1="1" s2="1" q0="0" q1="0.942903" q2="0" q3="0.333068" id="59" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="76.3771" t1="153.334" t2="-86.806" s0="1" s1="1" s2="1" q0="0" q1="-0.393513" q2="0" q3="0.919319" id="60" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="58.1459" t1="152.217" t2="-93.9171" s0="1" s1="1" s2="1" q0="0" q1="-0.392642" q2="0" q3="0.919691" id="61" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="31.9549" t1="151.943" t2="-82.2624" s0="1" s1="1" s2="1" q0="0" q1="0.516947" q2="0" q3="0.856017" id="62" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="27.0132" t1="152.685" t2="-56.9632" s0="1" s1="1" s2="1" q0="0" q1="0.207192" q2="0" q3="0.9783" id="63" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="44.2608" t1="152.69" t2="-31.1047" s0="1" s1="1" s2="1" q0="0" q1="-0.676352" q2="0" q3="0.736579" id="64" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="63.3833" t1="150.928" t2="-29.2905" s0="1" s1="1" s2="1" q0="0" q1="0.985443" q2="0" q3="0.170006" id="65" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="51.7224" t1="151.317" t2="-22.7197" s0="1" s1="1" s2="1" q0="0" q1="-0.99508" q2="0" q3="0.0990748" id="66" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="29.0461" t1="151.121" t2="-32.1955" s0="1" s1="1" s2="1" q0="0" q1="0.866273" q2="0" q3="0.499571" id="67" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="30.3466" t1="153.46" t2="-44.2647" s0="1" s1="1" s2="1" q0="0" q1="-0.862977" q2="0" q3="0.505243" id="68" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="20.2628" t1="152.075" t2="-64.2872" s0="1" s1="1" s2="1" q0="0" q1="0.552845" q2="0" q3="0.833284" id="69" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="22.1894" t1="152.143" t2="-51.1427" s0="1" s1="1" s2="1" q0="0" q1="0.792011" q2="0" q3="0.610507" id="70" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="75.6897" t1="153.19" t2="-26.1589" s0="1" s1="1" s2="1" q0="0" q1="0.230886" q2="0" q3="0.972981" id="71" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="35.8226" t1="151.626" t2="-25.3566" s0="1" s1="1" s2="1" q0="0" q1="0.220163" q2="0" q3="0.975463" id="72" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="45.5968" t1="152.852" t2="-90.3819" s0="1" s1="1" s2="1" q0="0" q1="0.0775455" q2="0" q3="0.996989" id="73" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="72.2549" t1="107.069" t2="-176.628" s0="1" s1="1" s2="1" q0="0" q1="-0.978382" q2="0" q3="0.206806" id="74" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="61.9433" t1="105.839" t2="-184.029" s0="1" s1="1" s2="1" q0="0" q1="0.830039" q2="0" q3="0.557705" id="75" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="77.5442" t1="106.354" t2="-193.431" s0="1" s1="1" s2="1" q0="0" q1="0.95214" q2="0" q3="0.305662" id="76" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="79.3926" t1="108.892" t2="-185.343" s0="1.24932" s1="1.24932" s2="1.24932" q0="0" q1="0.429146" q2="0" q3="0.903235" id="77" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="66.398" t1="109.061" t2="-193.187" s0="1.36599" s1="1.36599" s2="1.36599" q0="0" q1="-0.953011" q2="0" q3="0.302936" id="78" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="103.591" t1="107.605" t2="-178.021" s0="1.32064" s1="1.32064" s2="1.32064" q0="0" q1="-0.466556" q2="0" q3="0.884492" id="79" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="112.219" t1="108.824" t2="-169.834" s0="1.21431" s1="1.21431" s2="1.21431" q0="0" q1="0.830039" q2="0" q3="0.557705" id="80" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="99.9724" t1="110.021" t2="-188.065" s0="1.55399" s1="1.55399" s2="1.55399" q0="0" q1="-0.781759" q2="0" q3="0.623581" id="81" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="100.452" t1="109.019" t2="-200.719" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="-0.744128" q2="0" q3="0.668037" id="82" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="120.497" t1="105.929" t2="-162.398" s0="1.23174" s1="1.23174" s2="1.23174" q0="0" q1="0.963636" q2="0" q3="0.267218" id="83" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="105.054" t1="107.909" t2="-214.01" s0="1.13301" s1="1.13301" s2="1.13301" q0="0" q1="0.560649" q2="0" q3="0.828054" id="84" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="75.771" t1="141.181" t2="-186.361" s0="1" s1="1" s2="1" q0="0" q1="-0.978382" q2="0" q3="0.206806" id="85" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="129.652" t1="108.838" t2="-154.839" s0="1.25556" s1="1.25556" s2="1.25556" q0="0" q1="-0.271098" q2="0" q3="0.962552" id="86" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="107.245" t1="109.018" t2="-228.598" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="0.72374" q2="0" q3="0.690073" id="87" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="106.782" t1="107.909" t2="-248.197" s0="1.56029" s1="1.56029" s2="1.56029" q0="0" q1="0.743251" q2="0" q3="0.669013" id="88" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="100.665" t1="109.018" t2="-266.535" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="-0.644457" q2="0" q3="0.764641" id="89" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="115.182" t1="140.695" t2="-189.276" s0="1.21431" s1="1.21431" s2="1.21431" q0="0" q1="0.830039" q2="0" q3="0.557705" id="90" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="123.498" t1="138.99" t2="-181.817" s0="1.23174" s1="1.23174" s2="1.23174" q0="0" q1="0.963636" q2="0" q3="0.267218" id="91" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="132.615" t1="140.709" t2="-174.281" s0="1.25556" s1="1.25556" s2="1.25556" q0="0" q1="-0.271098" q2="0" q3="0.962552" id="92" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="118.746" t1="139.378" t2="-200.092" s0="1.13301" s1="1.13301" s2="1.13301" q0="0" q1="0.560649" q2="0" q3="0.828054" id="93" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="123.594" t1="141.201" t2="-213.713" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="0.72374" q2="0" q3="0.690073" id="94" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.025" t1="138.641" t2="-231.357" s0="1.56029" s1="1.56029" s2="1.56029" q0="-0.0564716" q1="0.741103" q2="-0.0508295" q3="0.667078" id="95" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-31.7497" t1="138.036" t2="-196.174" s0="1.21431" s1="1.21431" s2="1.21431" q0="0" q1="-0.872743" q2="0" q3="0.48818" id="96" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-22.7841" t1="137.803" t2="-204.684" s0="1.23174" s1="1.23174" s2="1.23174" q0="0" q1="-0.67405" q2="0" q3="0.738686" id="97" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-16.9089" t1="138.45" t2="-211.698" s0="1.25556" s1="1.25556" s2="1.25556" q0="0" q1="0.735963" q2="0" q3="0.677022" id="98" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-42.4732" t1="137.433" t2="-192.56" s0="1.13301" s1="1.13301" s2="1.13301" q0="0" q1="-0.992073" q2="0" q3="0.125663" id="99" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-59.0689" t1="139.721" t2="-192.079" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="-0.942744" q2="0" q3="0.333517" id="100" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-73.9224" t1="141.728" t2="-181.943" s0="1.56029" s1="1.56029" s2="1.56029" q0="0" q1="-0.932782" q2="0" q3="0.360441" id="101" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="71.2337" t1="125.017" t2="-182.338" s0="1" s1="1" s2="1" q0="0.0610066" q1="-0.141188" q2="-0.00244791" q3="0.988098" id="102" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bonsai_Branch1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="64.721" t1="115.587" t2="-183.462" s0="1" s1="1" s2="1" q0="0" q1="-0.538383" q2="0" q3="0.8427" id="103" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bonsai_Branch2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="74.2611" t1="116.707" t2="-179.244" s0="1" s1="1" s2="1" q0="0.0660062" q1="0.0451465" q2="-0.064833" q3="0.994687" id="104" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bonsai_Branch3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="107.614" t1="124.843" t2="-183.333" s0="1" s1="1" s2="1" q0="0" q1="-0.477818" q2="0" q3="0.878459" id="105" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bonsai_Branch2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-29.7912" t1="120.731" t2="-197.246" s0="1" s1="1" s2="1" q0="-0.0214336" q1="-0.469116" q2="0.0303716" q3="0.882354" id="106" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_7.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="116.024" t1="122.683" t2="-189.388" s0="1" s1="1" s2="1" q0="0.0152683" q1="-0.277865" q2="0.0114056" q3="0.960431" id="107" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_7.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="96.0429" t1="106.128" t2="-279.051" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="-0.478293" q2="0" q3="0.8782" id="108" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="81.4203" t1="130.991" t2="-179.141" s0="1" s1="1" s2="1" q0="0.130795" q1="0.0976573" q2="-0.0835425" q3="0.983044" id="109" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bonsai_Branch3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-22.4399" t1="111.225" t2="-259.906" s0="1.68923" s1="1.68923" s2="1.68923" q0="0" q1="0.659024" q2="0" q3="0.752122" id="110" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-21.2703" t1="110.392" t2="-241.37" s0="1.46722" s1="1.46722" s2="1.46722" q0="0" q1="0.674987" q2="0" q3="0.73783" id="111" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-17.1534" t1="108.051" t2="-225.843" s0="1.35105" s1="1.35105" s2="1.35105" q0="0" q1="-0.619356" q2="0" q3="0.78511" id="112" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-8.70199" t1="106.736" t2="-204.471" s0="1.38795" s1="1.38795" s2="1.38795" q0="0" q1="-0.677918" q2="0" q3="0.735138" id="113" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-14.9937" t1="107.95" t2="-187.857" s0="1.23819" s1="1.23819" s2="1.23819" q0="0" q1="0.302877" q2="0" q3="0.95303" id="114" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-36.4906" t1="108.543" t2="-170.544" s0="1.14624" s1="1.14624" s2="1.14624" q0="0" q1="-0.906741" q2="0" q3="0.421688" id="115" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-26.3233" t1="110.608" t2="-179.549" s0="1.42258" s1="1.42258" s2="1.42258" q0="0" q1="-0.928662" q2="0" q3="0.370927" id="116" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="11.367" t1="103.619" t2="-213.425" s0="0.917889" s1="0.917889" s2="0.917889" q0="0" q1="-0.978382" q2="0" q3="0.206806" id="117" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="1.97556" t1="105.345" t2="-221.054" s0="0.836705" s1="0.836705" s2="0.836705" q0="0" q1="0.830039" q2="0" q3="0.557705" id="118" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="16.341" t1="104.427" t2="-231.894" s0="0.903524" s1="0.903524" s2="0.903524" q0="0" q1="0.905744" q2="0" q3="0.423825" id="119" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="18.1818" t1="104.176" t2="-222.641" s0="1.04425" s1="1.04425" s2="1.04425" q0="0" q1="0.546376" q2="0" q3="0.83754" id="120" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="4.72919" t1="106.911" t2="-232.394" s0="1.11555" s1="1.11555" s2="1.11555" q0="0" q1="-0.97816" q2="0" q3="0.207853" id="121" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.539" t1="127.931" t2="-180.604" s0="1" s1="1" s2="1" q0="-0.0148289" q1="0.963798" q2="-0.00325801" q3="0.266201" id="122" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_5.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="91.8948" t1="105.317" t2="-292.182" s0="1.13301" s1="1.13301" s2="1.13302" q0="0" q1="-0.546096" q2="0" q3="0.837723" id="123" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="31.9249" t1="129.713" t2="-358.297" s0="1.44341" s1="1.44341" s2="1.44341" q0="-0.0624723" q1="-0.984445" q2="0.000427627" q3="0.164211" id="124" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="19.0965" t1="127.431" t2="-349.489" s0="1.29211" s1="1.29211" s2="1.29211" q0="0" q1="-0.883723" q2="0" q3="0.46801" id="125" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="8.22988" t1="126.28" t2="-338.867" s0="0.950211" s1="0.950211" s2="0.950211" q0="0" q1="0.653731" q2="0" q3="0.756727" id="126" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="1.51408" t1="128.641" t2="-332.683" s0="1.1464" s1="1.1464" s2="1.1464" q0="0" q1="0.690423" q2="0" q3="0.723406" id="127" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="5.77177" t1="136.564" t2="-300.372" s0="1.56029" s1="1.56029" s2="1.56029" q0="0" q1="0.96323" q2="0" q3="0.268678" id="128" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-9.14808" t1="133.659" t2="-303.415" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="0.389153" q2="0" q3="0.921173" id="129" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-30.8595" t1="132.316" t2="-284.618" s0="1.27291" s1="1.27291" s2="1.27291" q0="0" q1="0.671474" q2="0" q3="0.741028" id="130" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-20.7143" t1="132.996" t2="-296.162" s0="1.11515" s1="1.11515" s2="1.11515" q0="0" q1="0.297236" q2="0" q3="0.954804" id="131" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="64.2116" t1="103.09" t2="-314.966" s0="1.13301" s1="1.13301" s2="1.13302" q0="0.0487048" q1="-0.507917" q2="0.0543271" q3="0.85831" id="132" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="73.1132" t1="103.475" t2="-306.982" s0="1.56029" s1="1.56029" s2="1.56029" q0="0" q1="0.773847" q2="0" q3="0.633373" id="133" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="84.9755" t1="104.074" t2="-305.78" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="-0.644457" q2="0" q3="0.764641" id="134" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="15.6453" t1="104.23" t2="-302.773" s0="1.12026" s1="1.12026" s2="1.12026" q0="0" q1="-0.639917" q2="0" q3="0.768444" id="135" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="10.9106" t1="104.781" t2="-285.403" s0="0.999387" s1="0.999387" s2="0.999387" q0="0" q1="0.184848" q2="0" q3="0.982767" id="136" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-1.72165" t1="106.432" t2="-281.151" s0="1.14821" s1="1.14821" s2="1.14821" q0="0" q1="-0.928662" q2="0" q3="0.370927" id="137" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-16.1468" t1="107.669" t2="-277.083" s0="1.42258" s1="1.42258" s2="1.42258" q0="0" q1="0.520104" q2="0" q3="0.854103" id="138" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-7.12386" t1="130.984" t2="-320.746" s0="1.16737" s1="1.16737" s2="1.16737" q0="0" q1="-0.934893" q2="0" q3="0.35493" id="139" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="118.473" t1="127.658" t2="-285.523" s0="1.25437" s1="1.25437" s2="1.25437" q0="-0.0400617" q1="-0.575096" q2="0.0665291" q3="0.814391" id="140" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="121.783" t1="128.086" t2="-271.888" s0="1.44341" s1="1.44341" s2="1.44341" q0="-0.0706624" q1="0.743495" q2="-0.0322152" q3="0.664217" id="141" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="129.182" t1="132.207" t2="-257.97" s0="1.44341" s1="1.44341" s2="1.44341" q0="-0.0627826" q1="0.86144" q2="-0.0457098" q3="0.501886" id="142" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="126.141" t1="133.821" t2="-244.863" s0="1.13301" s1="1.13301" s2="1.13302" q0="-0.0661928" q1="0.819152" q2="-0.0406145" q3="0.568295" id="143" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-40.6608" t1="137.114" t2="-241.616" s0="1.21431" s1="1.21431" s2="1.21431" q0="0" q1="0.777344" q2="0" q3="0.629076" id="144" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-35.8431" t1="136.978" t2="-231.441" s0="1.23174" s1="1.23174" s2="1.23174" q0="0" q1="0.936162" q2="0" q3="0.351569" id="145" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-26.1508" t1="137.127" t2="-223.772" s0="1.25556" s1="1.25556" s2="1.25556" q0="0" q1="-0.35534" q2="0" q3="0.934737" id="146" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="77.3506" t1="128.257" t2="-354.003" s0="1.32064" s1="1.32064" s2="1.32064" q0="0.0442441" q1="-0.342891" q2="0.0619169" q3="0.936288" id="147" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="106.231" t1="125.837" t2="-310.833" s0="1.21431" s1="1.21431" s2="1.21431" q0="0" q1="0.830039" q2="0" q3="0.557705" id="148" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="112.582" t1="127.133" t2="-299.326" s0="1.23174" s1="1.23174" s2="1.23174" q0="0" q1="0.963636" q2="0" q3="0.267218" id="149" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="88.4694" t1="131.443" t2="-352.746" s0="1.56029" s1="1.56029" s2="1.56029" q0="0" q1="0.80879" q2="0" q3="0.588098" id="150" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="100.461" t1="125.725" t2="-324.07" s0="1.44341" s1="1.44341" s2="1.44341" q0="-0.0812362" q1="0.718707" q2="0.0851994" q3="0.685275" id="151" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="91.9754" t1="121.825" t2="-338.063" s0="1.56029" s1="1.56029" s2="1.56029" q0="0" q1="0.743251" q2="0" q3="0.669013" id="152" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="104.478" t1="135.259" t2="-350.005" s0="1.54729" s1="1.54729" s2="1.54729" q0="0" q1="0.974967" q2="0" q3="0.22235" id="153" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-3.48392" t1="144.942" t2="-404.085" s0="1.32064" s1="1.32064" s2="1.32064" q0="0.0527039" q1="-0.474227" q2="0.0548956" q3="0.877108" id="154" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="4.66231" t1="149.507" t2="-415.114" s0="1.47021" s1="1.47021" s2="1.47021" q0="0" q1="-0.993665" q2="0" q3="0.112383" id="155" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="18.3725" t1="151.108" t2="-422.033" s0="1.54729" s1="1.54729" s2="1.54729" q0="0.049506" q1="0.97371" q2="0.01129" q3="0.22206" id="156" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="77.5881" t1="148.484" t2="-416.438" s0="1.44341" s1="1.44341" s2="1.44341" q0="0.0373294" q1="-0.985719" q2="-0.0161687" q3="0.163411" id="157" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="87.4334" t1="145.758" t2="-407.272" s0="1.29211" s1="1.29211" s2="1.29211" q0="-0.00691121" q1="-0.0891843" q2="0.0769544" q3="0.993014" id="158" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="95.3574" t1="142.451" t2="-397.78" s0="1.32356" s1="1.32356" s2="1.32356" q0="0" q1="0.653731" q2="0" q3="0.756727" id="159" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="121.387" t1="124.638" t2="-218.209" s0="1.00058" s1="1.00058" s2="1.00058" q0="-0.0286156" q1="-0.770184" q2="0.0632918" q3="0.634028" id="160" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="171.776" t1="119.531" t2="-153.655" s0="1" s1="1" s2="1" q0="0" q1="-0.334168" q2="0" q3="0.942514" id="161" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="29.4853" t1="91.9581" t2="-284.126" s0="1" s1="1" s2="1" q0="-0.0184505" q1="-0.756852" q2="0.0120265" q3="0.653215" id="162" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-0.0389945" t1="122.681" t2="-213.632" s0="1" s1="1" s2="1" q0="0.247828" q1="-0.0365786" q2="0.140925" q3="0.957801" id="163" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bonsai_Branch1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="185.387" t1="127.278" t2="-147.392" s0="1" s1="1" s2="1" q0="-0.0109852" q1="-0.515899" q2="0.0182351" q3="0.856385" id="164" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_5.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="11.1869" t1="112.211" t2="-215.804" s0="1" s1="1" s2="1" q0="0" q1="-0.0668732" q2="0" q3="0.997761" id="165" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bonsai_Branch2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-90.4049" t1="127.309" t2="-151.438" s0="1" s1="1" s2="1" q0="0" q1="0.575299" q2="0" q3="0.817943" id="166" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_6.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-17.4879" t1="122.076" t2="-297.376" s0="1" s1="1" s2="1" q0="0.00632138" q1="0.207499" q2="0.032361" q3="0.977679" id="167" color_r="0.870588" color_g="0.831373" color_b="0.792157" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="139.889" t1="125.684" t2="-167.056" s0="1" s1="1" s2="1" q0="0.0146163" q1="0.977172" q2="0.0031699" q3="0.211922" id="168" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-35.352" t1="122.331" t2="-269.353" s0="1" s1="1" s2="1" q0="0.00304663" q1="0.589095" q2="-0.0304712" q3="0.807483" id="169" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-35.6525" t1="123.271" t2="-232.157" s0="1" s1="1" s2="1" q0="0.00370484" q1="0.841156" q2="-0.0322095" q3="0.53982" id="171" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-7.82656" t1="129.248" t2="-209.733" s0="1" s1="1" s2="1" q0="-0.113194" q1="0.503652" q2="0.0356613" q3="0.855716" id="172" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bonsai_Branch3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="10.0317" t1="127.672" t2="-218.93" s0="1" s1="1" s2="1" q0="-0.0097612" q1="0.38195" q2="-0.0151536" q3="0.924007" id="173" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Bonsai_Branch3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-37.3021" t1="136.473" t2="-254.902" s0="1.42867" s1="1.42867" s2="1.42867" q0="0" q1="0.995639" q2="0" q3="0.0932895" id="174" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-107.291" t1="142.911" t2="-124.294" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="-0.797103" q2="0" q3="0.603843" id="175" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-100.55" t1="141.801" t2="-136.638" s0="1.13301" s1="1.13301" s2="1.13301" q0="0" q1="0.489847" q2="0" q3="0.871808" id="176" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-95.9712" t1="142.91" t2="-150.661" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="0.663847" q2="0" q3="0.747868" id="177" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-93.1795" t1="141.801" t2="-170.066" s0="1.56029" s1="1.56029" s2="1.56029" q0="0" q1="0.685042" q2="0" q3="0.728504" id="178" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-19.8008" t1="132.014" t2="-306.81" s0="1.11515" s1="1.11515" s2="1.11515" q0="0" q1="-0.953953" q2="0" q3="0.299956" id="179" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="69.2447" t1="114.845" t2="-33.7598" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="180" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Buildings/arena/arena_umbrella_fine.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="77.1364" t1="114.845" t2="-43.2356" s0="1" s1="1" s2="1" q0="0" q1="0.209471" q2="0" q3="0.977815" id="181" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Buildings/arena/arena_umbrella_fine.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="80.2652" t1="114.845" t2="-52.6298" s0="1" s1="1" s2="1" q0="0" q1="-0.0632491" q2="0" q3="0.997998" id="182" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Buildings/arena/arena_umbrella_fine.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="4.58533" t1="106.67" t2="-291.859" s0="0.986927" s1="0.986927" s2="0.986927" q0="-0.0127992" q1="-0.722103" q2="0.104345" q3="0.683751" id="183" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Column_4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="53.5461" t1="101.527" t2="-57.6293" s0="1" s1="1" s2="1" q0="0" q1="0.943927" q2="0" q3="0.330154" id="191" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Prototypes/CaveArena/CArocks_Flat.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="86.9978" t1="117.472" t2="-62.5685" s0="1" s1="1" s2="1" q0="0" q1="-0.628814" q2="0" q3="0.777556" id="193" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="73.8002" t1="119.172" t2="-85.6446" s0="1" s1="1" s2="1" q0="0" q1="-0.280944" q2="0" q3="0.959724" id="194" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="71.075" t1="119.172" t2="-87.481" s0="1" s1="1" s2="1" q0="0" q1="-0.248785" q2="0" q3="0.968559" id="195" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="68.0118" t1="119.236" t2="-88.9036" s0="1" s1="1" s2="1" q0="0" q1="-0.167082" q2="0" q3="0.985943" id="196" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="60.4749" t1="124.033" t2="-109.994" s0="1" s1="1" s2="1" q0="0" q1="-0.99496" q2="0" q3="0.100273" id="198" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Hanging1a.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="32.8015" t1="128.885" t2="-109.526" s0="1" s1="1" s2="1" q0="0" q1="-0.999901" q2="0" q3="0.0140715" id="199" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Hanging1b.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="35.116" t1="114.357" t2="-81.4682" s0="1" s1="1" s2="1" q0="0" q1="0.320511" q2="0" q3="0.947245" id="200" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="58.457" t1="103.502" t2="-78.4654" s0="1" s1="1.26109" s2="1" q0="0" q1="-0.167943" q2="0" q3="0.985797" id="201" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Bars2.xml">
+            <parameters />
+        </EnvObject>
+        <Group t0="61.6638" t1="115.618" t2="-22.8531" s0="2.23487" s1="2.07498" s2="7.31242" q0="0" q1="-0.598654" q2="0" q3="0.801008" id="202" version="1">
+            <parameters />
+            <EnvObject t0="63.6536" t1="115.618" t2="-22.9323" s0="1" s1="1" s2="0.999998" q0="0" q1="-0.987883" q2="0" q3="0.155201" id="203" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="59.8543" t1="115.618" t2="-22.4397" s0="1" s1="1" s2="1" q0="0" q1="-0.99988" q2="0" q3="0.0154909" id="204" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject t0="63.3383" t1="101.397" t2="-62.793" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="211" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Prototypes/CaveArena/CArocks_Small2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="60.44" t1="101.265" t2="-46.9904" s0="1" s1="1" s2="1" q0="0" q1="0.960913" q2="0" q3="0.276851" id="212" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Prototypes/CaveArena/CArocks_Small1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="48.5609" t1="101.478" t2="-64.253" s0="1" s1="1" s2="1" q0="0" q1="-0.954676" q2="0" q3="0.297647" id="213" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Prototypes/CaveArena/CArocks_Small3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="53.0517" t1="101.39" t2="-48.1618" s0="1" s1="1" s2="1" q0="4.04119e-05" q1="0.14874" q2="-0.000644743" q3="0.988876" id="214" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Prototypes/CaveArena/CArocks_Small3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="43.832" t1="101.684" t2="-54.5799" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="217" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Prototypes/CaveArena/CArocks_TaperedHole.xml">
+            <parameters />
+        </EnvObject>
+        <Group t0="51.66" t1="101.19" t2="-60.58" s0="30.9881" s1="0.526693" s2="25.9677" q0="0" q1="0" q2="0" q3="1" id="219" version="1">
+            <parameters />
+            <EnvObject t0="53.7323" t1="101.101" t2="-56.2874" s0="1" s1="1" s2="1" q0="0.338092" q1="0.510348" q2="0.448777" q3="0.651023" id="221" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogArmBone.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="52.1698" t1="101.083" t2="-47.7991" s0="1.18801" s1="1.18801" s2="1.18801" q0="-0.0761725" q1="0.378429" q2="-0.329707" q3="0.861559" id="222" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogSkull.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="53.36" t1="101.111" t2="-59.1445" s0="2.43382" s1="2.43382" s2="2.43382" q0="-0.138109" q1="-0.478158" q2="0.221171" q3="0.838671" id="223" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogLegBone.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="53.587" t1="101.098" t2="-48.6326" s0="2.43382" s1="2.43382" s2="2.43382" q0="-0.994344" q1="0.00341851" q2="0.0300688" q3="0.101773" id="224" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogLegBone.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="42.8026" t1="101.082" t2="-54.0548" s0="2.43382" s1="2.43382" s2="2.43382" q0="-0.178574" q1="-0.61804" q2="-0.233811" q3="-0.729017" id="225" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogLegBone.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="36.5255" t1="101.182" t2="-57.2702" s0="2.43382" s1="2.43382" s2="2.43382" q0="0.346111" q1="0.0969511" q2="-0.870042" q3="-0.337386" id="230" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogLegBone.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="59.583" t1="101.103" t2="-54.7806" s0="1" s1="1" s2="1" q0="0.0721253" q1="-0.104757" q2="-0.353811" q3="0.926629" id="231" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogSkull.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="48.6865" t1="101.331" t2="-73.4037" s0="1" s1="1" s2="1" q0="-0.540593" q1="-0.708711" q2="0.174912" q3="0.418202" id="232" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogSkull.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="60.0205" t1="101.244" t2="-71.2696" s0="1" s1="1" s2="1" q0="0.685665" q1="-0.72324" q2="0.0760581" q3="0.0316885" id="233" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogSkull.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="48.8432" t1="101.098" t2="-65.1979" s0="2.15811" s1="2.15811" s2="2.15811" q0="-0.0450298" q1="0.155294" q2="-0.428392" q3="0.889009" id="273" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogBackBone.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="52.4447" t1="101.083" t2="-57.9928" s0="1" s1="1" s2="1" q0="-0.433315" q1="-0.893579" q2="-0.109047" q3="0.0431945" id="274" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogSkull.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="53.8817" t1="101.097" t2="-56.4706" s0="2.04469" s1="2.04469" s2="2.04469" q0="0.0669326" q1="-0.551639" q2="-0.117179" q3="0.823094" id="344" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogBackBone.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="63.716" t1="101.091" t2="-63.1747" s0="1.70996" s1="1.70996" s2="1.70996" q0="-0.97802" q1="0.110402" q2="0.0117193" q3="0.176473" id="345" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogLegBone.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="66.745" t1="101.144" t2="-50.0905" s0="2.43382" s1="2.43382" s2="2.43382" q0="0.152505" q1="0.684344" q2="0.214439" q3="0.680018" id="346" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogLegBone.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="66.6005" t1="101.113" t2="-50.6707" s0="2.43382" s1="2.43382" s2="2.43382" q0="0.0553329" q1="0.0878476" q2="0.993258" q3="0.0515007" id="347" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/Environment/Bones/DogLegBone.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject t0="60.2608" t1="101.748" t2="-54.0343" s0="1" s1="1" s2="1" q0="0" q1="-0.707107" q2="0" q3="0.707107" id="220" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Prototypes/CaveArena/CArocks_Block.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="58.7682" t1="103.719" t2="-79.8701" s0="1.74086" s1="2.63142" s2="1.47875" q0="0" q1="-0.169972" q2="0" q3="0.985449" id="234" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="44.4404" t1="103.719" t2="-38.9557" s0="1.6115" s1="2.63142" s2="2.35172" q0="0" q1="-0.218934" q2="0" q3="0.97574" id="235" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <Hotspot t0="54.3136" t1="97.7792" t2="-55.5724" s0="9.01705" s1="1.0421" s2="13.1286" q0="0" q1="0" q2="0" q3="1" id="236" type_file="Data/Objects/Hotspots/generic_kill.xml">
+            <parameters>
+                <parameter name="KillNPC" type="int" val="1" />
+                <parameter name="KillPlayer" type="int" val="1" />
+            </parameters>
+        </Hotspot>
+        <EnvObject t0="68.0844" t1="110.047" t2="-80.1566" s0="0.918104" s1="0.918104" s2="0.918104" q0="0" q1="-0.303091" q2="0" q3="0.952962" id="237" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Bars.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="57.9279" t1="108.28" t2="-76.4728" s0="3.34851" s1="2.8311" s2="2.0834" q0="0" q1="-0.130711" q2="0" q3="0.991421" id="238" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="51.9726" t1="109.378" t2="-74.1093" s0="2.79228" s1="2.90633" s2="1.46463" q0="0" q1="-0.0252035" q2="0" q3="0.999682" id="239" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="47.2842" t1="109.383" t2="-73.9779" s0="2.79228" s1="2.90139" s2="1.53268" q0="0" q1="0.094329" q2="0" q3="0.995541" id="240" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="73.3908" t1="112.187" t2="-37.4369" s0="1" s1="1" s2="1" q0="0" q1="0.433439" q2="0" q3="0.901183" id="241" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Table2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="45.6428" t1="103.295" t2="-40.9855" s0="1.08036" s1="1.23417" s2="1.08036" q0="0" q1="-0.220011" q2="0" q3="0.975497" id="242" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Banner_Bars.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="79.5588" t1="112.187" t2="-47.5277" s0="1" s1="1" s2="1" q0="0" q1="0.587933" q2="0" q3="0.80891" id="243" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Table2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="51.3075" t1="112.187" t2="-26.0336" s0="1" s1="1" s2="1" q0="0" q1="-0.303536" q2="0" q3="0.95282" id="244" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/Crate_Table2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="42.6092" t1="109.348" t2="-71.8486" s0="2.79228" s1="2.93665" s2="1.6398" q0="0" q1="0.284066" q2="0" q3="0.958805" id="245" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="38.8696" t1="109.288" t2="-68.1801" s0="2.79228" s1="3.01521" s2="1.65542" q0="0" q1="0.41419" q2="0" q3="0.91019" id="246" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-151.766" t1="142.131" t2="-60.8232" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="-0.797103" q2="0" q3="0.603843" id="247" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-133.959" t1="141.801" t2="-74.2665" s0="1.13301" s1="1.13301" s2="1.13301" q0="0" q1="0.464405" q2="0" q3="0.885623" id="248" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-123.764" t1="142.91" t2="-88.0529" s0="1.44341" s1="1.44341" s2="1.44341" q0="0" q1="0.663847" q2="0" q3="0.747868" id="249" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-114.182" t1="141.801" t2="-105.757" s0="1.56029" s1="1.56029" s2="1.56029" q0="0" q1="0.685042" q2="0" q3="0.728504" id="250" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/SpikeyTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-103.331" t1="127.309" t2="-103.633" s0="1" s1="1" s2="1" q0="0" q1="-0.772823" q2="0" q3="0.634622" id="251" color_r="1" color_g="1" color_b="1" overbright="0" type_file="data/Prototypes/CaveArena/OutCrop_6.xml">
+            <parameters />
+        </EnvObject>
+        <ReflectionCaptureObject t0="54.8144" t1="111.468" t2="-58.627" s0="0.48742" s1="0.48742" s2="0.48742" q0="0" q1="0" q2="0" q3="1" id="252" gicoeff00="0.0839233" gicoeff01="0.0532074" gicoeff02="0.03936" gicoeff03="0.0369339" gicoeff04="0.0269203" gicoeff05="0.0233727" gicoeff06="0.0818176" gicoeff07="0.0660553" gicoeff08="0.0619202" gicoeff09="0.0462494" gicoeff10="0.0262184" gicoeff11="0.0172386" gicoeff12="0.0619278" gicoeff13="0.0403519" gicoeff14="0.0314445" gicoeff15="0.0492783" gicoeff16="0.0347099" gicoeff17="0.0285263">
+            <parameters>
+                <parameter name="Global" type="string" val="1" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <ReflectionCaptureObject t0="52.5382" t1="108.477" t2="-56.8997" s0="20.1914" s1="20.1914" s2="20.1914" q0="-0.00184953" q1="-0.000809798" q2="-0.000754804" q3="0.999998" id="253" gicoeff00="0.0892029" gicoeff01="0.0591507" gicoeff02="0.0458374" gicoeff03="0.0519714" gicoeff04="0.0386429" gicoeff05="0.0337029" gicoeff06="0.107559" gicoeff07="0.0855255" gicoeff08="0.0784149" gicoeff09="0.0471039" gicoeff10="0.028019" gicoeff11="0.0196342" gicoeff12="0.0700912" gicoeff13="0.0480576" gicoeff14="0.0391617" gicoeff15="0.0624161" gicoeff16="0.0452499" gicoeff17="0.0379448">
+            <parameters>
+                <parameter name="Global" type="string" val="0" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <EnvObject t0="37.0029" t1="109.381" t2="-63.8346" s0="2.79228" s1="2.90363" s2="1.52301" q0="0" q1="0.605532" q2="0" q3="0.795821" id="254" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="35.8289" t1="109.412" t2="-58.5134" s0="2.79227" s1="2.87218" s2="1.56868" q0="0" q1="0.644697" q2="0" q3="0.764438" id="255" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="36.1192" t1="109.424" t2="-53.6611" s0="2.79228" s1="2.85994" s2="1.54535" q0="0" q1="0.771161" q2="0" q3="0.63664" id="256" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="37.8907" t1="109.344" t2="-48.8042" s0="2.79228" s1="2.9401" s2="1.58629" q0="0" q1="0.849268" q2="0" q3="0.527962" id="257" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="40.6843" t1="109.346" t2="-44.9114" s0="2.79228" s1="2.93789" s2="1.5899" q0="0" q1="0.92798" q2="0" q3="0.37263" id="258" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="44.683" t1="109.453" t2="-41.7827" s0="2.79228" s1="2.8311" s2="1.49802" q0="0" q1="0.970594" q2="0" q3="0.240723" id="259" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="49.4377" t1="109.453" t2="-40.271" s0="2.79227" s1="2.8311" s2="1.6889" q0="0" q1="0.996555" q2="0" q3="0.0829349" id="260" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="54.2862" t1="109.453" t2="-40.2488" s0="2.79228" s1="2.8311" s2="1.5703" q0="0" q1="-0.999361" q2="0" q3="0.0357439" id="261" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="58.9905" t1="109.454" t2="-40.8808" s0="2.79228" s1="2.8311" s2="1.65608" q0="0.00315717" q1="-0.986727" q2="-0.000799775" q3="0.162355" id="262" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="63.3721" t1="109.453" t2="-43.3754" s0="2.79228" s1="2.8311" s2="1.67472" q0="0" q1="-0.952021" q2="0" q3="0.306033" id="265" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="66.5947" t1="109.453" t2="-47.0607" s0="2.79228" s1="2.8311" s2="1.71414" q0="0" q1="-0.876265" q2="0" q3="0.481829" id="266" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="68.8116" t1="109.453" t2="-51.7996" s0="2.79227" s1="2.8311" s2="1.6974" q0="0" q1="-0.820517" q2="0" q3="0.571622" id="267" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="69.5184" t1="109.308" t2="-57.1303" s0="2.79227" s1="2.8311" s2="1.68848" q0="0" q1="-0.702648" q2="0" q3="0.711538" id="268" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="68.4673" t1="109.453" t2="-62.3655" s0="2.79227" s1="2.8311" s2="1.7922" q0="0" q1="-0.609759" q2="0" q3="0.792587" id="269" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="65.9368" t1="109.407" t2="-67.0294" s0="2.79228" s1="2.87709" s2="1.6787" q0="0" q1="-0.467284" q2="0" q3="0.884107" id="270" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="61.5889" t1="109.424" t2="-71.3633" s0="3.4331" s1="2.8599" s2="1.54337" q0="0" q1="-0.339155" q2="0" q3="0.940731" id="271" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="52.8941" t1="112.057" t2="-55.5244" s0="20.5158" s1="0.227532" s2="18.5502" q0="0" q1="0.605532" q2="0" q3="0.795821" id="272" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <Group t0="75.1104" t1="109.894" t2="-55.993" s0="2.23487" s1="2.07498" s2="7.31242" q0="0" q1="0" q2="0" q3="1" id="275" version="1">
+            <parameters />
+            <EnvObject t0="75.598" t1="109.894" t2="-57.9238" s0="1" s1="1" s2="0.999994" q0="0" q1="-0.698391" q2="0" q3="0.715716" id="279" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="74.9944" t1="109.894" t2="-54.1405" s0="1" s1="1" s2="1" q0="0" q1="-0.791623" q2="0" q3="0.61101" id="263" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group t0="71.8925" t1="109.894" t2="-69.2612" s0="2.23487" s1="2.07498" s2="7.31242" q0="0" q1="0.326084" q2="0" q3="0.945341" id="276" version="1">
+            <parameters />
+            <EnvObject t0="71.086" t1="109.894" t2="-71.082" s0="1" s1="1" s2="1" q0="0" q1="-0.426834" q2="0" q3="0.90433" id="277" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="72.9433" t1="109.894" t2="-67.7312" s0="1" s1="1" s2="0.999999" q0="0" q1="-0.549112" q2="0" q3="0.835749" id="278" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group t0="70.5798" t1="109.894" t2="-43.6872" s0="2.23487" s1="2.07498" s2="7.31242" q0="0" q1="-0.233638" q2="0" q3="0.972324" id="280" version="1">
+            <parameters />
+            <EnvObject t0="71.8915" t1="109.894" t2="-45.1857" s0="1" s1="1" s2="1" q0="-1.54972e-06" q1="-0.846279" q2="0" q3="0.53274" id="281" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="69.6349" t1="109.894" t2="-42.0896" s0="1" s1="1" s2="1" q0="0" q1="-0.912469" q2="0" q3="0.409146" id="282" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group t0="59.4561" t1="109.752" t2="-34.8488" s0="2.23487" s1="2.07498" s2="7.31242" q0="0" q1="-0.56151" q2="0" q3="0.82747" id="283" version="1">
+            <parameters />
+            <EnvObject t0="61.4304" t1="109.752" t2="-35.1089" s0="1" s1="1" s2="0.999998" q0="0" q1="-0.979778" q2="0" q3="0.200088" id="284" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="57.6918" t1="109.752" t2="-34.2722" s0="1" s1="1" s2="1" q0="0" q1="-0.998131" q2="0" q3="0.0611108" id="285" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject t0="29.759" t1="109.728" t2="-60.0496" s0="1" s1="1" s2="1" q0="0" q1="0.640536" q2="0" q3="0.767928" id="288" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="33.1783" t1="109.728" t2="-43.2247" s0="1" s1="1" s2="1" q0="0" q1="0.884068" q2="0" q3="0.467358" id="289" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="31.6319" t1="109.728" t2="-46.7299" s0="1" s1="1" s2="1" q0="0" q1="0.810018" q2="0" q3="0.586405" id="290" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="32.0714" t1="110.69" t2="-37.4671" s0="1" s1="1" s2="1" q0="0" q1="0.944057" q2="0" q3="0.329782" id="291" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="39.787" t1="110.69" t2="-31.8783" s0="1" s1="1" s2="1" q0="0" q1="0.9809" q2="0" q3="0.194513" id="292" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="36.3199" t1="110.69" t2="-33.7053" s0="1" s1="1" s2="1" q0="0" q1="0.944057" q2="0" q3="0.329782" id="293" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="27.1555" t1="110.69" t2="-43.597" s0="1" s1="1" s2="1" q0="0" q1="0.870963" q2="0" q3="0.491349" id="294" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="37.1913" t1="112.007" t2="-31.1696" s0="1" s1="1" s2="1" q0="0" q1="0.9809" q2="0" q3="0.194513" id="295" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="33.0324" t1="111.906" t2="-34.0832" s0="1" s1="1" s2="1" q0="0" q1="0.93959" q2="0" q3="0.342302" id="296" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="29.2872" t1="111.929" t2="-37.5418" s0="1" s1="1" s2="1" q0="0" q1="0.914287" q2="0" q3="0.405067" id="297" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="26.5239" t1="111.926" t2="-41.3506" s0="1" s1="1" s2="1" q0="0" q1="0.877241" q2="0" q3="0.48005" id="298" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="27.0419" t1="112.601" t2="-38.7276" s0="1" s1="1" s2="1" q0="0" q1="0.877241" q2="0" q3="0.48005" id="299" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="30.2604" t1="113.073" t2="-34.3691" s0="1" s1="1" s2="1" q0="0" q1="0.929308" q2="0" q3="0.369306" id="300" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="34.132" t1="112.981" t2="-30.602" s0="1" s1="1" s2="1" q0="0" q1="0.958053" q2="0" q3="0.286591" id="301" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="37.7703" t1="113.512" t2="-27.3364" s0="1" s1="1" s2="1" q0="0" q1="0.973029" q2="0" q3="0.230683" id="302" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <Group t0="49.8991" t1="112.678" t2="-28.7238" s0="2.23487" s1="2.07498" s2="7.31242" q0="0" q1="-0.68629" q2="0" q3="0.727328" id="303" version="1">
+            <parameters />
+            <EnvObject t0="51.8549" t1="112.678" t2="-28.349" s0="1" s1="1" s2="0.999999" q0="0" q1="-0.999147" q2="0" q3="0.0412951" id="314" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="48.043" t1="112.678" t2="-28.7321" s0="1" s1="1" s2="1" q0="0" q1="0.995098" q2="0" q3="0.0988938" id="315" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject t0="28.256" t1="114.104" t2="-32.884" s0="1" s1="1" s2="1" q0="0" q1="0.939117" q2="0" q3="0.343597" id="304" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="22.7936" t1="114.807" t2="-38.1638" s0="1" s1="1" s2="1" q0="0" q1="0.864243" q2="0" q3="0.503075" id="305" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="22.8768" t1="113.501" t2="-41.7512" s0="1" s1="1" s2="1" q0="0" q1="0.864243" q2="0" q3="0.503075" id="306" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="24.2432" t1="111.839" t2="-45.3077" s0="1" s1="1" s2="1" q0="0" q1="0.815055" q2="0" q3="0.579384" id="307" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="19.5884" t1="114.085" t2="-47.9684" s0="1" s1="1" s2="1" q0="0" q1="0.815055" q2="0" q3="0.579384" id="308" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="22.0624" t1="112.563" t2="-49.9033" s0="1" s1="1" s2="1" q0="0" q1="0.788365" q2="0" q3="0.615208" id="309" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="24.9325" t1="110.601" t2="-48.8939" s0="1" s1="1" s2="1" q0="0" q1="0.788365" q2="0" q3="0.615208" id="310" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <Group t0="61.4953" t1="109.894" t2="-77.9867" s0="2.23487" s1="2.07498" s2="7.31242" q0="0" q1="0.56468" q2="0" q3="0.82531" id="311" version="1">
+            <parameters />
+            <EnvObject t0="59.8724" t1="109.894" t2="-79.1407" s0="1" s1="1" s2="1" q0="0" q1="-0.172239" q2="0" q3="0.985055" id="312" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="63.1801" t1="109.894" t2="-77.2075" s0="1" s1="1" s2="0.999998" q0="0" q1="-0.30831" q2="0" q3="0.951286" id="313" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject t0="76.2306" t1="112.678" t2="-41.3785" s0="1" s1="1" s2="0.999999" q0="0" q1="-0.917867" q2="0" q3="0.396888" id="316" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="70.2084" t1="112.678" t2="-34.5082" s0="1" s1="1" s2="0.999999" q0="0" q1="-0.89121" q2="0" q3="0.453591" id="317" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="66.7878" t1="112.678" t2="-32.5745" s0="1" s1="1" s2="1" q0="0" q1="-0.972818" q2="0" q3="0.231571" id="318" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="80.8141" t1="112.678" t2="-54.4386" s0="1" s1="1" s2="0.999999" q0="0" q1="-0.847179" q2="0" q3="0.531308" id="319" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="80.3245" t1="112.678" t2="-51.6189" s0="1" s1="1" s2="0.999999" q0="0" q1="-0.847179" q2="0" q3="0.531308" id="320" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="77.8143" t1="112.678" t2="-43.8409" s0="1" s1="1" s2="0.999999" q0="0" q1="-0.772992" q2="0" q3="0.634416" id="321" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="79.7639" t1="114.703" t2="-66.0672" s0="1" s1="1" s2="1" q0="0" q1="-0.517261" q2="0" q3="0.855828" id="322" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="78.3488" t1="114.703" t2="-69.0685" s0="1" s1="1" s2="1" q0="0" q1="-0.517261" q2="0" q3="0.855828" id="323" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="76.6066" t1="114.703" t2="-73.0152" s0="1" s1="1" s2="1" q0="0" q1="-0.530097" q2="0" q3="0.847937" id="324" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="66.5337" t1="114.427" t2="-82.4849" s0="1" s1="1" s2="1" q0="0" q1="-0.284316" q2="0" q3="0.958731" id="325" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="77.6234" t1="112.641" t2="-80.929" s0="1" s1="1" s2="1" q0="0" q1="-0.530097" q2="0" q3="0.847937" id="326" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="79.437" t1="115.569" t2="-34.5897" s0="1" s1="1" s2="1" q0="0" q1="-0.924515" q2="0" q3="0.381146" id="327" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="69.2877" t1="114.549" t2="-89.184" s0="1" s1="1" s2="1" q0="0" q1="-0.0194911" q2="0" q3="0.99981" id="328" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <Group t0="33.7887" t1="109.559" t2="-70.672" s0="2.23487" s1="2.07498" s2="7.31242" q0="0" q1="0.981273" q2="0" q3="0.192622" id="329" version="1">
+            <parameters />
+            <EnvObject t0="32.6073" t1="109.559" t2="-69.0688" s0="0.999999" s1="0.999999" s2="0.999999" q0="0" q1="0.567785" q2="0" q3="0.823177" id="331" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject t0="34.5963" t1="109.559" t2="-72.3432" s0="1" s1="1" s2="0.999999" q0="3.21865e-06" q1="0.44708" q2="0" q3="0.894494" id="332" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject t0="87.2248" t1="117.472" t2="-54.785" s0="1" s1="1" s2="1" q0="0" q1="-0.764445" q2="0" q3="0.644689" id="330" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="22.2936" t1="112.71" t2="-58.7255" s0="1" s1="1" s2="1" q0="0" q1="0.788365" q2="0" q3="0.615208" id="333" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="23.7378" t1="112.736" t2="-64.4797" s0="1" s1="1" s2="1" q0="0" q1="0.590549" q2="0" q3="0.807002" id="334" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="24.4101" t1="112.736" t2="-67.2106" s0="1" s1="1" s2="1" q0="0" q1="0.590549" q2="0" q3="0.807002" id="335" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="18.6765" t1="114.638" t2="-70.8028" s0="1" s1="1" s2="1" q0="0" q1="0.590549" q2="0" q3="0.807002" id="336" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="30.0115" t1="112.514" t2="-81.6071" s0="1" s1="1" s2="1" q0="0" q1="0.421657" q2="0" q3="0.906755" id="337" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="24.6266" t1="113.958" t2="-79.9947" s0="1" s1="1" s2="1" q0="0" q1="0.421657" q2="0" q3="0.906755" id="338" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="21.489" t1="115.031" t2="-79.0602" s0="1" s1="1" s2="1" q0="0" q1="0.421657" q2="0" q3="0.906755" id="339" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="43.8929" t1="114.357" t2="-85.5788" s0="1" s1="1" s2="1" q0="0" q1="0.239805" q2="0" q3="0.970821" id="340" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="46.5886" t1="109.682" t2="-79.887" s0="1" s1="1" s2="1" q0="0" q1="0.239805" q2="0" q3="0.970821" id="341" color_r="1" color_g="1" color_b="1" overbright="0" type_file="Data/Objects/characters/fans/mixed_fans.xml">
+            <parameters />
+        </EnvObject>
+        <NavmeshRegionObject t0="53.3343" t1="104.44" t2="-57.7783" s0="38.4602" s1="9.40697" s2="42.5701" q0="0" q1="0" q2="0" q3="1" id="343">
+            <parameters />
+        </NavmeshRegionObject>
+        <Group t0="52.96" t1="102.13" t2="-56.81" s0="37.6994" s1="9.27813" s2="45.091" q0="0" q1="0" q2="0" q3="1" id="348" version="1">
+            <parameters />
+            <Decal t0="44.894" t1="101.099" t2="-38.5083" s0="3.5026" s1="3.5026" s2="3.5026" q0="0" q1="0.125118" q2="0" q3="0.992142" id="349" type_file="Data/Objects/Decals/dark_rocks_red_dirt.xml" color_r="1" color_g="1" color_b="1" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="43.9056" t1="101.099" t2="-36.4422" s0="3.5026" s1="3.5026" s2="3.5026" q0="0" q1="-0.800264" q2="0" q3="0.599648" id="350" type_file="Data/Objects/Decals/dark_rocks_red_dirt.xml" color_r="1" color_g="1" color_b="1" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="46.5706" t1="101.101" t2="-42.4882" s0="3.5026" s1="3.5026" s2="3.5026" q0="0" q1="-0.558646" q2="0" q3="0.829406" id="351" type_file="Data/Objects/Decals/dark_rocks_red_dirt.xml" color_r="1" color_g="1" color_b="1" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="57.7885" t1="101.07" t2="-76.672" s0="4.00897" s1="4.00897" s2="4.00897" q0="0.00845882" q1="-0.974669" q2="0.00217618" q3="0.223481" id="352" type_file="Data/Objects/Decals/dark_rocks_red_dirt.xml" color_r="1" color_g="1" color_b="1" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="59.3337" t1="105.999" t2="-74.4638" s0="1" s1="1" s2="1" q0="-0.659268" q1="0.338818" q2="0.496284" q3="0.45197" id="353" type_file="Data/Objects/Decals/crete_stains/leaky_rust.xml" color_r="0.470588" color_g="0.470583" color_b="0.470583" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="55.4506" t1="106.012" t2="-75.5071" s0="1" s1="1" s2="1" q0="-0.552395" q1="-0.377216" q2="-0.684694" q3="0.289428" id="354" type_file="Data/Objects/Decals/crete_stains/leaky_rust.xml" color_r="0.313725" color_g="0.313722" color_b="0.313722" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="63.3662" t1="99.9363" t2="-62.7557" s0="1.77682" s1="2.57331" s2="1.98153" q0="0" q1="0" q2="0" q3="1" id="355" type_file="Data/Objects/Decals/lichen_rubble.xml" color_r="1" color_g="0.650519" color_b="0.603922" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="53.9028" t1="99.5423" t2="-58.0097" s0="3.44081" s1="3.44081" s2="3.44081" q0="0" q1="0" q2="0" q3="1" id="356" type_file="Data/Objects/Decals/lichen_rubble.xml" color_r="1" color_g="0.650519" color_b="0.603922" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="52.8463" t1="99.5423" t2="-57.0287" s0="2.30804" s1="3.44081" s2="2.25908" q0="0" q1="-0.871462" q2="0" q3="0.490463" id="357" type_file="Data/Objects/Decals/lichen_rubble.xml" color_r="1" color_g="0.650519" color_b="0.603922" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="52.9393" t1="99.8904" t2="-48.1337" s0="1.90203" s1="2.57331" s2="2.59946" q0="0" q1="0" q2="0" q3="1" id="358" type_file="Data/Objects/Decals/lichen_rubble.xml" color_r="1" color_g="0.650519" color_b="0.603922" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="60.3969" t1="99.8904" t2="-46.9249" s0="0.91188" s1="2.57331" s2="1.47293" q0="0" q1="0" q2="0" q3="1" id="359" type_file="Data/Objects/Decals/lichen_rubble.xml" color_r="1" color_g="0.650519" color_b="0.603922" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="43.8114" t1="99.8904" t2="-54.6101" s0="1.26298" s1="2.57331" s2="2.20807" q0="0" q1="-0.727312" q2="0" q3="0.686307" id="360" type_file="Data/Objects/Decals/lichen_rubble.xml" color_r="1" color_g="0.650519" color_b="0.603922" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="48.6832" t1="99.8904" t2="-64.1625" s0="1.74948" s1="2.57331" s2="2.63002" q0="0" q1="-0.957191" q2="0" q3="0.289458" id="361" type_file="Data/Objects/Decals/lichen_rubble.xml" color_r="1" color_g="0.650519" color_b="0.603922" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="60.3155" t1="99.5423" t2="-54.085" s0="2.28477" s1="3.44081" s2="2.17134" q0="0" q1="-0.871462" q2="0" q3="0.490463" id="362" type_file="Data/Objects/Decals/lichen_rubble.xml" color_r="1" color_g="0.650519" color_b="0.603922" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="55.6557" t1="101.099" t2="-61.7749" s0="1.93413" s1="1" s2="1.93747" q0="0" q1="0.141494" q2="0" q3="0.989939" id="363" type_file="Data/Objects/Decals/crete_stains/pooled_stain.xml" color_r="0.392157" color_g="0.204537" color_b="0.204537" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="44.0448" t1="101.099" t2="-57.3389" s0="2.81099" s1="1" s2="2.83134" q0="0" q1="0.857572" q2="0" q3="0.514364" id="364" type_file="Data/Objects/Decals/crete_stains/pooled_stain.xml" color_r="0.180392" color_g="0.0352941" color_b="0.0352941" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="52.5181" t1="101.868" t2="-57.7106" s0="1.3791" s1="0.999999" s2="1.23369" q0="-0.342532" q1="0.307942" q2="0.132598" q3="0.877646" id="373" type_file="Data/Objects/Decals/bloodspatter.xml" color_r="0.439216" color_g="0.0981776" color_b="0.0981776" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="44.7942" t1="101.519" t2="-57.3619" s0="1.3791" s1="0.999999" s2="1.23369" q0="-0.0322515" q1="-0.248314" q2="-0.0202526" q3="0.967933" id="374" type_file="Data/Objects/Decals/bloodspatter.xml" color_r="0.439216" color_g="0.0981776" color_b="0.0981776" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="61.8217" t1="101.347" t2="-54.7862" s0="1.3791" s1="0.999999" s2="1.23369" q0="-0.000185907" q1="-0.147373" q2="0.0491396" q3="0.987861" id="375" type_file="Data/Objects/Decals/bloodspatter.xml" color_r="0.439216" color_g="0.0981776" color_b="0.0981776" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="61.6042" t1="101.161" t2="-55.2564" s0="2.58262" s1="1.87268" s2="2.3103" q0="-0.00294983" q1="0.639917" q2="-0.0548953" q3="0.766481" id="376" type_file="Data/Objects/Decals/bloodspatter.xml" color_r="0.439216" color_g="0.0981776" color_b="0.0981776" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="37.1887" t1="101.815" t2="-50.2491" s0="4.26675" s1="4.26675" s2="4.26675" q0="0.797245" q1="0.593858" q2="0.0788758" q3="-0.0741861" id="377" type_file="Data/Objects/Decals/DarkStonyDirt.xml" color_r="0.878431" color_g="0.704755" color_b="0.637293" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="39.7791" t1="103.235" t2="-47.8812" s0="4.26675" s1="4.26675" s2="4.26675" q0="0.324483" q1="0.0387943" q2="0.652175" q3="-0.684007" id="378" type_file="Data/Objects/Decals/DarkStonyDirt.xml" color_r="0.882353" color_g="0.704706" color_b="0.643599" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="51.5214" t1="101.406" t2="-74.0077" s0="5.48716" s1="5.48716" s2="5.48716" q0="-0.614292" q1="0.367056" q2="0.483975" q3="-0.50369" id="379" type_file="Data/Objects/Decals/ChunkyRockPatchy.xml" color_r="0.843137" color_g="0.625542" color_b="0.548866" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="55.4109" t1="101.042" t2="-56.029" s0="1.93413" s1="1" s2="1.93747" q0="0" q1="0.538347" q2="0" q3="0.842723" id="380" type_file="Data/Objects/Decals/crete_stains/pooled_stain.xml" color_r="0.25098" color_g="0.0305113" color_b="0.0305113" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="36.9731" t1="102.661" t2="-67.0905" s0="3.87198" s1="3.87198" s2="3.87198" q0="0.144333" q1="-0.190938" q2="-0.628553" q3="0.740021" id="381" type_file="Data/Objects/Decals/crete_impact.xml" color_r="0.439216" color_g="0.275424" color_b="0.203245" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="54.8164" t1="102.13" t2="-58.3402" s0="2.58262" s1="1.87268" s2="2.3103" q0="-0.00294983" q1="0.639917" q2="-0.0548953" q3="0.766481" id="382" type_file="Data/Objects/Decals/bloodspatter.xml" color_r="0.439216" color_g="0.0981776" color_b="0.0981776" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="54.2963" t1="103.802" t2="-73.8649" s0="5.48716" s1="5.48716" s2="5.48716" q0="-0.33073" q1="0.376811" q2="0.618651" q3="-0.604916" id="383" type_file="Data/Objects/Decals/ChunkyRockPatchy.xml" color_r="0.784314" color_g="0.55461" color_b="0.501346" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="68.5396" t1="102.308" t2="-51.6199" s0="2.12775" s1="1.87268" s2="1.66188" q0="-0.600685" q1="0.560852" q2="-0.148833" q3="0.549979" id="384" type_file="Data/Objects/Decals/bloodspatter.xml" color_r="0.439216" color_g="0.0981776" color_b="0.0981776" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="47.4676" t1="100.505" t2="-49.9697" s0="3.82974" s1="1.43171" s2="3.23911" q0="0.000561237" q1="0.408813" q2="0.013804" q3="0.912517" id="385" type_file="Data/Objects/Decals/bloodspatter.xml" color_r="0.439216" color_g="0.0981776" color_b="0.0981776" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="61.6012" t1="103.741" t2="-72.5466" s0="5.48716" s1="5.48716" s2="5.48716" q0="0.122385" q1="0.122319" q2="0.712677" q3="0.679832" id="386" type_file="Data/Objects/Decals/ChunkyRockPatchy.xml" color_r="0.784314" color_g="0.55461" color_b="0.501346" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="69.8928" t1="102.671" t2="-57.3705" s0="3.40529" s1="3.40529" s2="3.40529" q0="0.722758" q1="-0.689929" q2="-0.0273148" q3="0.0299022" id="387" type_file="Data/Objects/Decals/ChunkyRockPatchy.xml" color_r="0.988235" color_g="0.647198" color_b="0.554187" overbright="0">
+                <parameters />
+            </Decal>
+            <Decal t0="67.261" t1="103.588" t2="-46.6467" s0="4.26675" s1="4.26675" s2="4.26675" q0="-0.164951" q1="-0.202665" q2="0.635694" q3="0.726368" id="388" type_file="Data/Objects/Decals/DarkStonyDirt.xml" color_r="0.870588" color_g="0.700921" color_b="0.635017" overbright="0">
+                <parameters />
+            </Decal>
+        </Group>
+        <Decal t0="44.353" t1="103.527" t2="-36.1063" s0="19.86" s1="19.86" s2="19.86" q0="0" q1="0" q2="0" q3="1" id="461" type_file="Data/Objects/Decals/env_blob_shadow.xml" color_r="0" color_g="0" color_b="0" overbright="0">
+            <parameters />
+        </Decal>
+        <Decal t0="59.6729" t1="102.32" t2="-82.2629" s0="19.86" s1="19.86" s2="19.86" q0="0" q1="0" q2="0" q3="1" id="646" type_file="Data/Objects/Decals/env_blob_shadow.xml" color_r="0" color_g="0" color_b="0" overbright="0">
+            <parameters />
+        </Decal>
+        <Hotspot t0="57.9781" t1="102.718" t2="-58.3273" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="690" type_file="Data/Objects/Hotspots/rain.xml">
+            <parameters />
+        </Hotspot>
+        <Hotspot t0="55.8926" t1="107.323" t2="-55.9051" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" q3="1" id="705" type_file="Data/Objects/Hotspots/ambient_sound.xml">
+            <parameters>
+                <parameter name="Delay Max" type="float" val="10" />
+                <parameter name="Delay Min" type="float" val="3" />
+                <parameter name="Fade Distance" type="float" val="1" />
+                <parameter name="Gain" type="float" val="0.57" />
+                <parameter name="Global" type="int" val="1" />
+                <parameter name="Sound Path" type="string" val="Data/Sounds/weather/rain.wav" />
+                <parameter name="Wind Scale" type="int" val="0" />
+            </parameters>
+        </Hotspot>
+        <ActorObject t0="51.2980" t1="111.7050" t2="-55.0297" s0="1" s1="1" s2="1" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="706" type_file="Data/Objects/IGF_Characters/IGF_TurnerActor.xml" is_player="1" is_dead="0">
+            <parameters>
+                <parameter name="Teams" type="string" val="turner" />
+            </parameters>
+            <Connections>
+                <Connection id="-1" />
+            </Connections>
+            <ItemConnections />
+        </ActorObject>
+    </ActorObjects>

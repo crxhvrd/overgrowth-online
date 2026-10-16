@@ -32,3 +32,15 @@ Data/LevelNavmeshes/**/*.obj
 tags
 *.swp
 .vscode/*
+Build/
+Build_*.log
+test/run/
+test/results/
+__pycache__/
+
+# Overhaul Online: packages, the Steam build, the Steamworks SDK (not ours to commit)
+dist/
+Build_steam/
+Proprietary/steamworks/
+test/release/
+test/references/

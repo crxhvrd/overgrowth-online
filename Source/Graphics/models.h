@@ -55,8 +55,6 @@ class Models {
     int AddModel();
     int getModelGroups(int which);
     void drawModelGroup(int which, int group);
-    void drawModel(int which);
-    void drawModelAltTexCoords(int which);
     float Radius(int which);
     int loadModel(const std::string& name, char flags = 0, const std::string& store_name = "");
     int loadFlippedModel(const std::string& name, char flags = 0);

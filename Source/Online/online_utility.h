@@ -33,6 +33,9 @@ class OnlineUtility {
     static std::string GetDefaultPlayerName();
     static std::string GetPlayerName();
     static std::string GetActiveModsString();
+    static std::string GetOvergrowthOnlineVersion();  // the package's (its mod's version; "" without it)
+    static int CompareVersions(const std::string& a, const std::string& b);  // <0, 0, >0 by dotted numbers
+    static std::string GetActiveModsDigest();  // (short: friends compare it before joining)
     static bool HasActiveIncompatibleMods();
     static std::string GetActiveIncompatibleModsString();
     static bool IsCommand(const std::string& message);

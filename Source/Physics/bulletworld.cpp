@@ -1601,7 +1601,7 @@ btConvexHullShape *CreateConvexHullShape(const std::string &path, GLuint *displa
     btShapeHull *hull = new btShapeHull(tmpshape);
     hull->buildHull(0.0f);
     if (display_list) {
-        *display_list = CreateHullDisplayList(hull);
+        *display_list = 0;  // (Overgrowth Online: no display lists in a core context; nothing drew them)
     }
 
     btAlignedObjectArray<btVector3> vertices;
@@ -1680,37 +1680,6 @@ BulletObject *BulletWorld::CreateConvexModel(vec3 pos, std::string path, vec3 *o
     obj->SetPosition(pos);
 
     return obj;
-}
-
-GLuint CreateHullDisplayList(btShapeHull *hull) {
-    GLuint display_list = glGenLists(1);
-    glNewList(display_list, GL_COMPILE);
-
-    const unsigned int *faces = hull->getIndexPointer();
-    const btVector3 *vertices = hull->getVertexPointer();
-
-    glBegin(GL_TRIANGLES);
-    unsigned index = 0;
-    for (int i = 0; i < hull->numTriangles(); i++) {
-        btVector3 normal =
-            (vertices[faces[index + 1]] - vertices[faces[index + 0]]).cross((vertices[faces[index + 2]] - vertices[faces[index + 0]])).normalize();
-        glNormal3f(normal[0], normal[1], normal[2]);
-        glVertex3f(vertices[faces[index + 0]][0],
-                   vertices[faces[index + 0]][1],
-                   vertices[faces[index + 0]][2]);
-        glVertex3f(vertices[faces[index + 1]][0],
-                   vertices[faces[index + 1]][1],
-                   vertices[faces[index + 1]][2]);
-        glVertex3f(vertices[faces[index + 2]][0],
-                   vertices[faces[index + 2]][1],
-                   vertices[faces[index + 2]][2]);
-        index += 3;
-    }
-    glEnd();
-
-    glEndList();
-
-    return display_list;
 }
 
 vec3 BulletWorld::CheckCapsuleCollision(const vec3 &start, const vec3 &end, float radius) {

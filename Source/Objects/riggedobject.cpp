@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: riggedobject.cpp
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -21,6 +22,8 @@
 //
 //-----------------------------------------------------------------------------
 #include "riggedobject.h"
+
+#include <map>
 
 #include <Graphics/graphics.h>
 #include <Graphics/particles.h>
@@ -351,6 +354,123 @@ const mat4 RiggedObject::InterpolateBetweenTwoBones(const NetworkBone& current, 
     return mat;
 }
 
+// Overgrowth Online: physics bones that share a skeleton point are joined by a
+// ball joint (Skeleton::CreatePhysicsSkeleton). Walking those joints from each
+// root gives every other bone a parent and the joint they share, as offsets in
+// each bone's rest frame, the way the renderer places skeleton points
+// (NetworkBoneMatrix): world = rotation1 * (rest^-1 * (point * scale - rest position)) + translation1.
+// Identical on every machine for the same character.
+const CharSnapshot::Rig& RiggedObject::NetworkRig() {
+    const std::vector<PhysicsBone>& pb = skeleton_.physics_bones;
+    size_t n = pb.size();
+
+    if (network_rig.Matches(n) && network_rig_scale == model_char_scale) {
+        return network_rig;
+    }
+    network_rig_scale = model_char_scale;
+
+    network_rig.links.assign(n, CharSnapshot::BoneLink());
+    network_rig.order.clear();
+
+    // Skeleton point -> the physics bones that end there
+    std::map<int, std::vector<int> > at_point;
+    for (size_t i = 0; i < n; ++i) {
+        int bone = (int)i;  // physics bone i is skeleton bone i
+        if (pb[i].bullet_object == nullptr || bone < 0 || bone >= (int)skeleton_.bones.size()) {
+            continue;
+        }
+        for (int e = 0; e < 2; ++e) {
+            int point = skeleton_.bones[bone].points[e];
+            if (point >= 0 && point < (int)skeleton_.points.size()) {
+                at_point[point].push_back((int)i);
+            }
+        }
+    }
+
+    std::vector<bool> placed(n, false);
+    for (size_t root = 0; root < n; ++root) {
+        if (placed[root]) {
+            continue;
+        }
+        placed[root] = true;
+        network_rig.order.push_back((int)root);  // a root sends its position
+
+        for (size_t k = network_rig.order.size() - 1; k < network_rig.order.size(); ++k) {
+            int parent = network_rig.order[k];
+            if (pb[parent].bullet_object == nullptr) {
+                continue;
+            }
+            int parent_bone = parent;
+
+            // Joints: the parent's own ends, and the far ends of body-less
+            // connector bones hanging off them
+            std::vector<int> joints;
+            for (int e = 0; e < 2; ++e) {
+                int point = skeleton_.bones[parent_bone].points[e];
+                joints.push_back(point);
+                for (size_t c = 0; c < n; ++c) {
+                    int cb = (int)c;  // physics bone i is skeleton bone i
+                    if (pb[c].bullet_object != nullptr || cb < 0 || cb >= (int)skeleton_.bones.size()) {
+                        continue;
+                    }
+                    if (skeleton_.bones[cb].points[0] == point) {
+                        joints.push_back(skeleton_.bones[cb].points[1]);
+                    } else if (skeleton_.bones[cb].points[1] == point) {
+                        joints.push_back(skeleton_.bones[cb].points[0]);
+                    }
+                }
+            }
+
+            for (int point : joints) {
+                auto it = at_point.find(point);
+                if (it == at_point.end()) {
+                    continue;
+                }
+                vec3 joint = skeleton_.points[point] * model_char_scale;
+
+                for (int child : it->second) {
+                    if (placed[child]) {
+                        continue;
+                    }
+                    placed[child] = true;
+                    CharSnapshot::BoneLink& link = network_rig.links[child];
+                    link.parent = parent;
+                    link.joint_in_parent = transpose(pb[parent].initial_rotation).GetRotatedvec3(joint - pb[parent].initial_position);
+                    link.joint_in_child = transpose(pb[child].initial_rotation).GetRotatedvec3(joint - pb[child].initial_position);
+                    network_rig.order.push_back(child);
+                }
+            }
+        }
+    }
+
+    return network_rig;
+}
+
+mat4 RiggedObject::NetworkBoneMatrix(int bone, const quaternion& rotation, const vec3& translation, float scale) const {
+    const PhysicsBone& p_bone = skeleton_.physics_bones[bone];
+    NetworkBone nb;
+    nb.translation0 = p_bone.initial_position * -1.0f / model_char_scale;
+    nb.model_char_scale = model_char_scale;
+    nb.rotation0 = QuaternionFromMat4(transpose(p_bone.initial_rotation));
+    nb.rotation1 = rotation;
+    nb.translation1 = translation;
+    nb.scale = scale;
+    return InterpolateBetweenTwoBones(nb, nb, 0.0f);
+}
+
+// Overgrowth Online: a streamed bone without the display scale, the frame
+// attached gear hangs from (PreDrawFrame's display_bone_transforms)
+mat4 RiggedObject::NetworkAttachMatrix(int bone, const quaternion& rotation, const vec3& translation) const {
+    const PhysicsBone& p_bone = skeleton_.physics_bones[bone];
+    mat4 mat;
+    mat.LoadIdentity();
+    mat.SetTranslationPart(p_bone.initial_position * -1.0f / model_char_scale);
+    mat = transpose(p_bone.initial_rotation) * mat;
+    mat = Mat4FromQuaternion(rotation) * mat;
+    mat.AddTranslation(translation);
+    return mat;
+}
+
 void RiggedObject::PreDrawFrame(float curr_game_time) {
     Online* online = Online::Instance();
 
@@ -359,7 +479,7 @@ void RiggedObject::PreDrawFrame(float curr_game_time) {
     }
 
     CalcRootBoneVelocity();
-    if (!online->IsClient()) {
+    if (!network_proxy) {  // Overgrowth Online: a proxy's bones come from the stream
         PROFILER_ZONE(g_profiler_ctx, "RiggedObject::PreDrawFrame");
         {
             PROFILER_ZONE(g_profiler_ctx, "needs_matrix_update");
@@ -446,10 +566,10 @@ void RiggedObject::PreDrawFrame(float curr_game_time) {
                         }
                     }
 
-                    if (!online->IsClient()) {
-                        obj->SetTranslation(total_mat.GetTranslationPart());
-                        obj->SetRotation(QuaternionFromMat4(total_mat.GetRotationPart()));
-                    }
+                    // Overgrowth Online: everywhere, from the bones drawn here (the
+                    // host's transforms came at another time: gear floated off)
+                    obj->SetTranslation(total_mat.GetTranslationPart());
+                    obj->SetRotation(QuaternionFromMat4(total_mat.GetRotationPart()));
                 }
             }
         }
@@ -615,7 +735,7 @@ void ClosestPointsBetweenTwoLineSegments(const vec3& a, const vec3& b, const vec
 const int kOcclusionRadius = 2;
 
 void RiggedObject::ClientBeforeDraw() {
-    if (Online::Instance()->IsClient()) {
+    if (network_proxy) {
         /*
         std::list<RiggedObjectFrame>& bones = mp->bones[char_id];
         while(bones.size() > 1) {
@@ -2132,11 +2252,11 @@ void RiggedObject::ApplyBoneMatricesToModel(bool old, int lod_level) {
     if (kMorphTargetsEnabled) {
         // Determine which morphs are active (have effective weight > 0)
         for (auto& m_t : morph_targets) {
-            if (online->IsClient() || m_t.weight > 0.0f ||
+            if (network_proxy || m_t.weight > 0.0f ||
                 (m_t.anim_weight > 0.0f && m_t.script_weight_weight < 1.0f) ||
                 (m_t.script_weight > 0.0f && m_t.script_weight_weight > 0.0f)) {
                 m_t.PreDrawCamera(GetTimeBetweenLastTwoAnimUpdates(), GetTimeSinceLastAnimUpdate(), lod_level, char_id);
-                if (online->IsClient() || m_t.weight > 0.0f) {
+                if (network_proxy || m_t.weight > 0.0f) {
                     active_morph_targets.push_back(&m_t);
                 }
             }
@@ -2168,7 +2288,7 @@ void RiggedObject::ApplyBoneMatricesToModel(bool old, int lod_level) {
                 vert_id = j;
                 vert_id_index = vert_id * 3;
 
-                if (online->IsClient()) {
+                if (network_proxy) {
                     MorphTargetStateStorage state;
                     if (GetOnlineIncomingMorphTargetState(state, morph->name.c_str())) {
                         morph->disp_weight = state.disp_weight;
@@ -2838,7 +2958,7 @@ void MorphTarget::PreDrawCamera(int num, int progress, int lod_level, uint32_t c
         int end = max(0, min(start + 1, num_parts - 1));
         float new_weight = mod_weight - (float)start;
 
-        if (online->IsClient()) {
+        if (rigged_object != nullptr && rigged_object->network_proxy) {
             MorphTargetStateStorage state;
             if (rigged_object != nullptr) {
                 if (rigged_object->GetOnlineIncomingMorphTargetState(state, name.c_str())) {

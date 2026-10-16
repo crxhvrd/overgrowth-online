@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: online_connection_states.cpp
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -43,14 +44,30 @@ void StateVersionCheck::OnEnter() {
 BaseState<PendingConnection>* StateVersionCheck::OnUpdate() {
     if (actor->received_version) {
         // Does the client have the same version as us?
-        if (actor->build_id == GetBuildID()) {
-            return new StateHandshake();
-        }
+        bool same_build = actor->build_id == GetBuildID();
 
         // Is there an editor build doing the version check? Allow it, but send a warning.
-        if (actor->build_id == -1 || GetBuildID() == -1) {
+        if (!same_build && (actor->build_id == -1 || GetBuildID() == -1)) {
             Online::Instance()->SendRawChatMessage("[Warning] Client with another version connected, but was granted access since the host or client is running a Development version");
-            return new StateHandshake();
+            same_build = true;
+        }
+
+        if (same_build) {
+            // Overgrowth Online: every build of ours has the same build id; the
+            // package version decides (an older client sends none)
+            const std::string ours = OnlineUtility::GetOvergrowthOnlineVersion();
+            if (actor->oo_version == ours) {
+                return new StateHandshake();
+            }
+
+            const std::string theirs = actor->oo_version.empty() ? "an older version" : actor->oo_version;
+            Online::Instance()->AddLocalChatMessage("A player with Overgrowth Online " + theirs + " tried to join; you have " +
+                                                    (ours.empty() ? std::string("no version") : ours) + ". Everyone needs the same version.");
+            LOGI << "Overgrowth Online version mismatch: client " << theirs << ", host " << ours << std::endl;
+            bool client_older = OnlineUtility::CompareVersions(actor->oo_version, ours) < 0;
+            Online::Instance()->CloseConnection(actor->net_connection_id, client_older ? ConnectionClosedReason::CLIENT_OUTDATED
+                                                                                       : ConnectionClosedReason::SERVER_OUTDATED);
+            return nullptr;
         }
 
         // Failed version check, close connection
@@ -124,6 +141,7 @@ void StateEstablished::OnEnter() {
     // Create player state for the new player
     PlayerState player_state;
     player_state.playername = actor->player_name;
+    player_state.object_id = -1;  // no character yet (ownership looks avatars up by id)
     Online::Instance()->online_session->player_states[actor->player_id] = player_state;
     Online::Instance()->Send<OnlineMessages::SetPlayerState>(actor->player_id, &player_state);
 

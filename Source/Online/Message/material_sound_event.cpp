@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: material_sound_event.cpp
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -58,10 +59,16 @@ void MaterialSoundEvent::Deserialize(void* object, binn* l) {
 void MaterialSoundEvent::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
     MaterialSoundEvent* mse = static_cast<MaterialSoundEvent*>(object);
     ObjectID object_id = Online::Instance()->GetObjectID(mse->object_id);
-
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
 
-    if (sg != nullptr) {
+    // Overgrowth Online: play the owner's footstep (or other material sound) here
+    // (Wolfire left this empty: nobody heard anyone else's footsteps)
+    Object* o = sg != nullptr ? sg->GetObjectFromID(object_id) : nullptr;
+    if (o != nullptr && o->GetType() == _movement_object) {
+        MovementObject* mo = static_cast<MovementObject*>(o);
+        if (mo->network_proxy) {
+            mo->PlayNetworkMaterialEvent(mse->event_name, mse->pos, mse->gain);
+        }
     }
 }
 

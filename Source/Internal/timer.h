@@ -60,6 +60,10 @@ class Timer {
     float GetInterpWeight();
     float GetInterpWeightX(int num, int progress);
     float GetRenderTime();
+    // Overgrowth Online: the test bridge's fixed view holds the render time
+    // still (paused, the interpolation error kept growing: grass, sky and water moved)
+    bool render_time_frozen = false;
+    float frozen_render_time = 0.0f;
     float GetWallTime();
     uint32_t GetWallTicks();
     float GetAverageFrameTime();

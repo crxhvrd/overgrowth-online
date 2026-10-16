@@ -42,6 +42,8 @@ class SPUnionMessage : public OnlineMessageBase {
 
    public:
     SPUnionMessage(ObjectID param_id, const std::string& key_name, int32_t value, ScriptParam::ScriptParamType type, ScriptParamEditorType::Type editor_type, const std::string& editor_details);
+    // Overgrowth Online: a float param used to go through the int constructor (1.03 -> int 1 -> read as float 1.4e-45)
+    SPUnionMessage(ObjectID param_id, const std::string& key_name, float value, ScriptParam::ScriptParamType type, ScriptParamEditorType::Type editor_type, const std::string& editor_details);
 
     static binn* Serialize(void* object);
     static void Deserialize(void* object, binn* source);

@@ -1,0 +1,462 @@
+<?xml version="2.0" ?>
+<Type>saved</Type>
+    <Name>Raider Base 2 (battle)</Name>
+    <Description />
+    <Shader>post</Shader>
+    <LoadingScreen>
+        <Image>Data/LevelLoading/LugaruStory/Raider_base_2.xml_loading.jpg</Image>
+    </LoadingScreen>
+    <Terrain>
+        <Heightmap>Data/Prototypes/Lugaru/Desert/RaiderBase_Height.png</Heightmap>
+        <ShaderExtra />
+        <DetailMap />
+        <ColorMap>Data/Prototypes/Lugaru/Desert/RaiderBase_Color.tga</ColorMap>
+        <WeightMap>Data/Prototypes/Lugaru/Desert/RaiderBase_Weights.png</WeightMap>
+        <DetailMaps>
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/pebbly_sand.tga" materialpath="Data/Materials/sand.xml" normalpath="Data/Textures/Terrain/DetailTextures/pebbly_sand_normal.tga" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/sandwaves.tga" materialpath="Data/Materials/sand.xml" normalpath="Data/Textures/Terrain/DetailTextures/sandwaves_normal.tga" />
+            <DetailMap colorpath="Data/Prototypes/Lugaru/Desert/DesertRock_Color.tga" materialpath="Data/Materials/dirtyrock.xml" normalpath="Data/Prototypes/Lugaru/Desert/DesertRock_Norm.tga" />
+            <DetailMap colorpath="Data/Prototypes/Lugaru/Desert/DesertRock2_Color.tga" materialpath="Data/Materials/dirt.xml" normalpath="Data/Prototypes/Lugaru/Desert/DesertRock2_Norm.tga" />
+        </DetailMaps>
+        <DetailObjects>
+            <DetailObject density="2" jitter_degrees="10" max_embed="0.2" max_scale="0.5" min_embed="0.1" min_scale="0.2" normal_conform="0.9" obj_path="Data/Objects/Plants/groundcover/Grass/tall_wild_grass.xml" overbright="-0.7" tint_weight="1" view_distance="80" weight_path="Data/Prototypes/Lugaru/Desert/RaiderBase_ObjectWeights.tga" />
+            <DetailObject density="2" jitter_degrees="10" max_embed="0.5" max_scale="0.2" min_embed="0.3" min_scale="0.1" normal_conform="0.9" obj_path="Data/Objects/Environment/Rocks/lichen_rock_e.xml" overbright="-0.5" tint_weight="1" view_distance="80" weight_path="Data/Prototypes/Lugaru/Desert/RaiderBase_ObjectWeights.tga" />
+        </DetailObjects>
+    </Terrain>
+    <OutOfDate NavMesh="true" NavMeshParamHash="-1674835251" />
+    <AmbientSounds>
+        <Ambient path="Data/Sounds/ambient/amb_grassfield_loop" />
+    </AmbientSounds>
+    <Script>level.as</Script>
+    <LevelScriptParameters>
+    </LevelScriptParameters>
+    <NavMeshParameters agent_height="1.7" agent_max_climb="1.5" agent_max_slope="60" agent_radius="0.4" cell_height="0.2" cell_size="0.3" />
+    <Sky>
+        <DomeTexture>Data/Prototypes/Lugaru/Desert/RaiderBase_Dome.tga</DomeTexture>
+        <SunAngularRad>0.100043</SunAngularRad>
+        <SunColorAngle>142.246</SunColorAngle>
+        <RayToSun r0="0.550423" r1="0.620862" r2="0.55818" />
+    </Sky>
+    <ActorObjects>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="2" overbright="0" q0="0" q1="-0.631478" q2="0" q3="0.775394" s0="0.754782" s1="0.754782" s2="0.754782" t0="197.945" t1="21.7774" t2="-146.132" type_file="Data/Prototypes/Lugaru/JoshuaTree_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="23" overbright="0" q0="0" q1="-0.977184" q2="0" q3="0.212394" s0="0.664667" s1="0.664667" s2="0.664667" t0="237.569" t1="21.9735" t2="-150.797" type_file="Data/Prototypes/Lugaru/JoshuaTree_3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.362501" color_g="0.612501" color_r="1" id="32" overbright="0.849667" q0="-0.106124" q1="-0.68987" q2="0.00441593" q3="0.716099" s0="1.06064" s1="0.863057" s2="1.11172" t0="197.883" t1="19.2332" t2="-185.789" type_file="Data/Objects/plants/trees/temperate/winter_bush.xml">
+            <parameters />
+        </EnvObject>
+        <NavmeshConnectionObject id="33" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="217.138" t1="19.8167" t2="-157.252" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1008" other_object_id="640" poly_area="9" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="34" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="198.672" t1="20.2031" t2="-171.131" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1003" other_object_id="44" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1004" other_object_id="48" poly_area="9" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="35" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="222.189" t1="19.7586" t2="-156.707" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1018" other_object_id="981" poly_area="9" />
+                <NavMeshConnection offmesh_connection_id="1001" other_object_id="40" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="36" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="231.553" t1="19.6664" t2="-172.277" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1021" other_object_id="986" poly_area="10" />
+                <NavMeshConnection offmesh_connection_id="1020" other_object_id="985" poly_area="9" />
+                <NavMeshConnection offmesh_connection_id="1002" other_object_id="41" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="38" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="196.704" t1="18.1952" t2="-182.178" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1000" other_object_id="39" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="39" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="198.514" t1="20.2187" t2="-176.036" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1000" other_object_id="38" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="40" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="229.254" t1="16.5287" t2="-154.857" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1001" other_object_id="35" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="41" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="239.229" t1="17.8063" t2="-168.362" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1002" other_object_id="36" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="42" overbright="0" q0="-0.0745326" q1="-0.274748" q2="0.0447819" q3="0.957577" s0="0.441521" s1="0.983621" s2="4.60152" t0="186.808" t1="20.3908" t2="-174.854" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="43" overbright="0" q0="-0.0487326" q1="-0.17199" q2="0.0987078" q3="0.978929" s0="0.428993" s1="1.62649" s2="4.55664" t0="182.93" t1="20.0381" t2="-166.526" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <NavmeshConnectionObject id="44" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="190.302" t1="18.0216" t2="-169.046" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1003" other_object_id="34" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <ReflectionCaptureObject gicoeff00="0.364868" gicoeff01="0.295776" gicoeff02="0.309937" gicoeff03="0.3526" gicoeff04="0.280579" gicoeff05="0.297791" gicoeff06="0.266724" gicoeff07="0.254669" gicoeff08="0.384827" gicoeff09="0.406006" gicoeff10="0.279236" gicoeff11="0.199463" gicoeff12="0.334595" gicoeff13="0.265808" gicoeff14="0.278931" gicoeff15="0.379089" gicoeff16="0.308167" gicoeff17="0.327881" id="45" q0="0" q1="0" q2="0" q3="1" s0="48.0837" s1="48.0837" s2="48.0837" t0="213.946" t1="52.8731" t2="-164.248">
+            <parameters>
+                <parameter name="Global" type="string" val="0" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="46" overbright="0" q0="0.0746272" q1="0.747158" q2="0.0464134" q3="0.658811" s0="0.428994" s1="1.62649" s2="5.18064" t0="217.733" t1="30.181" t2="-124.554" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <NavmeshConnectionObject id="47" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="192.01" t1="18.1424" t2="-162.979" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1005" other_object_id="48" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="48" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="197.123" t1="19.945" t2="-158.586" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1005" other_object_id="47" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1004" other_object_id="34" poly_area="9" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <ReflectionCaptureObject gicoeff00="0.391174" gicoeff01="0.312195" gicoeff02="0.315491" gicoeff03="0.373291" gicoeff04="0.293945" gicoeff05="0.302734" gicoeff06="0.268188" gicoeff07="0.254944" gicoeff08="0.383484" gicoeff09="0.470093" gicoeff10="0.323303" gicoeff11="0.222473" gicoeff12="0.363037" gicoeff13="0.28302" gicoeff14="0.285522" gicoeff15="0.3974" gicoeff16="0.320557" gicoeff17="0.331238" id="49" q0="0" q1="0" q2="0" q3="1" s0="0.48742" s1="0.48742" s2="0.48742" t0="204.103" t1="28.058" t2="-248.728">
+            <parameters>
+                <parameter name="Global" type="string" val="1" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <NavmeshConnectionObject id="53" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="241.251" t1="20.1937" t2="-154.891" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1006" other_object_id="71" poly_area="7" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="65" overbright="0" q0="0.059213" q1="-0.254715" q2="0.0269462" q3="0.964825" s0="0.670728" s1="0.670728" s2="0.670728" t0="191.887" t1="21.206" t2="-172.793" type_file="Data/Prototypes/Lugaru/JoshuaTree_2.xml">
+            <parameters />
+        </EnvObject>
+        <NavmeshConnectionObject id="71" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="244.714" t1="19.2084" t2="-153.324" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1006" other_object_id="53" poly_area="7" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="94" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="1.33828" s1="1.33828" s2="1.33828" t0="214.779" t1="26.4859" t2="-154.167" type_file="Data/Prototypes/Lugaru/RaiderBase.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="109" overbright="0" q0="0.134326" q1="0.826443" q2="-0.034501" q3="0.545672" s0="0.570627" s1="2.48863" s2="5.18063" t0="227.197" t1="26.2265" t2="-127.727" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.362501" color_g="0.612501" color_r="1" id="139" overbright="0.849667" q0="0.162538" q1="-0.769051" q2="0.0595688" q3="0.615299" s0="0.620459" s1="0.620459" s2="0.620459" t0="230.183" t1="18.1881" t2="-185.352" type_file="Data/Objects/plants/trees/temperate/winter_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="166" overbright="0" q0="0.132943" q1="0.950092" q2="-0.0264306" q3="0.280985" s0="0.462613" s1="2.48863" s2="4.44968" t0="242.858" t1="22.5212" t2="-141.851" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <Group id="187" q0="0" q1="0" q2="0" q3="1" s0="69.4569" s1="24.1691" s2="72.2835" t0="219.948" t1="21.2211" t2="-149.992" version="1">
+            <parameters />
+            <Decal color_b="0.105881" color_g="0.105881" color_r="0.105882" id="178" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="47.898" s1="14.0733" s2="26.2569" t0="209.629" t1="16.1782" t2="-142.127" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+                <parameters />
+            </Decal>
+            <Decal color_b="0.0823521" color_g="0.0823521" color_r="0.0823529" id="179" overbright="0" q0="0" q1="0.166197" q2="0" q3="0.986093" s0="19.6502" s1="5.76836" s2="16.7668" t0="218.482" t1="15.5193" t2="-158.59" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+                <parameters />
+            </Decal>
+            <Decal color_b="0.12941" color_g="0.12941" color_r="0.129412" id="180" overbright="0" q0="0" q1="0.166197" q2="0" q3="0.986093" s0="19.6502" s1="5.76836" s2="16.7668" t0="197.255" t1="16.0378" t2="-156.043" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+                <parameters />
+            </Decal>
+            <Decal color_b="0.15294" color_g="0.15294" color_r="0.152941" id="181" overbright="0" q0="0" q1="0.166197" q2="0" q3="0.986093" s0="16.9271" s1="4.969" s2="14.4433" t0="197.703" t1="17.4975" t2="-173.994" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+                <parameters />
+            </Decal>
+            <Decal color_b="0.227449" color_g="0.227449" color_r="0.227451" id="182" overbright="0" q0="0" q1="0.305524" q2="0" q3="0.952184" s0="16.9271" s1="4.969" s2="14.4433" t0="230.336" t1="16.2524" t2="-175.331" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+                <parameters />
+            </Decal>
+            <Decal color_b="0.15294" color_g="0.15294" color_r="0.152941" id="183" overbright="0" q0="0" q1="0.166197" q2="0" q3="0.986093" s0="16.9271" s1="4.969" s2="14.4433" t0="238.398" t1="16.9872" t2="-156.797" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+                <parameters />
+            </Decal>
+            <Decal color_b="0.141175" color_g="0.141175" color_r="0.141176" id="184" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="47.898" s1="14.0733" s2="26.2569" t0="212.689" t1="26.264" t2="-126.983" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+                <parameters />
+            </Decal>
+            <Decal color_b="0.141175" color_g="0.141175" color_r="0.141176" id="185" overbright="0" q0="0" q1="0.63137" q2="0" q3="0.775482" s0="32.2646" s1="9.4799" s2="17.6869" t0="242.741" t1="21.1338" t2="-151.662" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+                <parameters />
+            </Decal>
+            <Decal color_b="0.301958" color_g="0.301958" color_r="0.301961" id="186" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="3.10994" s1="4.05953" s2="3.27882" t0="237.737" t1="18.8425" t2="-151.283" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+                <parameters />
+            </Decal>
+        </Group>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="210" overbright="0" q0="0.138239" q1="0.980685" q2="-0.027074" q3="0.135698" s0="0.462624" s1="2.48863" s2="4.96378" t0="246.315" t1="20.6324" t2="-150.328" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="236" overbright="0" q0="-0.0920318" q1="-0.961149" q2="0.0226892" q3="0.259245" s0="0.321016" s1="2.48863" s2="4.77283" t0="241.796" t1="16.9475" t2="-173.383" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="237" overbright="0" q0="-0.083606" q1="-0.922092" q2="0.0390921" q3="0.375803" s0="0.321018" s1="2.31004" s2="4.77283" t0="235.695" t1="16.7315" t2="-181.35" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="238" overbright="0" q0="-0.00203406" q1="-0.449738" q2="-0.0248237" q3="0.892813" s0="0.607899" s1="1.18266" s2="4.31575" t0="227.614" t1="18.1343" t2="-141.589" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="239" overbright="0" q0="0.00456117" q1="-0.711093" q2="-0.0110203" q3="0.702997" s0="0.42674" s1="1.73104" s2="5.06086" t0="218.091" t1="18.9984" t2="-138.428" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="240" overbright="0" q0="0.0132706" q1="-0.766493" q2="-0.0014503" q3="0.642114" s0="0.44228" s1="2.03865" s2="5.2042" t0="207.789" t1="19.7424" t2="-139.216" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="241" overbright="0" q0="0.0199968" q1="-0.923639" q2="0.0133963" q3="0.382507" s0="0.437116" s1="1.85504" s2="5.46537" t0="198.656" t1="19.4679" t2="-143.697" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="242" overbright="0" q0="0.0273192" q1="-0.986809" q2="0.038496" q3="0.154854" s0="0.433038" s1="1.25835" s2="2.4546" t0="193.84" t1="18.378" t2="-150.401" type_file="Data/Objects/invisibleblock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="270" overbright="0" q0="0" q1="-0.897274" q2="0" q3="0.441474" s0="1" s1="1" s2="1" t0="230.77" t1="14.6905" t2="-174.72" type_file="Data/Prototypes/Lugaru/BlockRuins_Sandy_BlockStack1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="278" overbright="0" q0="0" q1="-0.195221" q2="0" q3="0.980759" s0="1" s1="1" s2="1" t0="238.552" t1="15.4284" t2="-155.293" type_file="Data/Prototypes/Lugaru/BlockRuins_Sandy_BlockStack1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="390" overbright="0" q0="0" q1="0.169709" q2="0" q3="0.985494" s0="1" s1="1" s2="1" t0="219.006" t1="14.5527" t2="-157.909" type_file="Data/Prototypes/Lugaru/BlockRuins_Sandy_BlockStack1.xml">
+            <parameters />
+        </EnvObject>
+        <NavmeshConnectionObject id="436" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="226.87" t1="19.8211" t2="-174.612" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1025" other_object_id="1007" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1011" other_object_id="962" poly_area="10" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="437" overbright="0" q0="0" q1="0.893816" q2="0" q3="0.448434" s0="1" s1="1" s2="1" t0="198.655" t1="14.9089" t2="-156.236" type_file="Data/Prototypes/Lugaru/BlockRuins_Sandy_BlockStack1.xml">
+            <parameters />
+        </EnvObject>
+        <NavmeshConnectionObject id="441" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="207.431" t1="16.9274" t2="-173.496" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1007" other_object_id="638" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <ActorObject id="449" is_player="1" name="Turner" q0="0.00624772" q1="0.999267" q2="0.0276274" q3="0.0257519" s0="1" s1="1" s2="1" t0="212.2190" t1="21.1321" t2="-175.4050" type_file="Data/Objects/IGF_Characters/pale_turner_actor.xml">
+            <parameters>
+                <parameter name="Aggression" type="string" val="0.5" />
+                <parameter name="Attack Damage" type="string" val="1" />
+                <parameter name="Attack Knockback" type="string" val="1" />
+                <parameter name="Attack Speed" type="string" val="1" />
+                <parameter name="Block Follow-up" type="string" val="0.5" />
+                <parameter name="Block Skill" type="string" val="0.5" />
+                <parameter name="Character Scale" type="string" val="1" />
+                <parameter name="Damage Resistance" type="string" val="1" />
+                <parameter name="Ear Size" type="string" val="1" />
+                <parameter name="Fat" type="string" val="0.5" />
+                <parameter name="Focus FOV distance" type="string" val="10" />
+                <parameter name="Focus FOV horizontal" type="string" val="0.63" />
+                <parameter name="Focus FOV vertical" type="string" val="0.63" />
+                <parameter name="Ground Aggression" type="string" val="0.5" />
+                <parameter name="Knockout Shield" type="string" val="4" />
+                <parameter name="Left handed" type="string" val="0" />
+                <parameter name="Lives" type="string" val="1" />
+                <parameter name="Movement Speed" type="string" val="1" />
+                <parameter name="Muscle" type="string" val="0.5" />
+                <parameter name="Peripheral FOV distance" type="string" val="4" />
+                <parameter name="Peripheral FOV horizontal" type="string" val="1.4100000000000001" />
+                <parameter name="Peripheral FOV vertical" type="string" val="1.4100000000000001" />
+                <parameter name="Static" type="string" val="0" />
+                <parameter name="Teams" type="string" val="Turner" />
+            </parameters>
+            <Connections>
+                <Connection id="-1" />
+            </Connections>
+            <ItemConnections>
+            </ItemConnections>
+            <Palette>
+                <Color blue="0.211765" channel="0" green="0.298039" label="Fur" red="0.360784" />
+                <Color blue="0.0627451" channel="1" green="0.0784314" label="Ropes" red="0.0901961" />
+                <Color blue="0.145098" channel="2" green="0.145098" label="Pants" red="0.145098" />
+                <Color blue="1" channel="3" green="1" label="Spots" red="1" />
+            </Palette>
+        </ActorObject>
+        <NavmeshConnectionObject id="458" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="207.073" t1="16.7768" t2="-153.503" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1009" other_object_id="640" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <EnvObject color_b="0.362501" color_g="0.612501" color_r="1" id="467" overbright="0.849667" q0="-0.0976611" q1="-0.169546" q2="-0.0120401" q3="0.980597" s0="0.800665" s1="0.800665" s2="0.800665" t0="232.251" t1="19.534" t2="-186.525" type_file="Data/Objects/plants/trees/temperate/winter_bush.xml">
+            <parameters />
+        </EnvObject>
+        <NavmeshConnectionObject id="636" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="227.792" t1="21.3459" t2="-140.264" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1010" other_object_id="642" poly_area="10" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="638" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="202.851" t1="20.1078" t2="-171.926" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1007" other_object_id="441" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1014" other_object_id="966" poly_area="10" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="640" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="203.304" t1="19.975" t2="-155.456" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1009" other_object_id="458" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1008" other_object_id="33" poly_area="9" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="642" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="220.603" t1="19.8076" t2="-154.832" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1010" other_object_id="636" poly_area="10" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <LightProbeObject gicoeff00="0" gicoeff01="0" gicoeff02="0" gicoeff03="0" gicoeff04="0" gicoeff05="0" gicoeff06="0" gicoeff07="0" gicoeff08="0" gicoeff09="0" gicoeff10="0" gicoeff11="0" gicoeff12="0" gicoeff13="0" gicoeff14="0" gicoeff15="0" gicoeff16="0" gicoeff17="0" id="808" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="209.962" t1="24.5655" t2="-131.518">
+            <parameters>
+                <parameter name="Negative" type="int" val="0" />
+            </parameters>
+        </LightProbeObject>
+        <NavmeshConnectionObject id="962" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="221.583" t1="19.6904" t2="-160.988" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1012" other_object_id="963" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1011" other_object_id="436" poly_area="10" />
+                <NavMeshConnection offmesh_connection_id="1022" other_object_id="986" poly_area="10" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="963" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="227.328" t1="16.2426" t2="-164.25" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1012" other_object_id="962" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="964" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="217.009" t1="19.6807" t2="-153.687" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1013" other_object_id="965" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="965" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="218.771" t1="16.1331" t2="-146.374" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1013" other_object_id="964" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="966" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="214.658" t1="19.684" t2="-159.879" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1015" other_object_id="967" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1014" other_object_id="638" poly_area="10" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="967" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="209.908" t1="16.7837" t2="-161.459" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1015" other_object_id="966" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="968" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="199.534" t1="20.0367" t2="-160.98" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1016" other_object_id="969" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="969" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="201.555" t1="16.8606" t2="-165.019" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1016" other_object_id="968" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="972" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="198.329" t1="19.9662" t2="-152.281" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1017" other_object_id="973" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1026" other_object_id="1030" poly_area="9" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="973" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="201.267" t1="17.6009" t2="-147.586" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1017" other_object_id="972" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="981" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="234.619" t1="20.4641" t2="-153.538" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1019" other_object_id="982" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1018" other_object_id="35" poly_area="9" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="982" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="229.64" t1="17.4302" t2="-149.654" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1019" other_object_id="981" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="985" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="233.414" t1="16.7911" t2="-163.394" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1023" other_object_id="986" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1020" other_object_id="36" poly_area="9" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="986" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="236.753" t1="20.4593" t2="-159.035" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1023" other_object_id="985" poly_area="8" />
+                <NavMeshConnection offmesh_connection_id="1021" other_object_id="36" poly_area="10" />
+                <NavMeshConnection offmesh_connection_id="1022" other_object_id="962" poly_area="10" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="998" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="230.126" t1="19.7265" t2="-178.847" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1024" other_object_id="999" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="999" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="227.579" t1="16.9341" t2="-184.155" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1024" other_object_id="998" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="1007" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="222.116" t1="16.5177" t2="-171.712" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1025" other_object_id="436" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="1030" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="200.194" t1="22.46" t2="-140.868" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1026" other_object_id="972" poly_area="9" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="1031" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="189.938" t1="20.6643" t2="-151.767" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1027" other_object_id="1032" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <NavmeshConnectionObject id="1032" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="196.125" t1="20.0978" t2="-154.962" type_file="">
+            <parameters />
+            <NavMeshConnections>
+                <NavMeshConnection offmesh_connection_id="1027" other_object_id="1031" poly_area="8" />
+            </NavMeshConnections>
+        </NavmeshConnectionObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" id="1085" overbright="0" q0="0" q1="-0.97841" q2="0" q3="0.206673" s0="1" s1="1" s2="1" t0="198.762" t1="15.1356" t2="-173.356" type_file="Data/Prototypes/Lugaru/BlockRuins_Sandy_BlockStack1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.362501" color_g="0.612501" color_r="1" id="1209" overbright="0.849667" q0="-0.106124" q1="-0.68987" q2="0.00441593" q3="0.716099" s0="0.708204" s1="0.708204" s2="0.708204" t0="222.823" t1="17.0266" t2="-160.569" type_file="Data/Objects/plants/trees/temperate/winter_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.362501" color_g="0.612501" color_r="1" id="1210" overbright="0.849667" q0="-0.096169" q1="-0.0688808" q2="0.0266467" q3="0.992621" s0="0.708204" s1="0.708204" s2="0.708204" t0="203.505" t1="16.9538" t2="-157.31" type_file="Data/Objects/plants/trees/temperate/winter_bush.xml">
+            <parameters />
+        </EnvObject>
+    </ActorObjects>

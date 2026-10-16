@@ -24,6 +24,7 @@
 
 #include <Main/engine.h>
 #include <Game/level.h>
+#include <Online/online.h>
 
 namespace OnlineMessages {
 SendLevelMessage::SendLevelMessage(string msg) : OnlineMessageBase(OnlineMessageCategory::LEVEL_TRANSIENT),
@@ -52,7 +53,23 @@ void SendLevelMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
 
     if (sg != nullptr) {
-        sg->level->Message(lm->msg);
+        Online* online = Online::Instance();
+        if (online->IsHosting()) {
+            // Overgrowth Online: from a client only its level scripts' requests, tagged with who asked
+            if (lm->msg.compare(0, 4, "ohr ") == 0) {
+                online->delivering_network_level_message = true;
+                sg->level->Message("ohr " + std::to_string((int)peer) + " " + online->TranslateIDs(lm->msg.substr(4), false));
+                online->delivering_network_level_message = false;
+            }
+        } else if (lm->msg.compare(0, 10, "ohg speed ") == 0) {
+            Engine::Instance()->FollowGameSpeed((float)atof(lm->msg.c_str() + 10));  // the host's game speed
+        } else if (lm->msg.compare(0, 11, "ohg revive ") == 0) {
+            online->CoopReviveRequest(lm->msg);  // a checkpoint: our character back up
+        } else {
+            online->delivering_network_level_message = true;  // (the host's reset counts here)
+            sg->level->Message(lm->msg.compare(0, 4, "ohl ") == 0 ? online->TranslateIDs(lm->msg, false) : lm->msg);
+            online->delivering_network_level_message = false;
+        }
     } else {
         LOGW << "Received level message: \"" << lm->msg << "\" but SceneGraph is nullptr" << std::endl;
     }

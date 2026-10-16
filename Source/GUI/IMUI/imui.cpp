@@ -550,7 +550,6 @@ void IMUIContext::render() {
                 glm::mat4 mvp_mat = proj_mat * model_mat;
 
                 glUniformMatrix4fv(mvp_mat_id, 1, false, (GLfloat*)&mvp_mat);
-                graphics->SetClientActiveTexture(0);
                 graphics->EnableVertexAttribArray(vert_coord_id);
                 graphics->EnableVertexAttribArray(tex_coord_id);
 

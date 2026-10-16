@@ -1,0 +1,16 @@
+Overgrowth Online is built from Wolfire Games' open-source Overgrowth engine
+(https://github.com/WolfireGames/overgrowth), Apache License 2.0 (LICENSE.txt),
+with changes by crxhvrd (online play, the Overgrowth Online mod's online support).
+The game's assets are not included: they come from your own copy of Overgrowth.
+
+Libraries shipped as DLLs, under their own licences (see this folder):
+  SDL2, SDL2_net        zlib licence
+  OpenAL Soft           LGPL 2 (unmodified DLL; you may replace it)
+  libogg, libvorbis     BSD licence
+  OpenVR                BSD licence
+  zlib                  zlib licence
+  Steamworks API        steam_api64.dll, redistributed under the Steamworks SDK
+                        Access Agreement
+  GameNetworkingSockets (test builds only) BSD licence; protobuf (BSD), OpenSSL
+  Microsoft Visual C++ runtime (msvcp140, vcruntime140): Microsoft's
+                        redistributable licence

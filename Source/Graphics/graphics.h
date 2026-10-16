@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: graphics.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -22,6 +23,9 @@
 //
 //-----------------------------------------------------------------------------
 #pragma once
+
+#include <map>
+#include <string>
 
 #include <Math/vec2.h>
 #include <Math/mat4.h>
@@ -226,6 +230,8 @@ class Graphics {
     bool media_mode_;
     void* gl_context;
     uint32_t active_vertex_attrib_arrays;
+    GLuint vao_ = 0;                  // Overgrowth Online: the VAO, and the context it belongs to
+    void* vao_context_ = nullptr;
     uint32_t wanted_vertex_attrib_arrays;
     int max_vertex_attrib_arrays;
 
@@ -256,6 +262,7 @@ class Graphics {
     TextureAssetRef pure_noise_ref;
 
     int queued_screenshot;
+    std::string queued_screenshot_path;  // test bridge: save the next screenshot here
     bool pre_screenshot_media_mode_state;
     enum ScreenshotMode { kGameplay,
                           kTransparentGameplay };
@@ -379,9 +386,6 @@ class Graphics {
     void BlitDepthBuffer();
     void BlitColorBuffer();
 
-    void SetClientStates(int flags);
-    void SetClientStateEnabled(int shadowStateID, bool enabled);
-    void SetClientActiveTexture(int index);
     void SetFromConfig(const Config& config, bool dynamic = false);
     void SetWindowGrab(bool val);
     void BindVBO(int target, int val);
@@ -439,6 +443,12 @@ bool CheckGLErrorStr(char* output, unsigned length);
 
 #define FORCE_CHECK_GL_ERROR() CheckGLError(__LINE__, __FILE__, NULL)
 #define FORCE_CHECK_FBO_ERROR() CheckFBOError(__LINE__, __FILE__)
+// Overgrowth Online: the GL debug output's problems (errors, undefined and
+// deprecated behaviour): how many, and each message with its count (gl_errors tests)
+bool GLDebugOutputAlive();
+int GLDebugProblemCount();
+std::map<std::string, int> GLDebugProblems();
+
 #ifndef NO_GL_ERROR_CHECKING
 #define CHECK_GL_ERROR() CheckGLError(__LINE__, __FILE__, NULL)
 #define CHECK_FBO_ERROR() CheckFBOError(__LINE__, __FILE__)

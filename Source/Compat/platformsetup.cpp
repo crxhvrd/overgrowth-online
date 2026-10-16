@@ -51,6 +51,8 @@ static BOOL WINAPI ConsoleHandlerRoutine(DWORD dwCtrlType) {
 #endif
 
 // Set up working directory, file paths, Windows console
+std::string g_game_data_dir;
+
 void SetUpEnvironment(char* program_path, const char* overloaded_write_dir, const char* overloaded_working_dir) {
 #if PLATFORM_UNIX
     // Force numeric locale so numbers parse correctly
@@ -154,6 +156,32 @@ void SetUpEnvironment(char* program_path, const char* overloaded_write_dir, cons
 #ifdef AUX_DATA
     AddPath(AUX_DATA, kDataPaths);
 #endif
+
+    // Overgrowth Online: --game-data, the Overgrowth install to read the game from
+    if (!g_game_data_dir.empty()) {
+        string dir = g_game_data_dir;
+        if (dir.back() != '/' && dir.back() != '\\') {
+            dir += "/";
+        }
+        AddPath(dir.c_str(), kDataPaths);
+    }
+
+    // Overgrowth Online release layout: we run from Overgrowth/OverhaulOnline/,
+    // the game's own Data is one folder up
+    {
+        string up;
+        WorkingDir(&up);
+        while (!up.empty() && (up.back() == '/' || up.back() == '\\')) {
+            up.pop_back();
+        }
+        size_t slash = up.find_last_of("/\\");
+        if (slash != string::npos) {
+            up = up.substr(0, slash + 1);
+            if (CheckFileAccess((up + "Data/Levels").c_str()) || CheckFileAccess((up + "Data/Textures").c_str())) {
+                AddPath(up.c_str(), kDataPaths);
+            }
+        }
+    }
 
     if (CheckWritePermissions(write_path) != 0) {
 #ifdef _WIN32

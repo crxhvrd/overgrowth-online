@@ -150,7 +150,7 @@ void ProcessCubeMap(TextureRef src_ref, TextureRef ref, GLuint framebuffer, GLui
         glDisable(GL_SCISSOR_TEST);
         // We set these incase someone in the future decides blit should care about these too.
         glViewport(0, 0, kDiffuseBoxRes, kDiffuseBoxRes);
-        glDisable(GL_DEPTH_TEST);
+        Graphics::Instance()->setDepthTest(false);  // (through the cache: a direct call left it wrong)
 
         CHECK_FBO_ERROR();
         CHECK_GL_ERROR();

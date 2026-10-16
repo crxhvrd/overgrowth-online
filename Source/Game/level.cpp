@@ -38,6 +38,7 @@
 #include <Objects/placeholderobject.h>
 
 #include <Main/scenegraph.h>
+#include <Graphics/sky.h>
 #include <Main/engine.h>
 
 #include <Internal/comma_separated_list.h>
@@ -52,6 +53,7 @@
 #include <GUI/IMUI/imui_script.h>
 #include <Logging/logdata.h>
 #include <Online/online.h>
+#include <Testing/test_bridge.h>
 
 extern std::string script_dir_path;
 
@@ -123,11 +125,18 @@ void Level::Initialize(SceneGraph* scenegraph, GUI* gui) {
     hasc.context_name = "main_level_script";
     as_contexts_.push_back(hasc);
 
-    if (!level_specific_script_.empty()) {
-        Path level_specific_script_path = FindScript(level_specific_script_);
+    // Overgrowth Online: online the arenas are player against player, no AI
+    std::string level_script = level_specific_script_;
+    if (Online::Instance()->IsActive() && (level_script == "multi_arena.as" || level_script == "arena_level.as")) {
+        LOGI << "Overgrowth Online: " << level_script << " -> online_arena.as" << std::endl;
+        level_script = "online_arena.as";
+    }
+
+    if (!level_script.empty()) {
+        Path level_specific_script_path = FindScript(level_script);
         if (level_specific_script_path.isValid() == false) {
             DisplayError("Couldn't find file", "Couldn't find player script file, default will be used", ErrorType::_ok);
-            LOGE << "Could not find file specified in <Script> in level: " << level_specific_script_ << std::endl;
+            LOGE << "Could not find file specified in <Script> in level: " << level_script << std::endl;
         }
 
         if (level_specific_script_path.isValid()) {
@@ -512,14 +521,62 @@ void Level::Execute(std::string code) {
     }
 }
 
+// Overgrowth Online: "oo_sky <dome texture>" (or "oo_sky own": the level's
+// own) from the mod's weather, on this machine only, as the sky editor changes
+// it; answered "oo_sky_set <dome>", so the mod knows this build swaps skies
+// (the stock game ignores the message)
+void Level::SetWeatherSky(const std::string& dome) {
+    Sky* sky = scenegraph != nullptr ? scenegraph->sky : nullptr;
+    if (sky == nullptr) {
+        return;
+    }
+    if (own_sky_dome_.empty()) {
+        own_sky_dome_ = sky->dome_texture_name;
+    }
+
+    std::string want = dome == "own" ? own_sky_dome_ : dome;
+    if (want != sky->dome_texture_name) {
+        char abs_path[kPathSize];
+        if (FindImagePath(want.c_str(), abs_path, kPathSize, kDataPaths | kModPaths, false) == -1) {
+            LOGW << "Weather sky not found: " << want << std::endl;
+        } else {
+            LOGI << "Weather sky: " << want << std::endl;
+            sky->dome_texture_name = want;
+            sky->LightingChanged(scenegraph->terrain_object_ != NULL);
+        }
+    }
+    Message("oo_sky_set " + sky->dome_texture_name);
+}
+
 void Level::Message(const std::string& msg) {
     Online* online = Online::Instance();
     ASArglist args;
     args.AddObject((void*)&msg);
 
+    if (msg.compare(0, 7, "oo_sky ") == 0) {
+        SetWeatherSky(msg.substr(7));
+        return;
+    }
+
+    // Overgrowth Online: co-op rules. Only the host resets the level, and not
+    // from its death prompt while another player still fights; a checkpoint
+    // brings downed players back
+    if (online->IsActive() && !online->delivering_network_level_message) {
+        if (msg == "reset" && !online->AllowScriptReset()) {
+            return;
+        }
+        if (online->IsHosting() && (msg.compare(0, 25, "player_entered_checkpoint") == 0 || msg.compare(0, 16, "coop_checkpoint ") == 0)) {
+            online->CoopCheckpoint();
+        }
+    }
+
     if (online->IsHosting()) {
         online->SendLevelMessage(msg);
+    } else if (online->SendLevelRequest(msg)) {
+        return;  // Overgrowth Online: a request for the host
     }
+
+    TestBridge::Instance()->NoteLevelMessage(msg);
 
     for (auto& as_context : as_contexts_) {
         as_context.ctx->CallScriptFunction(as_context.as_funcs.receive_message, &args);

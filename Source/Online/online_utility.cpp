@@ -26,6 +26,7 @@
 
 #if ENABLE_STEAMWORKS
 #include <isteamfriends.h>
+#include <Steam/steamworks.h>
 #endif
 
 using std::stringstream;
@@ -63,7 +64,21 @@ std::string OnlineUtility::GetDefaultPlayerName() {
 }
 
 std::string OnlineUtility::GetPlayerName() {
-    return config.GetRef("playername").str();
+    std::string name = config.GetRef("playername").str();
+#if ENABLE_STEAMWORKS
+    // Overgrowth Online: the Steam name, unless one is set in the config
+    if ((name.empty() || name == "UNKNOWN" || name == "Player") && Steamworks::Instance()->IsConnected() &&
+        SteamFriends() != nullptr) {
+        name = SteamFriends()->GetPersonaName();
+    }
+#endif
+    return name;
+}
+
+// Overgrowth Online: the stock machine translations only change text, and the
+// game turns them back on at every start: they don't count for online play
+static bool CountsOnline(ModInstance* mod) {
+    return mod->IsActive() && !mod->IsCore() && mod->id.str() != "com-wolfire-machine-translations";
 }
 
 std::string OnlineUtility::GetActiveModsString() {
@@ -71,7 +86,7 @@ std::string OnlineUtility::GetActiveModsString() {
     stringstream modlist;
     vector<ModInstance*> mods = ModLoading::Instance().GetAllMods();
     for (auto& mod : mods) {
-        if (mod->IsActive() && !mod->IsCore()) {
+        if (CountsOnline(mod)) {
             if (active_mods) {
                 modlist << ", ";
             }
@@ -88,9 +103,54 @@ std::string OnlineUtility::GetActiveModsString() {
     return modlist.str();
 }
 
+// Overgrowth Online: the version of the package, which every package gives
+// its mod (mod.xml); players must have the same
+std::string OnlineUtility::GetOvergrowthOnlineVersion() {
+    for (ModInstance* mod : ModLoading::Instance().GetAllMods()) {
+        if (mod->IsActive() && mod->id.str() == "crxhvrd-overhaul") {
+            return mod->version.str();
+        }
+    }
+    return "";
+}
+
+// "0.34.10" after "0.34.9"; "" (no version) before any
+int OnlineUtility::CompareVersions(const std::string& a, const std::string& b) {
+    size_t i = 0, j = 0;
+    while (i < a.size() || j < b.size()) {
+        long x = 0, y = 0;
+        while (i < a.size() && a[i] != '.') {
+            x = x * 10 + (isdigit((unsigned char)a[i]) ? a[i] - '0' : 0);
+            ++i;
+        }
+        while (j < b.size() && b[j] != '.') {
+            y = y * 10 + (isdigit((unsigned char)b[j]) ? b[j] - '0' : 0);
+            ++j;
+        }
+        if (x != y) {
+            return x < y ? -1 : 1;
+        }
+        ++i;
+        ++j;
+    }
+    return a.empty() == b.empty() ? 0 : (a.empty() ? -1 : 1);
+}
+
+std::string OnlineUtility::GetActiveModsDigest() {
+    // FNV-1a, 64 bits
+    uint64_t hash = 14695981039346656037ull;
+    for (unsigned char c : GetActiveModsString()) {
+        hash = (hash ^ c) * 1099511628211ull;
+    }
+
+    char text[17];
+    snprintf(text, sizeof(text), "%016llx", (unsigned long long)hash);
+    return text;
+}
+
 bool OnlineUtility::HasActiveIncompatibleMods() {
     for (auto& it : ModLoading::Instance().GetAllMods()) {
-        if (it->IsActive() && !it->IsCore() && !it->SupportsOnline()) {
+        if (CountsOnline(it) && !it->SupportsOnline()) {
             return true;
         }
     }
@@ -102,7 +162,7 @@ std::string OnlineUtility::GetActiveIncompatibleModsString() {
     stringstream modlist;
     vector<ModInstance*> mods = ModLoading::Instance().GetAllMods();
     for (auto& mod : mods) {
-        if (mod->IsActive() && !mod->IsCore() && !mod->SupportsOnline()) {
+        if (CountsOnline(mod) && !mod->SupportsOnline()) {
             if (active_mods) {
                 modlist << ", ";
             }

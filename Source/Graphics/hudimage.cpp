@@ -85,7 +85,6 @@ void HUDImages::Draw() {
     glm::mat4 proj_mat;
     proj_mat = glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]);
     glUniformMatrix4fv(mvp_mat_id, 1, false, (GLfloat *)&proj_mat);
-    graphics->SetClientActiveTexture(0);
     graphics->EnableVertexAttribArray(vert_coord_id);
     graphics->EnableVertexAttribArray(tex_coord_id);
 

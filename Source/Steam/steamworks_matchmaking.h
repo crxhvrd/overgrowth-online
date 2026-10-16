@@ -56,7 +56,12 @@ class SteamworksMatchmaking {
     SteamworksMatchmaking();
 
     std::unordered_set<CSteamID> lobbies;  // we are we assuming multiple??
-    std::unordered_set<HSteamNetConnection> steamPendingConnections;
+    bool creating = false;           // a lobby is on its way (LobbyEnter_t)
+    bool overlay_on_enter = false;   // the invite overlay opens once it is made
+    std::string presence_game;       // what friends see of our game (set when changed)
+    std::string presence_players;
+    std::string presence_mods;
+    uint64_t last_presence_request_ms = 0;
 
    public:
     ~SteamworksMatchmaking();
@@ -64,12 +69,33 @@ class SteamworksMatchmaking {
     // activate game overlay to the invite dialog
     // invitations sent from this dialog will be for the provided lobby
 
-    // This function has a ton of side effects and requires refactor
-    // it basically inits an entire mp state.
-    HSteamListenSocket ActivateGameOverlayInviteDialog();
+    // Overgrowth Online: our lobby (created the first time, friends only) and
+    // Steam's invite overlay for it
+    void InviteFriends();
 
-    //
+    // Overgrowth Online (host): friends can join without an invite ("Join Game" in
+    // their friends list, Join a friend in the menu): our lobby, made once;
+    // `overlay` also opens Steam's invite overlay
+    void OpenToFriends(bool overlay);
+
+    // Overgrowth Online (host): what friends see in Join a friend
+    void SetHostPresence(const std::string &game, int players, const std::string &mods);
+
+    // Overgrowth Online: friends in this game, a line each, tab separated: Steam id,
+    // name, state (host | playing | game: the normal game), what they host,
+    // players, mods ("same" | "other" | "": unknown) against `mods`
+    std::string FriendGames(const std::string &mods);
+
+    // Overgrowth Online: join the game a friend hosts (false: they host none)
+    bool JoinFriend(const std::string &steam_id);
+
     void OpenInviteDialog();
+
+    // Leave every lobby, clear the "Join Game" presence (the session ended)
+    void LeaveAll();
+
+    // Our lobby (0: none), for the test bridge
+    uint64_t CurrentLobby() const { return lobbies.empty() ? 0 : lobbies.begin()->ConvertToUint64(); }
 
     // for command-line jobby loining
     void JoinLobby(const std::string &lobbyIDStr);
@@ -82,10 +108,11 @@ class SteamworksMatchmaking {
 
     static const char *StatusToString(ESteamNetworkingConnectionState state);
 
+    STEAM_CALLBACK(SteamworksMatchmaking, OnLobbyCreated, LobbyCreated_t);
     STEAM_CALLBACK(SteamworksMatchmaking, OnLobbyEnter, LobbyEnter_t);
     STEAM_CALLBACK(SteamworksMatchmaking, OnLobbyDataUpdate, LobbyDataUpdate_t);
     STEAM_CALLBACK(SteamworksMatchmaking, OnLobbyJoinRequested, GameLobbyJoinRequested_t);
     STEAM_CALLBACK(SteamworksMatchmaking, OnLobbyChatUpdate, LobbyChatUpdate_t);
-    STEAM_CALLBACK(SteamworksMatchmaking, OnConnectionChange, SteamNetConnectionStatusChangedCallback_t);
+    STEAM_CALLBACK(SteamworksMatchmaking, OnRichPresenceJoinRequested, GameRichPresenceJoinRequested_t);
 };
 #endif

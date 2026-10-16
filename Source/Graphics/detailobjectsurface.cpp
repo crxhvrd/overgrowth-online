@@ -48,6 +48,8 @@
 #include <Graphics/lightprobecollection.hpp>
 #include <Logging/logdata.h>
 
+#include <random>
+
 #include <algorithm>
 
 #define USE_SSE
@@ -676,6 +678,20 @@ TriInt DetailObjectSurface::GetTriInt(const vec3& pos) {
 
 void DetailObjectSurface::CalcPatchInstances(const TriInt& coords, DOPatch& patch, mat4 transform) {
     PROFILER_ZONE(g_profiler_ctx, "CalcPatchInstances");
+    // Overgrowth Online: the patch's own random numbers, seeded from where it is:
+    // the same grass on every load and every player's screen. The global rand()
+    // made it differ with everything drawn before it (screenshot comparisons)
+    uint32_t seed = 2166136261u;
+    const vec3 origin = transform.GetTranslationPart();
+    const int32_t parts[6] = {coords.val[0], coords.val[1], coords.val[2], (int32_t)floorf(origin[0] * 100.0f),
+                              (int32_t)floorf(origin[1] * 100.0f), (int32_t)floorf(origin[2] * 100.0f)};
+    for (int32_t part : parts) {
+        seed = (seed ^ (uint32_t)part) * 16777619u;
+    }
+    std::minstd_rand rng(seed % 2147483646u + 1u);
+    auto Random = [&rng](float lo, float hi) {
+        return lo == hi ? lo : lo + (hi - lo) * (float)(double(rng() - rng.min()) / double(rng.max() - rng.min()));
+    };
     patch.detail_instances.clear();
     patch.detail_instance_transforms.clear();
     patch.detail_instance_origins_x.clear();
@@ -692,7 +708,7 @@ void DetailObjectSurface::CalcPatchInstances(const TriInt& coords, DOPatch& patc
     for (unsigned i = 0; i < patch.tris.size(); ++i) {
         double int_part;
         float float_part = (float)modf(triangle_area[patch.tris[i]] * density, &int_part);
-        int num_dots = int(int_part) + (RangedRandomFloat(0.0f, 1.0f) < float_part);
+        int num_dots = int(int_part) + (Random(0.0f, 1.0f) < float_part);
         if (num_dots == 0) {
             continue;
         }
@@ -709,21 +725,21 @@ void DetailObjectSurface::CalcPatchInstances(const TriInt& coords, DOPatch& patc
         }
         PROFILER_ZONE(g_profiler_ctx, "Fill dots");
         for (int j = 0; j < num_dots; ++j) {
-            vec2 coord(RangedRandomFloat(0.0f, 1.0f),
-                       RangedRandomFloat(0.0f, 1.0f));
+            vec2 coord(Random(0.0f, 1.0f),
+                       Random(0.0f, 1.0f));
             if (coord[0] + coord[1] > 1) {
                 std::swap(coord[0], coord[1]);
                 coord[0] = 1.0f - coord[0];
                 coord[1] = 1.0f - coord[1];
             }
             while (coord[0] + coord[1] > 1) {
-                coord[0] = RangedRandomFloat(0.0f, 1.0f);
-                coord[1] = RangedRandomFloat(0.0f, 1.0f);
+                coord[0] = Random(0.0f, 1.0f);
+                coord[1] = Random(0.0f, 1.0f);
             }
             vec2 tex_coord;
             tex_coord = (tex_coords[0] + (tex_coords[1] - tex_coords[0]) * coord[0] + (tex_coords[2] - tex_coords[0]) * coord[1]);
             vec4 color = weight_map->GetInterpolatedColorUV(tex_coord[0], tex_coord[1]);
-            float grass_val = RangedRandomFloat(0.0f, 1.0f);
+            float grass_val = Random(0.0f, 1.0f);
             if (color[0] <= grass_val) {
                 continue;
             }
@@ -731,9 +747,9 @@ void DetailObjectSurface::CalcPatchInstances(const TriInt& coords, DOPatch& patc
             vec3 normal = (normals[0] + (normals[1] - normals[0]) * coord[0] + (normals[2] - normals[0]) * coord[1]);
             // pos[1] -= (1.0f - normal[1]) * bm.height;
             quaternion rand_rot(true,
-                                vec3(RangedRandomFloat(-jitter_degrees, jitter_degrees),
-                                     RangedRandomFloat(0.0f, 360.0f),
-                                     RangedRandomFloat(-jitter_degrees, jitter_degrees)));
+                                vec3(Random(-jitter_degrees, jitter_degrees),
+                                     Random(0.0f, 360.0f),
+                                     Random(-jitter_degrees, jitter_degrees)));
             mat4 matrix = Mat4FromQuaternion(rand_rot);
             if (normal_conform > 0.0f) {
                 mat4 normal_conform_mat;
@@ -747,14 +763,14 @@ void DetailObjectSurface::CalcPatchInstances(const TriInt& coords, DOPatch& patc
                 normal_conform_mat = Mat4FromQuaternion(normal_conform_quat);
                 matrix = normal_conform_mat * matrix;
             }
-            float scale_val = RangedRandomFloat(min_scale, max_scale);
+            float scale_val = Random(min_scale, max_scale);
             mat4 scale_matrix;
             scale_matrix.SetUniformScale(scale_val);
             matrix = scale_matrix * matrix;
             matrix.SetTranslationPart(pos);
             // vec2 tex_coord2 = (tex_coords2[0] + (tex_coords2[1]-tex_coords2[0])*coord[0] + (tex_coords2[2]-tex_coords2[0])*coord[1]);  // Not setting this because it's currently not used in drawing
             DetailInstance di;
-            di.embed = RangedRandomFloat(min_embed, max_embed);
+            di.embed = Random(min_embed, max_embed);
             di.tex_coord0 = tex_coord;
             di.height_scale = scale_val;
             TriInt ti = GetTriInt(pos);
@@ -971,60 +987,6 @@ void BatchModel::Create(const Model& detail_model) {
     vboc.Fill(kVBOFloat | kVBOStatic, sizeof(BatchVertex) * num_vertices, &bvs[0]);
     vboc_el.Fill(kVBOElement | kVBOStatic, sizeof(GLuint) * num_faces * 3, &faces[0]);
     instance_num_faces = detail_model.faces.size();
-}
-
-void BatchModel::StopDraw() {
-    Graphics* graphics = Graphics::Instance();
-    graphics->SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY2, false);
-    graphics->SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY1, false);
-    GLuint index_attrib = Shaders::Instance()->returnShaderAttrib("index", Shaders::Instance()->bound_program);
-    graphics->ResetVertexAttribArrays();
-
-    graphics->SetClientActiveTexture(0);
-    graphics->BindArrayVBO(0);
-    graphics->BindElementVBO(0);
-}
-
-void BatchModel::Draw(const std::vector<DetailInstance>& di_vec, const std::vector<mat4>& di_vec_transforms) {
-    PROFILER_GPU_ZONE(g_profiler_ctx, "BatchModel::Draw");
-    if (di_vec.empty()) {
-        return;
-    }
-
-    unsigned pass_size;
-    unsigned index = 0;
-    std::vector<mat4> transforms(batch_size);
-    std::vector<vec4> texcoords2(batch_size);
-    unsigned num_passes = (di_vec.size() - 1) / batch_size + 1;
-
-    vboc_el.Bind();
-    for (unsigned i = 0; i < num_passes; ++i) {
-        pass_size = batch_size;
-        int temp_index_mat = index;  // Need to work off a copy of index because loop was split up
-        for (unsigned j = 0; j < batch_size; ++j) {
-            if (temp_index_mat >= di_vec.size()) {
-                pass_size = j;
-                break;
-            }
-            transforms[j] = di_vec_transforms[temp_index_mat];
-            ++temp_index_mat;
-        }
-        for (unsigned j = 0; j < batch_size; ++j) {
-            if (index >= di_vec.size()) {
-                pass_size = j;
-                break;
-            }
-            texcoords2[j][0] = di_vec[index].tex_coord0[0];
-            texcoords2[j][1] = di_vec[index].tex_coord0[1];
-            texcoords2[j][2] = di_vec[index].embed;
-            texcoords2[j][3] = di_vec[index].height_scale;
-            ++index;
-        }
-        Shaders::Instance()->SetUniformMat4Array("transforms", transforms);
-        Shaders::Instance()->SetUniformVec4Array("texcoords2", texcoords2);
-        Graphics::Instance()->DrawElementsInstanced(GL_TRIANGLES, instance_num_faces, GL_UNSIGNED_INT, 0, pass_size);
-        ++num_detail_object_draw_calls;
-    }
 }
 
 BatchModel::BatchModel() : created(false) {

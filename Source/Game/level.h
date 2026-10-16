@@ -163,6 +163,10 @@ class Level : public ASNetworkCallback {
     LoadingScreen loading_screen_;
 
    private:
+    // Overgrowth Online: the weather's sky dome (the F9 window), this machine only
+    void SetWeatherSky(const std::string& dome);
+    std::string own_sky_dome_;  // the level's own, read at the first change
+
     // These two are just persistent for performance
     std::vector<std::pair<Hotspot*, MovementObject*> > exit_call_queue;
     std::vector<std::pair<Hotspot*, MovementObject*> > enter_call_queue;

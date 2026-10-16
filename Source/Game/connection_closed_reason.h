@@ -68,9 +68,9 @@ class ConnectionClosedReasonUtil {
             case ConnectionClosedReason::EDITOR_FORBIDDEN:
                 return "You are not allowed to use the editor in this lobby!";
             case ConnectionClosedReason::CLIENT_OUTDATED:
-                return "Your game version is too old, upgrade your game! Unable to join!";
+                return "Your Overgrowth Online is older than the host's. Install the same version as the host to join.";
             case ConnectionClosedReason::SERVER_OUTDATED:
-                return "The host is playing on an older version of the game! Unable to join!";
+                return "The host's Overgrowth Online is older than yours. You both need the same version to play together.";
             case ConnectionClosedReason::MOD_MISMATCH:
                 return "You are not using the same mods the host is! The host has received a full list of expected mods!";
 

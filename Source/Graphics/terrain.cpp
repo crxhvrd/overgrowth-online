@@ -80,6 +80,17 @@ Terrain::~Terrain() {
     Dispose();
 }
 
+// Overgrowth Online: a file shipped with the game for a terrain (its normal
+// map...), found in the data paths (the game's Data is not under our working
+// dir); the relative path when there is none
+static std::string ShippedTerrainFile(const std::string& rel) {
+    char abs_path[kPathSize];
+    if (FindFilePath(rel.c_str(), abs_path, kPathSize, kDataPaths | kModPaths, false) != -1) {
+        return abs_path;
+    }
+    return rel;
+}
+
 void Terrain::Dispose() {
     LOGI << "Disposing of terrain" << std::endl;
     terrain_patches.clear();
@@ -130,9 +141,11 @@ void Terrain::GLInit(Sky *sky) {
         {  // Draw to texture
 
             CHECK_GL_ERROR();
-            // Get normal map write path
-            std::string normal_map_path = heightmap_.path() + "_normal.png";
-            std::string w_nmp = GetWritePath(heightmap_.modsource_) + normal_map_path;
+            // Get normal map write path. Overgrowth Online: the game's own (shipped
+            // with the level) is in the game's Data, which isn't under our working
+            // dir (--game-data): look it up there, or every level got a generated one
+            std::string normal_map_path = ShippedTerrainFile(heightmap_.path() + "_normal.png");
+            std::string w_nmp = GetWritePath(heightmap_.modsource_) + heightmap_.path() + "_normal.png";
             if (GetDateModifiedInt64(w_nmp.c_str()) >= GetDateModifiedInt64(normal_map_path.c_str())) {
                 normal_map_path = w_nmp;
             }
@@ -189,8 +202,8 @@ void Terrain::GLInit(Sky *sky) {
             normal_map_ref = Engine::Instance()->GetAssetManager()->LoadSync<TextureAsset>(heightmap_.path() + "_normal.png");
 
             // Get lighting texture write path
-            std::string baked_map_path = heightmap_.path() + "_" + level_name + "_baked.png";
-            std::string w_bmp = GetWritePath(heightmap_.modsource_) + baked_map_path;
+            std::string baked_map_path = ShippedTerrainFile(heightmap_.path() + "_" + level_name + "_baked.png");
+            std::string w_bmp = GetWritePath(heightmap_.modsource_) + heightmap_.path() + "_" + level_name + "_baked.png";
             if (GetDateModifiedInt64(w_bmp.c_str()) >= GetDateModifiedInt64(baked_map_path.c_str())) {
                 baked_map_path = w_bmp;
             }
@@ -218,13 +231,6 @@ void Terrain::GLInit(Sky *sky) {
 // Draw terrain
 bool TriangleSquareIntersection2D(vec3 &min, vec3 &max, vec3 *tri_point[3]);
 bool PointInTriangle(vec3 &point, vec3 *tri_point[3]);
-void Terrain::drawLayer(int which) {
-    if (which == 0) {
-        Model &terrain_simplified_model = Models::Instance()->GetModel(model_id);
-        terrain_simplified_model.Draw();
-    }
-}
-
 int Terrain::lineCheck(const vec3 &start, const vec3 &end, vec3 *point, vec3 *normal) {
     Model &terrain_simplified_model = Models::Instance()->GetModel(model_id);
     return terrain_simplified_model.lineCheckNoBackface(start, end, point, normal);

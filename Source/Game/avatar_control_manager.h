@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: avatar_control_manager.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -25,6 +26,7 @@
 
 #include <Objects/object.h>
 
+#include <map>
 #include <vector>
 
 class Possession {
@@ -48,6 +50,17 @@ class AvatarControlManager {
     std::vector<Possession> GeneratePossessionList();
 
     std::vector<ObjectID> GetUnpossessedAvatars();
+
+    // Clients: a virtual controller (reads no input) and a virtual camera for
+    // every avatar that is not ours. The host's ids in its player states mean
+    // nothing here; without these, other players' avatars kept controller 0
+    // and camera 0 from the level's single-player set-up.
+    struct RemoteSlot {
+        int controller_id = -1;
+        int camera_id = -1;
+    };
+    std::map<ObjectID, RemoteSlot> client_remote_slots_;
+    RemoteSlot ClientRemoteSlot(ObjectID avatar);
 
    public:
     // void DefinePlayerPossesion(ObjectID avatar, int controller_id);

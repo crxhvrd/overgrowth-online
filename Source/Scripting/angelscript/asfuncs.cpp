@@ -1837,7 +1837,7 @@ static int ASPlaySoundLoopAtLocation(const std::string& path, vec3 pos, float ga
 static int ASPlaySoundAtLocation(std::string path, vec3 location) {
     Online* online = Online::Instance();
 
-    if (online->IsHosting()) {
+    if (online->ShouldShareSound()) {  // Overgrowth Online: clients share their characters' sounds
         online->Send<OnlineMessages::AudioPlaySoundLocationMessage>(path, location);
     }
 
@@ -1886,7 +1886,7 @@ static int ASPlaySoundGroupRelativeGain(std::string path, float gain) {
 static int ASPlaySoundGroup(std::string path, vec3 location) {
     Online* online = Online::Instance();
 
-    if (online->IsHosting()) {
+    if (online->ShouldShareSound()) {  // Overgrowth Online: clients share their characters' sounds
         online->Send<OnlineMessages::AudioPlaySoundGroupMessage>(path, location);
     }
 
@@ -1903,7 +1903,7 @@ static int ASPlaySoundGroupPriority(std::string path, vec3 location, int priorit
 
     Online* online = Online::Instance();
 
-    if (online->IsHosting()) {
+    if (online->ShouldShareSound()) {  // Overgrowth Online: clients share their characters' sounds
         online->Send<OnlineMessages::AudioPlayGroupPriorityMessage>(path, location, priority);
     }
 
@@ -1919,7 +1919,7 @@ static int ASPlaySoundGroupGain(std::string path, vec3 location, float gain) {
     // SoundGroupRef sgr = SoundGroups::Instance()->ReturnRef(path);
     Online* online = Online::Instance();
 
-    if (online->IsHosting()) {
+    if (online->ShouldShareSound()) {  // Overgrowth Online: clients share their characters' sounds
         online->Send<OnlineMessages::AudioPlaySoundGroupGainMessage>(path, location, gain);
     }
 
@@ -2568,11 +2568,30 @@ int ASCreateObject(const std::string& path, bool exclude_from_save) {
             obj->exclude_from_save = exclude_from_save;
             obj->permission_flags = 0;
             id = obj->GetID();
+
+            // Overgrowth Online: what a host script creates, every client creates too
+            Online* online = Online::Instance();
+            if (online->IsHosting() && online->host_started_level &&
+                (obj->GetType() == _movement_object || obj->GetType() == _item_object)) {
+                online->Send<OnlineMessages::CreateEntity>(path, obj->GetTranslation(), id);
+            }
         } else {
             LOGE << "Failed at creating object from: " << path << std::endl;
         }
     }
     return id;
+}
+
+// Overgrowth Online (host): share an object a level script made while the level
+// loaded (ASCreateObject shares only after the level started), so clients and
+// late joiners have it under its id
+void AS_Online_AnnounceObject(int id, const std::string& path) {  // (the path CreateObject was given)
+    Online* online = Online::Instance();
+    Object* obj = the_scenegraph->GetObjectFromID(id);
+    if (online->IsHosting() && !online->host_started_level && obj != nullptr &&
+        (obj->GetType() == _movement_object || obj->GetType() == _item_object)) {
+        online->Send<OnlineMessages::CreateEntity>(path, obj->GetTranslation(), id);
+    }
 }
 
 int ASCreateObject2(const std::string& path) {
@@ -5784,6 +5803,21 @@ bool AS_Online_IsActive() {
     return Online::Instance()->IsActive();
 }
 
+// Overgrowth Online: an attack on a character another machine runs (aschar.as NetWasHit)
+void AS_Online_SendHitRequest(int target_id, const std::string& type, const std::string& attack_path, vec3 dir, vec3 pos,
+                              int attacker_id, float damage_mult, float knockback_mult, float max_range) {
+    Online::Instance()->SendHitRequest(target_id, type, attack_path, dir, pos, attacker_id, damage_mult, knockback_mult, max_range);
+}
+
+// Overgrowth Online: a throw, choke or drag takes the grabbed character for its length
+bool AS_Online_TakeOver(int char_id, float max_seconds) {
+    return Online::Instance()->TakeOver(char_id, max_seconds);
+}
+
+void AS_Online_ReleaseTakeOver(int char_id) {
+    Online::Instance()->ReleaseTakeOver(char_id);
+}
+
 void AS_Online_SendKillMessage(uint32_t victim_id, uint32_t killer_id) {
     Online* online = Online::Instance();
 
@@ -5810,6 +5844,16 @@ void AS_Online_Host() {
     Online::Instance()->StartHostingMultiplayer();
 }
 
+// Overgrowth Online (host): a player's character up at `pos`, facing `facing`, on its machine
+void AS_Online_PlaceAvatar(int char_id, const vec3& pos, const vec3& facing) {
+    Online::Instance()->PlaceAvatar(char_id, pos, facing);
+}
+
+// Overgrowth Online: a co-op spawn spot for player `index` near `base` (see Online::SafeSpotNear)
+vec3 AS_Online_SafeSpotNear(const vec3& base, const vec3& facing, int index) {
+    return Online::Instance()->SafeSpotNear(base, facing, index);
+}
+
 void AS_Online_Connect(const std::string& ip) {
     Online::Instance()->ConnectByIPAddress(ip.c_str());
 }
@@ -5834,8 +5878,8 @@ void AS_Online_Close() {
     Online::Instance()->QueueStopMultiplayer();
 }
 
-void AS_Online_IsLobbyFull() {
-    Online::Instance()->IsLobbyFull();
+bool AS_Online_IsLobbyFull() {
+    return Online::Instance()->IsLobbyFull();
 }
 
 uint32_t AS_Online_RegisterState(std::string state) {
@@ -5872,8 +5916,21 @@ bool AS_Online_IsValidPlayerName(const std::string& name) {
     return OnlineUtility::IsValidPlayerName(name);
 }
 
-void AS_Online_NetFrameworkHasFriendInviteOverlay() {
-    Online::Instance()->NetFrameworkHasFriendInviteOverlay();
+bool AS_Online_NetFrameworkHasFriendInviteOverlay() {
+    return Online::Instance()->NetFrameworkHasFriendInviteOverlay();
+}
+
+// Overgrowth Online: Join a friend (see SteamworksMatchmaking::FriendGames)
+bool AS_Online_SteamFriendsAvailable() {
+    return Online::Instance()->SteamFriendsAvailable();
+}
+
+std::string AS_Online_FriendGames() {
+    return Online::Instance()->FriendGames();
+}
+
+bool AS_Online_JoinFriend(const std::string& steam_id) {
+    return Online::Instance()->JoinFriend(steam_id);
 }
 
 void AS_Online_ActivateInviteDialog() {
@@ -5916,7 +5973,13 @@ std::string AS_Online_GetActiveIncompatibleModsString() {
 void AttachOnline(ASContext* context) {
     context->RegisterGlobalFunction("void Online_Connect(string ip)", asFUNCTION(AS_Online_Connect), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_Host()", asFUNCTION(AS_Online_Host), asCALL_CDECL);
+    context->RegisterGlobalFunction("vec3 Online_SafeSpotNear(const vec3 &in base, const vec3 &in facing, int index)", asFUNCTION(AS_Online_SafeSpotNear), asCALL_CDECL);
+    context->RegisterGlobalFunction("void Online_PlaceAvatar(int char_id, const vec3 &in pos, const vec3 &in facing)", asFUNCTION(AS_Online_PlaceAvatar), asCALL_CDECL);
+    context->RegisterGlobalFunction("void Online_AnnounceObject(int id, const string &in path)", asFUNCTION(AS_Online_AnnounceObject), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_SendKillMessage(uint victim, uint killer)", asFUNCTION(AS_Online_SendKillMessage), asCALL_CDECL);
+    context->RegisterGlobalFunction("bool Online_TakeOver(int char_id, float max_seconds)", asFUNCTION(AS_Online_TakeOver), asCALL_CDECL);
+    context->RegisterGlobalFunction("void Online_ReleaseTakeOver(int char_id)", asFUNCTION(AS_Online_ReleaseTakeOver), asCALL_CDECL);
+    context->RegisterGlobalFunction("void Online_SendHitRequest(int target_id, const string &in type, const string &in attack_path, vec3 dir, vec3 pos, int attacker_id, float damage_mult, float knockback_mult, float max_range)", asFUNCTION(AS_Online_SendHitRequest), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_SendChatMessage(string message)", asFUNCTION(AS_Online_SendChatMessage), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_SendChatSystemMessage(string system_message)", asFUNCTION(AS_Online_SendChatSystemMessage), asCALL_CDECL);
     context->RegisterGlobalFunction("bool Online_IsActive()", asFUNCTION(AS_Online_IsActive), asCALL_CDECL);
@@ -5937,6 +6000,9 @@ void AttachOnline(ASContext* context) {
 
     context->RegisterGlobalFunction("bool Online_HasFriendInviteOverlay()", asFUNCTION(AS_Online_NetFrameworkHasFriendInviteOverlay), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_ActivateInviteDialog()", asFUNCTION(AS_Online_ActivateInviteDialog), asCALL_CDECL);
+    context->RegisterGlobalFunction("bool Online_SteamFriendsAvailable()", asFUNCTION(AS_Online_SteamFriendsAvailable), asCALL_CDECL);
+    context->RegisterGlobalFunction("string Online_FriendGames()", asFUNCTION(AS_Online_FriendGames), asCALL_CDECL);
+    context->RegisterGlobalFunction("bool Online_JoinFriend(const string &in steam_id)", asFUNCTION(AS_Online_JoinFriend), asCALL_CDECL);
 }
 
 void AttachStringConvert(ASContext* context) {

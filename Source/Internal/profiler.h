@@ -171,12 +171,23 @@ struct ProfilerContext {
     void Dispose(StackAllocator* stack_allocator) {}
 };
 
+// Overgrowth Online: the GPU zones time the frame at run time
+// (Graphics/frame_timers.h), and are KHR_debug groups with "gl_debug_groups"
+struct FrameTimerZone {
+    bool active;
+    FrameTimerZone(const char* fmt, ...);
+    ~FrameTimerZone();
+};
+
+#define MERGE_HELPER(a, b) a##b
+#define MERGE(a, b) MERGE_HELPER(a, b)
+
 #define PROFILER_ENTER(ctx, ...)
 #define PROFILER_LEAVE(ctx)
 #define PROFILER_ZONE(ctx, ...)
 #define PROFILER_ZONE_STALL(ctx, str)
 #define PROFILER_ZONE_IDLE(ctx, str)
-#define PROFILER_GPU_ZONE(ctx, ...)
+#define PROFILER_GPU_ZONE(ctx, ...) FrameTimerZone MERGE(p, __LINE__)(__VA_ARGS__);
 #define PROFILER_ENTER_STALL_THRESHOLD(ctx, match_id_ptr, u_sec, str)
 #define PROFILER_LEAVE_THRESHOLD(ctx, match_id)
 #define PROFILER_ENTER_DYNAMIC_STRING(ctx, str)

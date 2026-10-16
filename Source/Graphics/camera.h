@@ -39,6 +39,7 @@ class CameraObject;
 /// The Camera class handles the view orientation in 3D space.
 class Camera {
    private:
+    bool view_locked_ = false;  // Overgrowth Online: LockView (the setters do nothing)
     vec3 facing;            ///< Vector for which direction the camera is pointing
     vec3 flat_facing;       ///< Facing on the XZ plane
     float target_horz_fov;  ///< The field of view, in degrees.
@@ -179,6 +180,12 @@ class Camera {
      * @param fov The new FOV in degrees.
      */
     void SetFOV(const float fov);
+    // Overgrowth Online: a fixed view (the test bridge's "view", screenshot
+    // comparisons): eye at pos looking at target; until UnlockView, nothing
+    // moves the camera (characters, dialogues, the editor)
+    void LockView(const vec3& pos, const vec3& target, float fov);
+    void UnlockView();
+    bool ViewLocked() const { return view_locked_; }
 
     /**
      * Set the x and y rotation of the camera to look at a point.

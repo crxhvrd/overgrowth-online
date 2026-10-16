@@ -370,6 +370,13 @@ void ItemObject::Update(float timestep) {
     bool fetchedData = false;
     if (online->IsClient()) {
         std::list<ItemObjectFrame>& frames = incoming_online_item_frames;
+
+        // Overgrowth Online: held or stuck, it follows its character here
+        if (IsHeld() || StuckInWhom() != -1) {
+            frames.clear();
+            return;
+        }
+
         while (frames.size() > 1) {
             network_time_interpolator.timestamps.Clear();
             for (const ItemObjectFrame& frame : frames) {
@@ -401,6 +408,20 @@ void ItemObject::Update(float timestep) {
 
             transform.SetTranslationPart(translation);
             transform.SetRotationPart(Mat4FromQuaternion(rotation));
+            // Overgrowth Online: the body too (pick-ups and collisions look at it): the
+            // host runs loose items; here a walking character kicked it elsewhere.
+            // Draw makes the host's transform as body - R * display_phys_offset_
+            // (SetPhysicsTransform takes the editor's transform: another offset)
+            if (bullet_object_) {
+                mat4 body = transform;
+                body.SetTranslationPart(translation + transform.GetRotatedvec3(display_phys_offset_));
+                using_physics_ = false;
+                bullet_object_->SetTransform(body);
+                bullet_object_->SetLinearVelocity(vec3(0.0f));
+                bullet_object_->SetAngularVelocity(vec3(0.0f));
+                bullet_object_->Sleep();
+                bullet_object_->UpdateTransform();
+            }
 
             break;
         }
@@ -643,10 +664,12 @@ void ItemObject::Update(float timestep) {
 
 void ItemObject::SetThrown() {
     thrown_ = kThrown;
+    Online::Instance()->QueueItemLaunch(GetID());  // Overgrowth Online: a client's throw flies on the host
 }
 
 void ItemObject::SetThrownStraight() {
     thrown_ = kThrownStraight;
+    Online::Instance()->QueueItemLaunch(GetID());
 }
 
 static void DrawItemModel(Model& model, Graphics* graphics, Shaders* shaders, int shader) {
@@ -1110,7 +1133,11 @@ void ItemObject::CheckThrownCollisionLine(int line_id, const mat4& cur_transform
 
         if (thrown_ != kSafe) {
             int accept_hit = 1;
-            {
+            // Overgrowth Online: a character another machine runs takes the hit there
+            bool remote_victim = mo->network_proxy && Online::Instance()->IsActive();
+            vec3 stick_start, stick_end;
+            mat4 stick_at;
+            if (!remote_victim) {
                 accept_hit = mo->AboutToBeHitByItem(GetID());
             }
             if (accept_hit == 1) {
@@ -1142,6 +1169,9 @@ void ItemObject::CheckThrownCollisionLine(int line_id, const mat4& cur_transform
                             // stick_transform = mo->rigged_object()->skeleton_.physics_bones[bone].bullet_object->GetTransform();
                             mo->rigged_object()->StickItem(GetID(), start, end, stick_transform);
                         }
+                        stick_start = start;
+                        stick_end = end;
+                        stick_at = stick_transform;
 
                         std::string path = "Data/Sounds/hit/hit_";
                         WeightClass weight_class = GetWeightClass();
@@ -1198,7 +1228,13 @@ void ItemObject::CheckThrownCollisionLine(int line_id, const mat4& cur_transform
                 } else if (will_cut) {
                     type = 1;
                 }
-                mo->HitByItem(GetID(), point, item_ref_->GetLineMaterial(line_id), type);
+                if (Online::Instance()->IsHosting()) {
+                    Online::Instance()->SendItemHit(mo->GetID(), GetID(), point, item_ref_->GetLineMaterial(line_id), type,
+                                                    GetLinearVelocity(), stick_start, stick_end, stick_at);
+                }
+                if (!remote_victim) {
+                    mo->HitByItem(GetID(), point, item_ref_->GetLineMaterial(line_id), type);
+                }
             }
         }
         thrown_ = kSafe;
@@ -1346,7 +1382,10 @@ void ItemObject::DrawItem(const mat4& proj_view_matrix, Object::DrawType type) {
         }
     }
 
-    if (!online->IsClient()) {
+    // Overgrowth Online: a client draws loose items where the host streams them, and
+    // held or stuck ones where their character puts the body (no stream for those:
+    // they were drawn where they lay before, out of sight)
+    if (!online->IsClient() || IsHeld() || StuckInWhom() != -1) {
         transform = bullet_object_->GetInterpRotationX(interp_period_, interp_period_ - interp_count_);
         vec3 pos = bullet_object_->GetInterpPositionX(interp_period_, interp_period_ - interp_count_);
         transform.SetTranslationPart(pos - transform * display_phys_offset_);

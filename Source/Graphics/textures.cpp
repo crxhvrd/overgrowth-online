@@ -199,10 +199,6 @@ const char* CStringFromGLEnum(GLenum val) {
             return "GL_RGB";
         case GL_RGBA:
             return "GL_RGBA";
-        case GL_LUMINANCE:
-            return "GL_LUMINANCE";
-        case GL_LUMINANCE_ALPHA:
-            return "GL_LUMINANCE_ALPHA";
 
         case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
             return "GL_COMPRESSED_RGBA_S3TC_DXT5_EXT";
@@ -242,8 +238,6 @@ const char* CStringFromGLEnum(GLenum val) {
         case GL_LINEAR_MIPMAP_LINEAR:
             return "GL_LINEAR_MIPMAP_LINEAR";
 
-        case GL_CLAMP:
-            return "GL_CLAMP";
         case GL_REPEAT:
             return "GL_REPEAT";
         case GL_CLAMP_TO_EDGE:
@@ -1402,7 +1396,7 @@ unsigned int Textures::makeCubemapTextureInternal(int width, int height, GLint i
     while ((width >= 1 && height >= 1) && (mipmap_param == MIPMAPS || level == 0)) {
         for (int i = 0; i < 6; i++) {
             if (internal_format == GL_RGBA16F) {
-                if (GLAD_GL_ARB_texture_float) {
+                if (GLAD_GL_VERSION_3_0 || GLAD_GL_ARB_texture_float) {
                     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, level, internal_format, width, height, 0, format, GL_FLOAT, NULL);
                     totalTextureSize += width * height * 8;
                 } else {
@@ -1488,7 +1482,7 @@ unsigned int Textures::makeTextureInternal(int width, int height, GLint internal
     CHECK_GL_ERROR();
     glBindTexture(texture.tex_target, texture.gl_texture_id);
     if (internal_format == GL_RGBA16F) {
-        if (GLAD_GL_ARB_texture_float) {
+        if (GLAD_GL_VERSION_3_0 || GLAD_GL_ARB_texture_float) {
             glTexImage2D(texture.tex_target, 0, internal_format, width, height, 0,
                          format, GL_FLOAT, data);
         } else {
@@ -1647,7 +1641,7 @@ unsigned int Textures::makeTextureColorInternal(int width, int height, GLint int
 
     unsigned int totalTextureSize = 0;
     if (internal_format == GL_RGBA16F) {
-        if (GLAD_GL_ARB_texture_float) {
+        if (GLAD_GL_VERSION_3_0 || GLAD_GL_ARB_texture_float) {
             glTexImage2D(texture.tex_target, 0, internal_format, width, height, 0,
                          format, GL_FLOAT, &data[0]);
             totalTextureSize += width * height * 8;
@@ -1732,7 +1726,7 @@ unsigned int Textures::makeTextureTestPatternInternal(int width, int height, GLi
 
     glBindTexture(texture.tex_target, texture.gl_texture_id);
     if (internal_format == GL_RGBA16F) {
-        if (GLAD_GL_ARB_texture_float) {
+        if (GLAD_GL_VERSION_3_0 || GLAD_GL_ARB_texture_float) {
             glTexImage2D(texture.tex_target, 0, internal_format, width, height, 0,
                          format, GL_FLOAT, &data[0]);
         } else {
@@ -2785,8 +2779,12 @@ void Textures::SetProcessPoolsEnabled(bool val) {
 
 void Textures::ApplyAnisotropy() {
     for (unsigned int i = 0; i < textures.size(); i++) {
+        const Texture& tex = textures[i];
+        if (tex.gl_texture_id == 0 || tex.tex_target == GL_TEXTURE_BUFFER) {
+            continue;  // not in VRAM yet (it gets it on upload), or a buffer
+        }
         bindTexture(i, 0);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, Graphics::Instance()->config_.anisotropy());
+        glTexParameterf(tex.tex_target, GL_TEXTURE_MAX_ANISOTROPY_EXT, Graphics::Instance()->config_.anisotropy());
     }
 }
 

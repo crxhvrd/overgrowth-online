@@ -113,18 +113,52 @@ void ImageExport::ScaleImageUp(const unsigned char *data,
 void ImageExport::SavePNG(const char *file_path, unsigned char *data, unsigned long width, unsigned long height, unsigned short levels) {
     std::vector<unsigned char> scaled_data;
     ImageExport::ScaleImageUp(data, levels, &width, &height, &scaled_data);
+
+    // Overgrowth Online: callers pass BGRA, 4 bytes a pixel (FreeImage's order,
+    // as the terrain's normal and weight maps are made); stb writes packed RGB.
+    // Written as 3 bytes a pixel over a 4-byte stride, every pixel slid by a byte:
+    // striped normal maps, dark bands over every terrain
+    std::vector<unsigned char> rgb(width * height * 3);
+    for (size_t i = 0, n = (size_t)width * height; i < n; ++i) {
+        rgb[i * 3 + 0] = scaled_data[i * 4 + 2];
+        rgb[i * 3 + 1] = scaled_data[i * 4 + 1];
+        rgb[i * 3 + 2] = scaled_data[i * 4 + 0];
+    }
+
     CreateParentDirs(file_path);
 #ifdef _WIN32
     createfile(file_path);
     std::string short_path(file_path);
     ShortenWindowsPath(short_path);
-    if (!stbi_write_png(short_path.c_str(), width, height, 3, scaled_data.data(), width * 4)) {
+    if (!stbi_write_png(short_path.c_str(), width, height, 3, rgb.data(), width * 3)) {
         DisplayError("Error", "Problem exporting .png file");
     }
 #else
-    if (!stbi_write_png(file_path, width, height, 3, scaled_data.data(), width * 4)) {
+    if (!stbi_write_png(file_path, width, height, 3, rgb.data(), width * 3)) {
         DisplayError("Error", "Problem exporting .png file");
     }
+#endif
+}
+
+void ImageExport::SaveScreenshotPNG(const char *file_path, const unsigned char *bgr, unsigned long width, unsigned long height) {
+    std::vector<unsigned char> rgb(width * height * 3);
+    for (unsigned long y = 0; y < height; ++y) {
+        const unsigned char *src = bgr + (height - 1 - y) * width * 3;
+        unsigned char *dst = rgb.data() + y * width * 3;
+        for (unsigned long x = 0; x < width; ++x) {
+            dst[x * 3 + 0] = src[x * 3 + 2];
+            dst[x * 3 + 1] = src[x * 3 + 1];
+            dst[x * 3 + 2] = src[x * 3 + 0];
+        }
+    }
+    CreateParentDirs(file_path);
+#ifdef _WIN32
+    createfile(file_path);
+    std::string short_path(file_path);
+    ShortenWindowsPath(short_path);
+    stbi_write_png(short_path.c_str(), width, height, 3, rgb.data(), width * 3);
+#else
+    stbi_write_png(file_path, width, height, 3, rgb.data(), width * 3);
 #endif
 }
 

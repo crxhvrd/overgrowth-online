@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<particle>
+    <textures color_map = "Data/Textures/particles/raindrop_c.tga"
+              normal_map = "Data/Textures/particles/raindrop_n.tga"
+              shader = "envobject #PARTICLE"
+              soft_shader = "envobject #PARTICLE"/>
+    <size min = "0.035" max = "0.045"/>
+    <stretch velocity_axis = "true" speed_stretch = "true" min_squash = "true"/>
+    <color red = "0.85" green = "0.88" blue = "0.95" alpha_min = "2.0" alpha_max = "2.5"/>
+    <behavior inertia="1.0" gravity="0.0" wind="1.0" size_decay_rate="0.0" opacity_decay_rate="1.6" opacity_ramp_time="0.05"/>
+</particle>

@@ -24,6 +24,7 @@
 
 #include <Online/online.h>
 #include <Online/online_utility.h>
+#include <Online/Message/pcs_loading_completed_message.h>
 
 #include <Main/engine.h>
 #include <Internal/modloading.h>
@@ -32,9 +33,8 @@
 #include <string>
 
 namespace OnlineMessages {
-PCSFileTransferMetadataMessage::PCSFileTransferMetadataMessage(const std::string& map_name, const std::string& campaign_id) : OnlineMessageBase(OnlineMessageCategory::TRANSIENT),
-                                                                                                                              map_name(map_name),
-                                                                                                                              campaign_id(campaign_id) {
+PCSFileTransferMetadataMessage::PCSFileTransferMetadataMessage(const std::string& map_name, const std::string& campaign_id, bool preload)
+    : OnlineMessageBase(OnlineMessageCategory::TRANSIENT), map_name(map_name), campaign_id(campaign_id), preload(preload) {
 }
 
 binn* PCSFileTransferMetadataMessage::Serialize(void* object) {
@@ -43,6 +43,7 @@ binn* PCSFileTransferMetadataMessage::Serialize(void* object) {
 
     binn_object_set_std_string(l, "map_name", t->map_name);
     binn_object_set_std_string(l, "campaign_id", t->campaign_id);
+    binn_object_set_bool(l, "preload", t->preload);
 
     return l;
 }
@@ -52,6 +53,9 @@ void PCSFileTransferMetadataMessage::Deserialize(void* object, binn* l) {
 
     binn_object_get_std_string(l, "map_name", &t->map_name);
     binn_object_get_std_string(l, "campaign_id", &t->campaign_id);
+    BOOL preload = FALSE;
+    binn_object_get_bool(l, "preload", &preload);
+    t->preload = preload != FALSE;
 }
 
 void PCSFileTransferMetadataMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
@@ -60,6 +64,21 @@ void PCSFileTransferMetadataMessage::Execute(const OnlineMessageRef& ref, void* 
     // We now know what level the host wants us to load. Host hasn't actually send us the level for now.
     // This is placeholder behaviour, as we'd now want to wait for the host to send us a bunch of files
     // Due to the required refactor for this behaviour, we can just start loading what we assume is the map the host would have sent us.
+
+    Online* online = Online::Instance();
+
+    // Overgrowth Online: the host told us as it started its own load and we
+    // loaded together; this is the handshake's copy: we are on it (or still
+    // loading it, and say so when done)
+    if (!t->preload && online->preloaded_level == t->map_name) {
+        online->preloaded_level.clear();
+        if (online->preload_loaded) {
+            online->Send<OnlineMessages::PCSLoadingCompletedMessage>();
+        }
+        return;
+    }
+    online->preloaded_level = t->preload ? t->map_name : "";
+    online->preload_loaded = false;
 
     Online::Instance()->level_name = t->map_name;
     if (ModLoading::Instance().WhichCampaignLevelBelongsTo(t->map_name) != "") {
@@ -75,7 +94,7 @@ void PCSFileTransferMetadataMessage::Execute(const OnlineMessageRef& ref, void* 
 }
 
 void* PCSFileTransferMetadataMessage::Construct(void* mem) {
-    return new (mem) PCSFileTransferMetadataMessage("", "");
+    return new (mem) PCSFileTransferMetadataMessage("", "", false);
 }
 
 void PCSFileTransferMetadataMessage::Destroy(void* object) {

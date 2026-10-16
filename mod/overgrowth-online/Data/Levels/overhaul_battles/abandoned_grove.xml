@@ -1,0 +1,789 @@
+<?xml version="2.0" ?>
+<Type>saved</Type>
+    <Name>Abandoned Grove (battle)</Name>
+    <Description />
+    <Shader>post</Shader>
+    <Terrain>
+        <Heightmap>Data/Textures/Terrain/TerrainSculpt2/Terrain2_hm.png</Heightmap>
+        <DetailMap />
+        <ColorMap>Data/Textures/Terrain/TerrainSculpt2/Terrain2_Color.tga</ColorMap>
+        <DetailMaps>
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/grass.tga" normalpath="Data/Textures/Terrain/DetailTextures/grass_normal.png" materialpath="Data/Materials/grass.xml" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/dirt.tga" normalpath="Data/Textures/Terrain/DetailTextures/dirt_normal.png" materialpath="Data/Materials/dirtyrock.xml" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/mixed.tga" normalpath="Data/Textures/Terrain/DetailTextures/mixed_normal.png" materialpath="Data/Materials/dirtyrock.xml" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/mixedRocks.tga" normalpath="Data/Textures/Terrain/DetailTextures/mixedRocks_normal.tga" materialpath="Data/Materials/dirtyrock.xml" />
+        </DetailMaps>
+        <DetailObjects />
+    </Terrain>
+    <OutOfDate NavMesh="false" />
+    <AmbientSounds />
+    <Script>level.as</Script>
+    <LevelScriptParameters>
+    </LevelScriptParameters>
+    <Sky>
+        <DomeTexture>Data/Textures/skies/AltoStratus1.tga</DomeTexture>
+        <SunAngularRad>0.0963288</SunAngularRad>
+        <SunColorAngle>0</SunColorAngle>
+        <RayToSun r0="0.142731" r1="0.112943" r2="0.983296" />
+        <ExtraAO>0</ExtraAO>
+    </Sky>
+    <ActorObjects>
+        <ActorObject t0="117.1100" t1="-12.2522" t2="279.1190" s0="1" s1="1" s2="1" q0="-0.00513073" q1="0.0461053" q2="0.000987762" r0="0.995747" r1="0.00150029" r2="-0.0921214" r3="0" r4="-0.0024465" r5="0.999945" r6="-0.0101593" r7="0" r8="0.0921011" r9="0.0103415" r10="0.995696" r11="0" r12="0" r13="0" r14="0" r15="1" id="8" type_file="Data/Objects/IGF_Characters/IGF_TurnerActor.xml" is_player="1" is_dead="0">
+            <parameters>
+                <parameter name="Aggression" type="string" val="0.5" />
+                <parameter name="Attack Damage" type="string" val="1.0" />
+                <parameter name="Attack Knockback" type="string" val="1.0" />
+                <parameter name="Attack Speed" type="string" val="1.0" />
+                <parameter name="Block Follow-up" type="string" val="0.5" />
+                <parameter name="Block Skill" type="string" val="0.5" />
+                <parameter name="Character Scale" type="float" val="1" />
+                <parameter name="Damage Resistance" type="string" val="1.0" />
+                <parameter name="Ear Size" type="float" val="1" />
+                <parameter name="Fat" type="float" val="0.5" />
+                <parameter name="Ground Aggression" type="float" val="0.5" />
+                <parameter name="Left handed" type="int" val="0" />
+                <parameter name="Lives" type="int" val="1" />
+                <parameter name="Movement Speed" type="string" val="1.0" />
+                <parameter name="Muscle" type="float" val="0.5" />
+                <parameter name="Static" type="int" val="0" />
+                <parameter name="Teams" type="string" val="turner" />
+            </parameters>
+            <Connections>
+            </Connections>
+            <ItemConnections />
+            <Palette>
+                <Color label="Cloth" channel="0" red="1" green="1" blue="1" />
+                <Color label="Rope" channel="1" red="1" green="1" blue="1" />
+                <Color label="Fur" channel="2" red="1" green="1" blue="1" />
+            </Palette>
+        </ActorObject>
+        <EnvObject t0="-14.4746" t1="91.5576" t2="-104.317" s0="1" s1="1" s2="1" q0="0.738225" q1="0.39696" q2="-0.520825" r0="0.142327" r1="0.417526" r2="-0.897449" r3="0" r4="0.754658" r5="-0.63247" r6="-0.174566" r7="0" r8="-0.640496" r9="-0.652421" r10="-0.405107" r11="0" r12="0" r13="0" r14="0" r15="1" id="77" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-117.319" t1="57.0182" t2="-7.12053" s0="1" s1="1" s2="1" q0="-0.251422" q1="-0.235038" q2="-0.0718846" r0="0.879179" r1="-0.0164019" r2="0.476209" r3="0" r4="0.252777" r5="0.863239" r6="-0.436946" r7="0" r8="-0.403915" r9="0.504529" r10="0.763088" r11="0" r12="0" r13="0" r14="0" r15="1" id="78" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-73.0556" t1="103.72" t2="-67.1552" s0="1" s1="1" s2="1" q0="0.902676" q1="0.412995" q2="-0.0911047" r0="0.64227" r1="0.731127" r2="-0.230093" r3="0" r4="0.760077" r5="-0.646249" r6="0.0681665" r7="0" r8="-0.098859" r9="-0.21867" r10="-0.970779" r11="0" r12="0" r13="0" r14="0" r15="1" id="79" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-20.9125" t1="71.5001" t2="-72.502" s0="1" s1="1" s2="1" q0="-0.99611" q1="-0.035982" q2="-0.0660241" r0="0.988692" r1="0.0656164" r2="0.134841" r3="0" r4="0.0777516" r5="-0.993188" r6="-0.0867911" r7="0" r8="0.128228" r9="0.0962939" r10="-0.987059" r11="0" r12="0" r13="0" r14="0" r15="1" id="80" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-116.322" t1="33.1797" t2="32.4202" s0="1" s1="1" s2="1" q0="-0.628937" q1="-0.732143" q2="0.132217" r0="-0.10703" r1="0.980616" r2="0.164123" r3="0" r4="0.861271" r5="0.173915" r6="-0.477459" r7="0" r8="-0.496747" r9="0.0902517" r10="-0.86319" r11="0" r12="0" r13="0" r14="0" r15="1" id="81" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-79.2432" t1="117.521" t2="-103.164" s0="1.1129" s1="1.1129" s2="1.1129" q0="0.694388" q1="-0.575738" q2="-0.130059" r0="0.30322" r1="-0.906642" r2="0.293356" r3="0" r4="-0.6925" r5="0.00182141" r6="0.721416" r7="0" r8="-0.6546" r9="-0.421897" r10="-0.627298" r11="0" r12="0" r13="0" r14="0" r15="1" id="83" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-61.884" t1="119.947" t2="-105.844" s0="1" s1="1" s2="1" q0="-0.640999" q1="-0.69248" q2="0.32913" r0="-0.17571" r1="0.911171" r2="-0.372685" r3="0" r4="0.864346" r5="-0.0384127" r6="-0.501428" r7="0" r8="-0.471203" r9="-0.410235" r10="-0.780818" r11="0" r12="0" r13="0" r14="0" r15="1" id="84" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-179.1" t1="60.7365" t2="-46.7344" s0="1" s1="1" s2="1" q0="0.782247" q1="0.584854" q2="0.0137357" r0="0.315513" r1="0.920883" r2="-0.228966" r3="0" r4="0.909119" r5="-0.224199" r6="0.351052" r7="0" r8="0.271944" r9="-0.318919" r10="-0.907931" r11="0" r12="0" r13="0" r14="0" r15="1" id="85" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-308.547" t1="35.6701" t2="145.114" s0="1.07954" s1="1.07954" s2="1.07954" q0="0.312407" q1="0.236296" q2="0.483668" r0="0.42046" r1="0.904782" r2="-0.0676983" r3="0" r4="-0.6095" r5="0.336935" r6="0.717625" r7="0" r8="0.672104" r9="-0.26047" r10="0.693132" r11="0" r12="0" r13="0" r14="0" r15="1" id="86" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-221.515" t1="39.6551" t2="131.023" s0="1" s1="1" s2="1" q0="0.0954169" q1="-0.960464" q2="-0.0719631" r0="-0.855339" r1="-0.219479" r2="0.469281" r3="0" r4="-0.147099" r5="0.971434" r6="0.186221" r7="0" r8="-0.496747" r9="0.0902511" r10="-0.86319" r11="0" r12="0" r13="0" r14="0" r15="1" id="87" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-162.983" t1="32.2225" t2="49.6241" s0="1.1868" s1="1.1868" s2="1.1868" q0="-0.358447" q1="0.629583" q2="-0.00388623" r0="0.20722" r1="-0.456702" r2="-0.865149" r3="0" r4="-0.445987" r5="0.743001" r6="-0.499044" r7="0" r8="0.870721" r9="0.489257" r10="-0.0497183" r11="0" r12="0" r13="0" r14="0" r15="1" id="88" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-192.383" t1="19.4548" t2="51.6248" s0="1.1868" s1="1.1868" s2="1.1868" q0="0.0222977" q1="-0.81004" q2="-0.583516" r0="-0.99331" r1="-0.0984029" r2="0.0604339" r3="0" r4="0.026155" r5="0.318024" r6="0.947722" r7="0" r8="-0.112478" r9="0.942962" r10="-0.313323" r11="0" r12="0" r13="0" r14="0" r15="1" id="89" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-318.543" t1="64.0277" t2="245.364" s0="1.39347" s1="1.39347" s2="1.39347" q0="0.585448" q1="0.454144" q2="-0.669845" r0="-0.309878" r1="0.467344" r2="-0.827989" r3="0" r4="0.596166" r5="-0.582884" r6="-0.552116" r7="0" r8="-0.74065" r9="-0.664707" r10="-0.0979922" r11="0" r12="0" r13="0" r14="0" r15="1" id="90" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-278.944" t1="60.4334" t2="235.573" s0="1.39347" s1="1.39347" s2="1.39347" q0="0.108363" q1="0.716322" q2="0.423752" r0="-0.385365" r1="0.616006" r2="-0.687045" r3="0" r4="-0.305515" r5="0.617384" r6="0.724912" r7="0" r8="0.870721" r9="0.489258" r10="-0.0497185" r11="0" r12="0" r13="0" r14="0" r15="1" id="91" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-318.14" t1="67.3322" t2="-103.407" s0="1.02217" s1="1.02217" s2="1.02217" q0="0.455073" q1="-0.458066" q2="-0.65806" r0="-0.285734" r1="-0.926708" r2="-0.244065" r3="0" r4="0.0928953" r5="-0.280268" r6="0.955416" r7="0" r8="-0.953796" r9="0.250323" r10="0.166169" r11="0" r12="0" r13="0" r14="0" r15="1" id="92" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-188.186" t1="85.7864" t2="-76.3386" s0="1.1868" s1="1.1868" s2="1.1868" q0="-0.676417" q1="0.676818" q2="0.0808233" r0="0.0707688" r1="-0.870522" r2="-0.487015" r3="0" r4="-0.960723" r5="0.0718564" r6="-0.268045" r7="0" r8="0.268334" r9="0.486856" r10="-0.831245" r11="0" r12="0" r13="0" r14="0" r15="1" id="93" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-291.142" t1="58.6052" t2="-64.2098" s0="1.1868" s1="1.1868" s2="1.1868" q0="-0.676417" q1="0.676818" q2="0.0808233" r0="0.0707688" r1="-0.870522" r2="-0.487015" r3="0" r4="-0.960723" r5="0.0718564" r6="-0.268045" r7="0" r8="0.268334" r9="0.486856" r10="-0.831245" r11="0" r12="0" r13="0" r14="0" r15="1" id="95" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-261.864" t1="85.442" t2="-148.028" s0="1.47132" s1="1.23265" s2="1.1868" q0="0.717546" q1="0.51055" q2="0.0952382" r0="0.460536" r1="0.821088" r2="-0.337225" r3="0" r4="0.644285" r5="-0.0478848" r6="0.763285" r7="0" r8="0.610576" r9="-0.568789" r10="-0.551068" r11="0" r12="0" r13="0" r14="0" r15="1" id="96" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-253.699" t1="28.8332" t2="122.545" s0="1" s1="1" s2="1" q0="0.219461" q1="0.378684" q2="0.716135" r0="-0.312502" r1="0.944907" r2="-0.0974373" r3="0" r4="-0.612482" r5="-0.122025" r6="0.781009" r7="0" r8="0.726091" r9="0.303746" r10="0.616871" r11="0" r12="0" r13="0" r14="0" r15="1" id="103" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-246.855" t1="38.5737" t2="116.796" s0="1.00014" s1="1.00014" s2="1.00014" q0="-0.267545" q1="0.286101" q2="-0.828821" r0="-0.537597" r1="-0.815361" r2="0.214885" r3="0" r4="0.509182" r5="-0.517051" r6="-0.688035" r7="0" r8="0.672104" r9="-0.26047" r10="0.693132" r11="0" r12="0" r13="0" r14="0" r15="1" id="104" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-302.828" t1="86.1809" t2="-106.298" s0="1.1868" s1="1.1868" s2="1.1868" q0="-0.424822" q1="0.797044" q2="-0.121987" r0="-0.300319" r1="-0.77761" r2="-0.552388" r3="0" r4="-0.576798" r5="0.60929" r6="-0.544123" r7="0" r8="0.759679" r9="0.155206" r10="-0.631505" r11="0" r12="0" r13="0" r14="0" r15="1" id="105" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-285.302" t1="94.5577" t2="-127.672" s0="1.47132" s1="1.23265" s2="1.1868" q0="0.792674" q1="0.432921" q2="0.410278" r0="0.288503" r1="0.789863" r2="0.541186" r3="0" r4="0.582798" r5="-0.593319" r6="0.555265" r7="0" r8="0.759679" r9="0.155206" r10="-0.631504" r11="0" r12="0" r13="0" r14="0" r15="1" id="106" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-179.416" t1="40.5371" t2="36.6402" s0="1.05855" s1="1.52485" s2="1.0992" q0="0.0277432" q1="-0.624958" q2="-0.00668601" r0="0.218767" r1="-0.0451087" r2="0.974734" r3="0" r4="-0.0242447" r5="0.998371" r6="0.0516439" r7="0" r8="-0.975476" r9="-0.0349301" r10="0.217317" r11="0" r12="0" r13="0" r14="0" r15="1" id="144" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-208.389" t1="18.4829" t2="40.3065" s0="1.11696" s1="1.50243" s2="1.0992" q0="0.0926845" q1="0" q2="0" r0="1" r1="0" r2="0" r3="0" r4="0" r5="0.982819" r6="0.184571" r7="0" r8="0" r9="-0.184571" r10="0.982819" r11="0" r12="0" r13="0" r14="0" r15="1" id="146" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-205.532" t1="19.0694" t2="28.6963" s0="1.11696" s1="1.50243" s2="1.0992" q0="0.0918039" q1="-0.0127441" q2="0.13691" r0="0.962187" r1="0.267711" r2="0.0502752" r3="0" r4="-0.272391" r5="0.945656" r6="0.177591" r7="0" r8="1.76951e-007" r9="-0.184571" r10="0.982819" r11="0" r12="0" r13="0" r14="0" r15="1" id="147" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-207.389" t1="17.5563" t2="30.3796" s0="1.11696" s1="1.50243" s2="1.0992" q0="0.0924227" q1="0.00696003" q2="-0.0747703" r0="0.988722" r1="-0.14719" r2="-0.0276419" r3="0" r4="0.149763" r5="0.971735" r6="0.182489" r7="0" r8="5.7742e-008" r9="-0.184571" r10="0.982819" r11="0" r12="0" r13="0" r14="0" r15="1" id="148" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-198.872" t1="21.3924" t2="15.9682" s0="1.11696" s1="1.50243" s2="1.0992" q0="0.0924647" q1="-0.00637775" q2="0.0685164" r0="0.99053" r1="0.13494" r2="0.0253412" r3="0" r4="-0.137299" r5="0.973512" r6="0.182823" r7="0" r8="1.9744e-007" r9="-0.184571" r10="0.982819" r11="0" r12="0" r13="0" r14="0" r15="1" id="149" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-179.975" t1="30.6099" t2="17.9375" s0="1.11696" s1="1.50243" s2="1.0992" q0="0.0473334" q1="-0.00947761" q2="0.0681569" r0="0.99053" r1="0.13494" r2="0.0253412" r3="0" r4="-0.136735" r5="0.986228" r6="0.093044" r7="0" r8="-0.0124368" r9="-0.0956279" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="150" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-171.151" t1="42.8429" t2="36.5308" s0="1.29183" s1="1.95645" s2="1.25877" q0="0.0478661" q1="-0.00625304" q2="0.000569414" r0="0.999921" r1="0.000538883" r2="0.012546" r3="0" r4="-0.00173612" r5="0.995417" r6="0.0956134" r7="0" r8="-0.012437" r9="-0.0956276" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="151" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-169.267" t1="41.8494" t2="32.4135" s0="1.11696" s1="1.50243" s2="1.0992" q0="-0.00386825" q1="-0.616486" q2="0.13098" r0="0.205579" r1="0.208151" r2="0.956248" r3="0" r4="-0.198613" r5="0.965659" r6="-0.167501" r7="0" r8="-0.958275" r9="-0.155488" r10="0.239861" r11="0" r12="0" r13="0" r14="0" r15="1" id="152" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-171.82" t1="41.1724" t2="34.01" s0="1.11696" s1="1.50243" s2="1.0992" q0="0.0473334" q1="-0.00947761" q2="0.0681569" r0="0.99053" r1="0.13494" r2="0.0253412" r3="0" r4="-0.136735" r5="0.986228" r6="0.093044" r7="0" r8="-0.0124368" r9="-0.0956279" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="166" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-210.465" t1="17.6423" t2="43.2962" s0="1.11696" s1="1.50243" s2="1.0992" q0="0" q1="0" q2="0" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="169" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-186.511" t1="29.8202" t2="52.7732" s0="1.1868" s1="1.1868" s2="1.1868" q0="0.556299" q1="0.360446" q2="0.721142" r0="-0.299936" r1="0.691514" r2="0.657151" r3="0" r4="0.11055" r5="-0.65903" r6="0.743948" r7="0" r8="0.947532" r9="0.295784" r10="0.12122" r11="0" r12="0" r13="0" r14="0" r15="1" id="170" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-225.157" t1="36.958" t2="101.958" s0="0.79397" s1="0.79397" s2="0.79397" q0="0.228086" q1="0.773124" q2="-0.563046" r0="-0.829484" r1="0.147386" r2="-0.538735" r3="0" r4="0.55797" r5="0.261912" r6="-0.787446" r7="0" r8="0.0250429" r9="-0.953771" r10="-0.299489" r11="0" r12="0" r13="0" r14="0" r15="1" id="173" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-200.015" t1="19.4758" t2="16.6568" s0="1" s1="1" s2="1" q0="0.0719122" q1="-0.00380594" q2="-0.0527151" r0="0.994413" r1="-0.105557" r2="-2.19792e-007" r3="0" r4="0.104462" r5="0.9841" r6="0.143652" r7="0" r8="-0.0151632" r9="-0.142849" r10="0.989628" r11="0" r12="0" r13="0" r14="0" r15="1" id="189" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-197.091" t1="19.8034" t2="18.8406" s0="1" s1="1" s2="1" q0="0" q1="0" q2="-0.0528524" r0="0.994413" r1="-0.105557" r2="-0" r3="0" r4="0.105557" r5="0.994413" r6="0" r7="0" r8="0" r9="-0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="190" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-197.943" t1="19.7256" t2="20.5451" s0="1" s1="1" s2="1" q0="0.0972979" q1="0.372558" q2="0.0451307" r0="0.718328" r1="0.1557" r2="-0.678058" r3="0" r4="-0.0107038" r5="0.976993" r6="0.213004" r7="0" r8="0.695622" r9="-0.145749" r10="0.703468" r11="0" r12="0" r13="0" r14="0" r15="1" id="191" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/HoneySuckle.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-209.005" t1="16.3939" t2="36.5427" s0="1" s1="1" s2="1" q0="0.0675857" q1="0.379075" q2="-0.0277731" r0="0.711061" r1="2.08616e-007" r2="-0.70313" r3="0" r4="0.10248" r5="0.989322" r6="0.103636" r7="0" r8="0.695622" r9="-0.145749" r10="0.703468" r11="0" r12="0" r13="0" r14="0" r15="1" id="192" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/HoneySuckle.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-208.793" t1="16.8795" t2="36.757" s0="1" s1="1" s2="1" q0="0.117531" q1="0.366678" q2="0.0954854" r0="0.71286" r1="0.261492" r2="-0.650732" r3="0" r4="-0.0891078" r5="0.954138" r6="0.285798" r7="0" r8="0.695622" r9="-0.145749" r10="0.703468" r11="0" r12="0" r13="0" r14="0" r15="1" id="193" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/HoneySuckle.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-209.225" t1="16.329" t2="37.0705" s0="1" s1="1" s2="1" q0="0.182049" q1="0.3393" q2="0.260291" r0="0.634249" r1="0.584476" r2="-0.50608" r3="0" r4="-0.337399" r5="0.798214" r6="0.499015" r7="0" r8="0.695622" r9="-0.145749" r10="0.703468" r11="0" r12="0" r13="0" r14="0" r15="1" id="194" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/HoneySuckle.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-208.335" t1="17.6805" t2="39.7464" s0="1" s1="1" s2="1" q0="0.0972979" q1="0.372558" q2="0.0451307" r0="0.718328" r1="0.1557" r2="-0.678058" r3="0" r4="-0.0107038" r5="0.976993" r6="0.213004" r7="0" r8="0.695622" r9="-0.145749" r10="0.703468" r11="0" r12="0" r13="0" r14="0" r15="1" id="195" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/HoneySuckle.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-206.012" t1="17.582" t2="27.5321" s0="1" s1="1" s2="1" q0="0.0972979" q1="0.372558" q2="0.0451307" r0="0.718328" r1="0.1557" r2="-0.678058" r3="0" r4="-0.0107038" r5="0.976993" r6="0.213004" r7="0" r8="0.695622" r9="-0.145749" r10="0.703468" r11="0" r12="0" r13="0" r14="0" r15="1" id="196" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/HoneySuckle.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-204.957" t1="17.5131" t2="27.0225" s0="1" s1="1" s2="1" q0="0.0972979" q1="0.372558" q2="0.0451307" r0="0.718328" r1="0.1557" r2="-0.678058" r3="0" r4="-0.0107038" r5="0.976993" r6="0.213004" r7="0" r8="0.695622" r9="-0.145749" r10="0.703468" r11="0" r12="0" r13="0" r14="0" r15="1" id="197" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/HoneySuckle.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-209.139" t1="17.4134" t2="40.355" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="198" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/Groundcover2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-209.623" t1="16.265" t2="36.9235" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="199" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/Groundcover2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-208.375" t1="16.7485" t2="29.9431" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="200" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Groundcover/Groundcover2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-269.571" t1="23.9631" t2="116.421" s0="1.42154" s1="2.22802" s2="1.53055" q0="0.0587141" q1="-0.39136" q2="0.048379" r0="0.688993" r1="0.0427787" r2="0.723504" r3="0" r4="-0.134692" r5="0.988424" r6="0.0698248" r7="0" r8="-0.712142" r9="-0.145559" r10="0.68678" r11="0" r12="0" r13="0" r14="0" r15="1" id="201" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-248.362" t1="27.886" t2="102.961" s0="1.49804" s1="1.95077" s2="1.61161" q0="0.0478661" q1="-0.00625304" q2="0.000569414" r0="0.999921" r1="0.000538883" r2="0.012546" r3="0" r4="-0.00173612" r5="0.995417" r6="0.0956134" r7="0" r8="-0.012437" r9="-0.0956276" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="202" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-248.331" t1="26.5603" t2="100.582" s0="1.49804" s1="1.95077" s2="1.61161" q0="-0.135747" q1="-0.395286" q2="0.0574505" r0="0.680897" r1="0.211494" r2="0.701178" r3="0" r4="0.00314275" r5="0.956544" r6="-0.291571" r7="0" r8="-0.732373" r9="0.200733" r10="0.650643" r11="0" r12="0" r13="0" r14="0" r15="1" id="203" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-254.728" t1="25.0488" t2="100.95" s0="1.10432" s1="1.43806" s2="1.18804" q0="0.102204" q1="-0.367178" q2="0.157263" r0="0.680897" r1="0.211494" r2="0.701178" r3="0" r4="-0.361602" r5="0.929645" r6="0.0707366" r7="0" r8="-0.636886" r9="-0.301711" r10="0.709469" r11="0" r12="0" r13="0" r14="0" r15="1" id="204" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-269.813" t1="22.9677" t2="113.773" s0="1.10432" s1="1.43806" s2="1.18804" q0="-0.0676976" q1="-0.389896" q2="0.086794" r0="0.680896" r1="0.211494" r2="0.701178" r3="0" r4="-0.105914" r5="0.975768" r6="-0.191467" r7="0" r8="-0.724681" r9="0.0561048" r10="0.686797" r11="0" r12="0" r13="0" r14="0" r15="1" id="205" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-226.976" t1="43.2887" t2="96.8758" s0="1.49804" s1="1.95077" s2="1.61161" q0="-0.017701" q1="-0.384577" q2="0.107943" r0="0.680897" r1="0.211494" r2="0.701177" r3="0" r4="-0.184264" r5="0.97607" r6="-0.115474" r7="0" r8="-0.70882" r9="-0.050576" r10="0.703574" r11="0" r12="0" r13="0" r14="0" r15="1" id="214" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-221.57" t1="45.3912" t2="92.9508" s0="1.49804" s1="1.95077" s2="1.61161" q0="-0.218236" q1="-0.398887" q2="0.0209961" r0="0.680896" r1="0.211493" r2="0.701178" r3="0" r4="0.136713" r5="0.903864" r6="-0.405387" r7="0" r8="-0.719506" r9="0.371887" r10="0.586524" r11="0" r12="0" r13="0" r14="0" r15="1" id="216" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-4.13617" t1="1.46692" t2="215.049" s0="1" s1="1" s2="1" q0="0.187042" q1="-0.946895" q2="-0.0957343" r0="-0.81155" r1="-0.400821" r2="0.425121" r3="0" r4="-0.307617" r5="0.9117" r6="0.27235" r7="0" r8="-0.496746" r9="0.0902512" r10="-0.86319" r11="0" r12="0" r13="0" r14="0" r15="1" id="1015" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="141.46" t1="38.034" t2="106.223" s0="1" s1="1" s2="1" q0="0.336677" q1="0.896871" q2="0.108695" r0="-0.632383" r1="0.661615" r2="-0.402936" r3="0" r4="0.546207" r5="0.749668" r6="0.373705" r7="0" r8="0.549316" r9="0.0162383" r10="-0.835456" r11="0" r12="0" r13="0" r14="0" r15="1" id="1016" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="87.9529" t1="-4.62386" t2="163.761" s0="1" s1="1" s2="1" q0="-0.396679" q1="-0.421101" q2="0.727581" r0="-0.4134" r1="0.870614" r2="-0.266706" r3="0" r4="-0.202445" r5="-0.373456" r6="-0.905288" r7="0" r8="-0.887759" r9="-0.320253" r10="0.330638" r11="0" r12="0" r13="0" r14="0" r15="1" id="1017" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="141.062" t1="32.3835" t2="124.52" s0="1" s1="1" s2="1" q0="0.299287" q1="0.91003" q2="0.0976217" r0="-0.675371" r1="0.59738" r2="-0.432449" r3="0" r4="0.492063" r5="0.801794" r6="0.339117" r7="0" r8="0.549317" r9="0.0162379" r10="-0.835457" r11="0" r12="0" r13="0" r14="0" r15="1" id="1018" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="263.576" t1="11.2703" t2="221.495" s0="1" s1="1" s2="1" q0="-0.615234" q1="0.128524" q2="0.413198" r0="0.625497" r1="0.386422" r2="-0.677813" r3="0" r4="-0.702712" r5="-0.0984904" r6="-0.704624" r7="0" r8="-0.33904" r9="0.917048" r10="0.209938" r11="0" r12="0" r13="0" r14="0" r15="1" id="1019" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="40.2246" t1="41.22" t2="-164.007" s0="1.59668" s1="1.59668" s2="1.59668" q0="-0.0438084" q1="-0.818978" q2="0.0025234" r0="-0.341464" r1="0.0746438" r2="0.936927" r3="0" r4="0.0688688" r5="0.996149" r6="-0.0542627" r7="0" r8="-0.937369" r9="0.0459963" r10="-0.345289" r11="0" r12="0" r13="0" r14="0" r15="1" id="1020" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-211.597" t1="45.5031" t2="375.349" s0="0.999999" s1="1.05682" s2="1.09043" q0="0.742796" q1="-0.407413" q2="-0.115314" r0="0.641435" r1="-0.724859" r2="0.251278" r3="0" r4="-0.48564" r5="-0.130088" r6="0.864425" r7="0" r8="-0.593898" r9="-0.676503" r10="-0.435464" r11="0" r12="0" r13="0" r14="0" r15="1" id="1026" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-181.827" t1="30.2087" t2="298.087" s0="1" s1="1" s2="1" q0="-0.0112141" q1="0.710554" q2="-0.637061" r0="-0.821467" r1="-0.396343" r2="-0.410004" r3="0" r4="0.364471" r5="0.188056" r6="-0.912029" r7="0" r8="0.43858" r9="-0.898636" r10="-0.0100263" r11="0" r12="0" r13="0" r14="0" r15="1" id="1028" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-218.677" t1="62.9014" t2="357.822" s0="1" s1="1" s2="1" q0="-0.352809" q1="0.437593" q2="-0.530564" r0="0.054029" r1="-0.982017" r2="-0.180896" r3="0" r4="0.36447" r5="0.188056" r6="-0.912029" r7="0" r8="0.929646" r9="-0.0166554" r10="0.368077" r11="0" r12="0" r13="0" r14="0" r15="1" id="1029" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-205.54" t1="37.067" t2="357.746" s0="1" s1="1" s2="1" q0="-0.352809" q1="0.437593" q2="-0.530564" r0="0.054029" r1="-0.982017" r2="-0.180896" r3="0" r4="0.36447" r5="0.188056" r6="-0.912029" r7="0" r8="0.929646" r9="-0.0166554" r10="0.368077" r11="0" r12="0" r13="0" r14="0" r15="1" id="1030" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-205.541" t1="37.067" t2="357.746" s0="1" s1="1" s2="1" q0="0.428659" q1="0.36361" q2="0.621034" r0="-0.0357912" r1="0.990171" r2="0.135203" r3="0" r4="-0.366712" r5="-0.138865" r6="0.919912" r7="0" r8="0.929646" r9="-0.0166558" r10="0.368078" r11="0" r12="0" r13="0" r14="0" r15="1" id="1031" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="156.667" t1="44.4585" t2="116.348" s0="1" s1="1" s2="1" q0="-0.775727" q1="0.562117" q2="-0.227187" r0="0.264821" r1="-0.951657" r2="0.155624" r3="0" r4="-0.792541" r5="-0.306734" r6="-0.527061" r7="0" r8="0.549316" r9="0.016238" r10="-0.835457" r11="0" r12="0" r13="0" r14="0" r15="1" id="1032" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="267.204" t1="18.6195" t2="188.523" s0="1" s1="1" s2="1" q0="-0.642454" q1="0.425719" q2="-0.431687" r0="0.26482" r1="-0.951657" r2="0.155625" r3="0" r4="-0.142363" r5="-0.198202" r6="-0.969767" r7="0" r8="0.953731" r9="0.234659" r10="-0.187968" r11="0" r12="0" r13="0" r14="0" r15="1" id="1033" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="375.896" t1="38.7158" t2="189.256" s0="0.515271" s1="0.515271" s2="0.515271" q0="0.388208" q1="0.888969" q2="0.0615905" r0="-0.588118" r1="0.719159" r2="-0.370037" r3="0" r4="0.661258" r5="0.691003" r6="0.29198" r7="0" r8="0.465677" r9="-0.0729718" r10="-0.881941" r11="0" r12="0" r13="0" r14="0" r15="1" id="1034" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="386.657" t1="54.5897" t2="218.435" s0="1" s1="1" s2="1" q0="-0.82886" q1="0.0486708" q2="0.504904" r0="0.485406" r1="0.157628" r2="-0.859962" r3="0" r4="-0.318993" r5="-0.883874" r6="-0.342067" r7="0" r8="-0.814017" r9="0.440364" r10="-0.378755" r11="0" r12="0" r13="0" r14="0" r15="1" id="1036" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="373.402" t1="38.6162" t2="175.612" s0="1" s1="1" s2="1" q0="-0.802782" q1="0.283783" q2="-0.522858" r0="0.292174" r1="-0.497837" r2="0.816574" r3="0" r4="-0.413426" r5="-0.835677" r6="-0.361557" r7="0" r8="0.862388" r9="-0.231955" r10="-0.449982" r11="0" r12="0" r13="0" r14="0" r15="1" id="1037" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="407.297" t1="64.8991" t2="195.775" s0="1" s1="1" s2="1" q0="0.240051" q1="0.888982" q2="0.229408" r0="-0.685832" r1="0.571499" r2="-0.450581" r3="0" r4="0.282104" r5="0.779495" r6="0.559289" r7="0" r8="0.670859" r9="0.256468" r10="-0.695825" r11="0" r12="0" r13="0" r14="0" r15="1" id="1038" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="192.637" t1="39.4234" t2="405.407" s0="1" s1="1" s2="1" q0="0.34443" q1="0.744245" q2="0.507458" r0="-0.62283" r1="0.781112" r2="-0.044117" r3="0" r4="0.24425" r5="0.247708" r6="0.937541" r7="0" r8="0.743253" r9="0.573153" r10="-0.345067" r11="0" r12="0" r13="0" r14="0" r15="1" id="1039" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="134.154" t1="17.3206" t2="368.366" s0="1" s1="1" s2="1" q0="-0.69624" q1="0.162749" q2="-0.410586" r0="0.609864" r1="-0.691281" r2="0.387551" r3="0" r4="0.238032" r5="-0.306662" r6="-0.921574" r7="0" r8="0.755914" r9="0.654285" r10="-0.0224754" r11="0" r12="0" r13="0" r14="0" r15="1" id="1041" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="173.937" t1="18.2044" t2="322.7" s0="1" s1="1" s2="1" q0="0.217833" q1="0.790622" q2="0.457265" r0="-0.668347" r1="0.659097" r2="-0.344823" r3="0" r4="0.0297965" r5="0.486915" r6="0.872941" r7="0" r8="0.743253" r9="0.573153" r10="-0.345067" r11="0" r12="0" r13="0" r14="0" r15="1" id="1042" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="15.1206" t1="3.48026" t2="46.2022" s0="1" s1="1" s2="1" q0="-0.505073" q1="-0.085592" q2="-0.857308" r0="-0.484606" r1="-0.000942074" r2="0.874732" r3="0" r4="0.173863" r5="-0.980151" r6="0.0952653" r7="0" r8="0.85728" r9="0.19825" r10="0.475151" r11="0" r12="0" r13="0" r14="0" r15="1" id="1009" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="338.059" t1="36.258" t2="-110.583" s0="1" s1="1" s2="1" q0="-0.155302" q1="-0.430326" q2="0.822028" r0="-0.72182" r1="0.691117" r2="0.0365003" r3="0" r4="-0.423796" r5="-0.399697" r6="-0.812797" r7="0" r8="-0.547149" r9="-0.602162" r10="0.581402" r11="0" r12="0" r13="0" r14="0" r15="1" id="1065" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="293.727" t1="20.6868" t2="-170.197" s0="1" s1="1" s2="1" q0="0.439419" q1="0.682093" q2="0.460784" r0="-0.355145" r1="0.930879" r2="-0.085656" r3="0" r4="0.26802" r5="0.189178" r6="0.944657" r7="0" r8="0.895565" r9="0.312533" r10="-0.31668" r11="0" r12="0" r13="0" r14="0" r15="1" id="1066" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="321.814" t1="11.6772" t2="-90.5661" s0="1.50474" s1="1.50474" s2="1.50474" q0="-0.596465" q1="0.00763895" q2="0.47886" r0="0.541269" r1="0.607754" r2="-0.581087" r3="0" r4="-0.625979" r5="-0.170156" r6="-0.76105" r7="0" r8="-0.561406" r9="0.775682" r10="0.288342" r11="0" r12="0" r13="0" r14="0" r15="1" id="1067" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="319.807" t1="43.8103" t2="-155.615" s0="1" s1="1" s2="1" q0="-0.558525" q1="0.060189" q2="0.689972" r0="0.0406311" r1="0.562669" r2="-0.825683" r3="0" r4="-0.697137" r5="-0.576025" r6="-0.426843" r7="0" r8="-0.715785" r9="0.592958" r10="0.368853" r11="0" r12="0" r13="0" r14="0" r15="1" id="1068" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="317.262" t1="23.6598" t2="-118.656" s0="1" s1="1" s2="1" q0="-0.731537" q1="-0.0141753" q2="0.405836" r0="0.670192" r1="0.465274" r2="-0.578241" r3="0" r4="-0.423795" r5="-0.399698" r6="-0.812797" r7="0" r8="-0.609295" r9="0.789786" r10="-0.0706939" r11="0" r12="0" r13="0" r14="0" r15="1" id="1069" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="3.70521" t1="17.1189" t2="-36.1461" s0="1.64609" s1="1.64609" s2="1.64609" q0="0.800318" q1="0.0201657" q2="-0.536619" r0="0.423268" r1="-0.253947" r2="-0.869687" r3="0" r4="0.318503" r5="-0.856936" r6="0.405236" r7="0" r8="-0.848175" r9="-0.448521" r10="-0.28183" r11="0" r12="0" r13="0" r14="0" r15="1" id="1073" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-20.7875" t1="55.7728" t2="-74.5311" s0="1.15166" s1="1.15166" s2="1.15166" q0="0.0537329" q1="-0.351927" q2="0.314145" r0="0.55492" r1="0.515137" r2="0.653221" r3="0" r4="-0.590777" r5="0.796851" r6="-0.126532" r7="0" r8="-0.585702" r9="-0.315693" r10="0.74652" r11="0" r12="0" r13="0" r14="0" r15="1" id="1074" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="71.9872" t1="-1.24232" t2="-124.137" s0="1.15166" s1="1.15166" s2="1.15166" q0="0.698154" q1="-0.430378" q2="-0.501174" r0="0.127198" r1="-0.877596" r2="-0.462218" r3="0" r4="-0.324284" r5="-0.477189" r6="0.816781" r7="0" r8="-0.937369" r9="0.0459973" r10="-0.345288" r11="0" r12="0" r13="0" r14="0" r15="1" id="1075" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="104.294" t1="26.2505" t2="81.5578" s0="1" s1="1" s2="1" q0="0.580592" q1="0.761998" q2="0.180501" r0="-0.226445" r1="0.965293" r2="-0.130126" r3="0" r4="0.804347" r5="0.260665" r6="0.533928" r7="0" r8="0.549316" r9="0.0162388" r10="-0.835457" r11="0" r12="0" r13="0" r14="0" r15="1" id="1082" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="155.263" t1="0.29335" t2="-232.376" s0="1.15166" s1="1.15166" s2="1.15166" q0="0.791597" q1="0.309286" q2="-0.287279" r0="0.643626" r1="0.235819" r2="-0.728104" r3="0" r4="0.743499" r5="-0.418309" r6="0.521753" r7="0" r8="-0.181534" r9="-0.877158" r10="-0.444566" r11="0" r12="0" r13="0" r14="0" r15="1" id="1083" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="208.439" t1="12.0009" t2="-232.873" s0="1.15166" s1="1.15166" s2="1.15166" q0="0.698777" q1="0.301005" q2="-0.369568" r0="0.545631" r1="0.0264083" r2="-0.837609" r3="0" r4="0.814933" r5="-0.249742" r6="0.522985" r7="0" r8="-0.195375" r9="-0.967952" r10="-0.157788" r11="0" r12="0" r13="0" r14="0" r15="1" id="1084" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="71.3739" t1="5.58032" t2="-316.928" s0="1.15166" s1="1.15166" s2="1.15166" q0="0.70275" q1="0.549709" q2="0.400815" r0="0.0743339" r1="0.939443" r2="0.334547" r3="0" r4="0.60579" r5="-0.309021" r6="0.73316" r7="0" r8="0.792144" r9="0.148167" r10="-0.592076" r11="0" r12="0" r13="0" r14="0" r15="1" id="1087" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-159.781" t1="-6.39869" t2="166.666" s0="1.39513" s1="2.30184" s2="1.50052" q0="0.0478661" q1="-0.00625304" q2="0.000569414" r0="0.999921" r1="0.000538883" r2="0.012546" r3="0" r4="-0.00173612" r5="0.995417" r6="0.0956134" r7="0" r8="-0.012437" r9="-0.0956276" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="1133" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-163.568" t1="-4.74018" t2="162.591" s0="1.49804" s1="2.86348" s2="1.50051" q0="0.0478661" q1="-0.00625304" q2="0.000569414" r0="0.999921" r1="0.000538883" r2="0.012546" r3="0" r4="-0.00173612" r5="0.995417" r6="0.0956134" r7="0" r8="-0.012437" r9="-0.0956276" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="1134" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-162.787" t1="-5.03491" t2="165.674" s0="1.49804" s1="2.86348" s2="1.50051" q0="0.0478661" q1="-0.00625304" q2="0.000569414" r0="0.999921" r1="0.000538883" r2="0.012546" r3="0" r4="-0.00173612" r5="0.995417" r6="0.0956134" r7="0" r8="-0.012437" r9="-0.0956276" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="1135" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-176.82" t1="-4.05237" t2="156.713" s0="1.39513" s1="2.30184" s2="1.50052" q0="0.0478197" q1="-0.916521" q2="0.00218435" r0="-0.68003" r1="-0.0859206" r2="0.728132" r3="0" r4="-0.0893903" r5="0.995417" r6="0.0339756" r7="0" r8="-0.727714" r9="-0.0419836" r10="-0.684594" r11="0" r12="0" r13="0" r14="0" r15="1" id="1000" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-174.021" t1="-8.05602" t2="151.091" s0="1.49804" s1="2.86348" s2="1.50051" q0="0.0478197" q1="-0.916521" q2="0.00218435" r0="-0.68003" r1="-0.0859206" r2="0.728132" r3="0" r4="-0.0893903" r5="0.995417" r6="0.0339756" r7="0" r8="-0.727714" r9="-0.0419836" r10="-0.684594" r11="0" r12="0" r13="0" r14="0" r15="1" id="1004" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-176.569" t1="-5.53907" t2="152.706" s0="1.49804" s1="2.86348" s2="1.50051" q0="0.0478197" q1="-0.916521" q2="0.00218435" r0="-0.68003" r1="-0.0859206" r2="0.728132" r3="0" r4="-0.0893903" r5="0.995417" r6="0.0339756" r7="0" r8="-0.727714" r9="-0.0419836" r10="-0.684594" r11="0" r12="0" r13="0" r14="0" r15="1" id="1132" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-154.293" t1="-5.34763" t2="169.844" s0="1.39513" s1="2.30184" s2="1.50052" q0="0.0478661" q1="-0.00625304" q2="0.000569414" r0="0.999921" r1="0.000538883" r2="0.012546" r3="0" r4="-0.00173612" r5="0.995417" r6="0.0956134" r7="0" r8="-0.012437" r9="-0.0956276" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="1136" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-158.08" t1="-3.68912" t2="165.769" s0="1.49804" s1="2.86348" s2="1.50051" q0="0.0478661" q1="-0.00625304" q2="0.000569414" r0="0.999921" r1="0.000538883" r2="0.012546" r3="0" r4="-0.00173612" r5="0.995417" r6="0.0956134" r7="0" r8="-0.012437" r9="-0.0956276" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="1137" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-80.4088" t1="4.28189" t2="146.896" s0="1.21586" s1="1.85055" s2="1.19502" q0="0.03933" q1="0.554399" q2="0.0272879" r0="0.383794" r1="0.0889546" r2="-0.919124" r3="0" r4="-0.00173644" r5="0.995417" r6="0.0956132" r7="0" r8="0.923417" r9="-0.0350998" r10="0.382189" r11="0" r12="0" r13="0" r14="0" r15="1" id="1138" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-115.954" t1="-3.13588" t2="151.771" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.133574" q1="-0.00618101" q2="0.00110492" r0="0.999921" r1="0.000538753" r2="0.0125462" r3="0" r4="-0.00384125" r5="0.964313" r6="0.264735" r7="0" r8="-0.0119558" r9="-0.264763" r10="0.964239" r11="0" r12="0" r13="0" r14="0" r15="1" id="1139" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-91.6789" t1="4.7311" t2="146.799" s0="1.21586" s1="1.85055" s2="1.19502" q0="0.0478661" q1="-0.00625304" q2="0.000569414" r0="0.999921" r1="0.000538883" r2="0.012546" r3="0" r4="-0.00173612" r5="0.995417" r6="0.0956134" r7="0" r8="-0.012437" r9="-0.0956276" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="1143" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-90.5947" t1="4.36238" t2="149.395" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.0478661" q1="-0.00625304" q2="0.000569414" r0="0.999921" r1="0.000538883" r2="0.012546" r3="0" r4="-0.00173612" r5="0.995417" r6="0.0956134" r7="0" r8="-0.012437" r9="-0.0956276" r10="0.995339" r11="0" r12="0" r13="0" r14="0" r15="1" id="1144" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-17.136" t1="8.26239" t2="209.536" s0="1.65981" s1="2.24209" s2="1.59025" q0="-0.0517448" q1="-0.612435" q2="-0.0214902" r0="0.248923" r1="0.0294892" r2="0.968074" r3="0" r4="0.0972722" r5="0.993721" r6="-0.0552822" r7="0" r8="-0.963626" r9="0.107928" r10="0.244491" r11="0" r12="0" r13="0" r14="0" r15="1" id="1145" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-18.9882" t1="8.69892" t2="211.907" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.13227" q1="-0.152617" q2="-0.0186537" r0="0.95272" r1="-0.0769052" r2="0.293955" r3="0" r4="-0.00384115" r5="0.964313" r6="0.264735" r7="0" r8="-0.303824" r9="-0.253348" r10="0.918426" r11="0" r12="0" r13="0" r14="0" r15="1" id="1146" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-14.4683" t1="9.46699" t2="209.175" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.0476445" q1="-0.435168" q2="-0.0315383" r0="0.619268" r1="-0.0152097" r2="0.785033" r3="0" r4="0.0981433" r5="0.993471" r6="-0.0581715" r7="0" r8="-0.779022" r9="0.113069" r10="0.616717" r11="0" r12="0" r13="0" r14="0" r15="1" id="1147" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-16.5396" t1="10.7601" t2="212.022" s0="1.65981" s1="3.83689" s2="1.66496" q0="-0.036063" q1="-0.147227" q2="-0.0443181" r0="0.95272" r1="-0.0769051" r2="0.293955" r3="0" r4="0.0981429" r5="0.993471" r6="-0.0581714" r7="0" r8="-0.287562" r9="0.0842706" r10="0.954047" r11="0" r12="0" r13="0" r14="0" r15="1" id="1148" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="158.808" t1="43.3055" t2="128.461" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="1149" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="64.8595" t1="-7.55827" t2="148.054" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.036063" q1="-0.147227" q2="-0.0443181" r0="0.95272" r1="-0.0769051" r2="0.293955" r3="0" r4="0.0981429" r5="0.993471" r6="-0.0581714" r7="0" r8="-0.287562" r9="0.0842706" r10="0.954047" r11="0" r12="0" r13="0" r14="0" r15="1" id="1150" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="64.3264" t1="-6.08116" t2="151.29" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.0540215" q1="-0.646201" q2="-0.0186101" r0="0.164156" r1="0.041492" r2="0.985561" r3="0" r4="0.098143" r5="0.993471" r6="-0.0581717" r7="0" r8="-0.98154" r9="0.106275" r10="0.159012" r11="0" r12="0" r13="0" r14="0" r15="1" id="1151" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="67.1412" t1="-4.84111" t2="151.28" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.036063" q1="-0.147227" q2="-0.0443181" r0="0.95272" r1="-0.0769051" r2="0.293955" r3="0" r4="0.0981429" r5="0.993471" r6="-0.0581714" r7="0" r8="-0.287562" r9="0.0842706" r10="0.954047" r11="0" r12="0" r13="0" r14="0" r15="1" id="1152" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="73.3718" t1="6.20465" t2="160.517" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.036063" q1="-0.147227" q2="-0.0443181" r0="0.95272" r1="-0.0769051" r2="0.293955" r3="0" r4="0.0981429" r5="0.993471" r6="-0.0581714" r7="0" r8="-0.287562" r9="0.0842706" r10="0.954047" r11="0" r12="0" r13="0" r14="0" r15="1" id="1153" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="74.9406" t1="8.11482" t2="163.192" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.052476" q1="-0.587398" q2="-0.0226034" r0="0.308904" r1="0.0251541" r2="0.95076" r3="0" r4="0.0981431" r5="0.993471" r6="-0.058171" r7="0" r8="-0.946016" r9="0.11128" r10="0.304419" r11="0" r12="0" r13="0" r14="0" r15="1" id="1154" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-146.084" t1="29.8781" t2="39.9984" s0="1.52123" s1="2.31532" s2="1.49515" q0="-0.0397267" q1="0.554371" q2="-0.0908731" r0="0.36883" r1="-0.194231" r2="-0.908977" r3="0" r4="0.106137" r5="0.980328" r6="-0.16641" r7="0" r8="0.923417" r9="-0.0350992" r10="0.38219" r11="0" r12="0" r13="0" r14="0" r15="1" id="1155" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-149.879" t1="34.0608" t2="55.6555" s0="1.21586" s1="1.85055" s2="1.19502" q0="0.03933" q1="0.554399" q2="0.0272879" r0="0.383794" r1="0.0889546" r2="-0.919124" r3="0" r4="-0.00173644" r5="0.995417" r6="0.0956132" r7="0" r8="0.923417" r9="-0.0350998" r10="0.382189" r11="0" r12="0" r13="0" r14="0" r15="1" id="1156" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-143.99" t1="29.3686" t2="41.7352" s0="1.21586" s1="1.85055" s2="1.19502" q0="0.03933" q1="0.554399" q2="0.0272879" r0="0.383794" r1="0.0889546" r2="-0.919124" r3="0" r4="-0.00173644" r5="0.995417" r6="0.0956132" r7="0" r8="0.923417" r9="-0.0350998" r10="0.382189" r11="0" r12="0" r13="0" r14="0" r15="1" id="1157" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="107.123" t1="19.9006" t2="104.33" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="1161" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-106.193" t1="14.4538" t2="252.947" s0="1.6278" s1="1.45162" s2="1.63136" q0="-0.000235602" q1="-0.645905" q2="0.0269926" r0="0.164155" r1="0.0414918" r2="0.985562" r3="0" r4="-0.0408831" r5="0.998543" r6="-0.0352288" r7="0" r8="-0.985587" r9="-0.0345098" r10="0.165612" r11="0" r12="0" r13="0" r14="0" r15="1" id="1666" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-70.9059" t1="21.296" t2="233.789" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.0540215" q1="-0.646201" q2="-0.0186101" r0="0.164156" r1="0.041492" r2="0.985561" r3="0" r4="0.098143" r5="0.993471" r6="-0.0581717" r7="0" r8="-0.98154" r9="0.106275" r10="0.159012" r11="0" r12="0" r13="0" r14="0" r15="1" id="1667" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-64.9579" t1="19.7101" t2="241.058" s0="1.42061" s1="1.72856" s2="1.40305" q0="-0.0492263" q1="-0.998363" q2="0.0290072" r0="-0.99514" r1="0.09844" r2="0.00225516" r3="0" r4="0.098143" r5="0.993471" r6="-0.0581715" r7="0" r8="-0.00796684" r9="-0.0576675" r10="-0.998304" r11="0" r12="0" r13="0" r14="0" r15="1" id="1668" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-62.6771" t1="18.6175" t2="245.967" s0="1.6278" s1="1.45162" s2="1.63136" q0="-0.0540215" q1="-0.646201" q2="-0.0186101" r0="0.164156" r1="0.041492" r2="0.985561" r3="0" r4="0.098143" r5="0.993471" r6="-0.0581717" r7="0" r8="-0.98154" r9="0.106275" r10="0.159012" r11="0" r12="0" r13="0" r14="0" r15="1" id="1669" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-65.5948" t1="19.9646" t2="244.33" s0="1.42061" s1="1.72856" s2="1.40305" q0="-0.0561415" q1="-0.938486" q2="0.0106198" r0="-0.761736" r1="0.112609" r2="0.638026" r3="0" r4="0.0981427" r5="0.993471" r6="-0.0581719" r7="0" r8="-0.640411" r9="0.0183059" r10="-0.767814" r11="0" r12="0" r13="0" r14="0" r15="1" id="1670" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-155.554" t1="-5.66757" t2="167.283" s0="1.12712" s1="1.43789" s2="1.08214" q0="0.0191482" q1="-0.50165" q2="-0.0721613" r0="0.486281" r1="-0.143595" r2="0.861923" r3="0" r4="0.105172" r5="0.988852" r6="0.105405" r7="0" r8="-0.86745" r9="0.0393939" r10="0.495962" r11="0" r12="0" r13="0" r14="0" r15="1" id="2007" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-81.9062" t1="3.78074" t2="148.692" s0="1" s1="1" s2="1" q0="0" q1="0" q2="-0.143073" r0="0.95906" r1="-0.283203" r2="-0" r3="0" r4="0.283203" r5="0.95906" r6="0" r7="0" r8="0" r9="-0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="2008" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-81.9062" t1="3.78074" t2="148.692" s0="1" s1="1" s2="1" q0="-0.0710313" q1="-0.49136" q2="-0.124196" r0="0.486281" r1="-0.143595" r2="0.861923" r3="0" r4="0.283203" r5="0.95906" r6="9.68575e-008" r7="0" r8="-0.826636" r9="0.244099" r10="0.507039" r11="0" r12="0" r13="0" r14="0" r15="1" id="2009" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-153.71" t1="-6.39462" t2="166.121" s0="1" s1="1" s2="1" q0="-0.0710313" q1="-0.49136" q2="-0.124196" r0="0.486281" r1="-0.143595" r2="0.861923" r3="0" r4="0.283203" r5="0.95906" r6="9.68575e-008" r7="0" r8="-0.826636" r9="0.244099" r10="0.507039" r11="0" r12="0" r13="0" r14="0" r15="1" id="2010" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-117.394" t1="-4.16799" t2="151.519" s0="1.09359" s1="1.43789" s2="1.10341" q0="-0.0329409" q1="-0.94426" q2="-0.0669985" r0="-0.792232" r1="0.019247" r2="0.609916" r3="0" r4="0.105172" r5="0.988852" r6="0.105405" r7="0" r8="-0.601088" r9="0.147651" r10="-0.785425" r11="0" r12="0" r13="0" r14="0" r15="1" id="2011" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-13.1071" t1="7.244" t2="206.438" s0="1.12712" s1="1.43789" s2="1.08214" q0="-0.031625" q1="0.362792" q2="-0.138012" r0="0.698669" r1="-0.277179" r2="-0.659571" r3="0" r4="0.231286" r5="0.959905" r6="-0.158396" r7="0" r8="0.677029" r9="-0.041883" r10="0.734763" r11="0" r12="0" r13="0" r14="0" r15="1" id="2012" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-69.6272" t1="19.1647" t2="239.599" s0="1.12712" s1="1.43789" s2="1.08214" q0="-0.00218846" q1="-0.726256" q2="-0.0746267" r0="-0.0660337" r1="-0.0988148" r2="0.992913" r3="0" r4="0.105172" r5="0.988852" r6="0.105405" r7="0" r8="-0.992259" r9="0.111387" r10="-0.054905" r11="0" r12="0" r13="0" r14="0" r15="1" id="2013" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-69.3038" t1="19.0828" t2="240.045" s0="1.12712" s1="1.43789" s2="1.08214" q0="0.0431445" q1="-0.169068" q2="-0.0609299" r0="0.935407" r1="-0.134349" r2="0.327053" r3="0" r4="0.105172" r5="0.988852" r6="0.105405" r7="0" r8="-0.337568" r9="-0.0641999" r10="0.939109" r11="0" r12="0" r13="0" r14="0" r15="1" id="2014" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-66.6658" t1="17.5905" t2="248.139" s0="1.12712" s1="1.43789" s2="1.08214" q0="0.0679471" q1="0.348521" q2="-0.0309368" r0="0.755153" r1="-0.0104481" r2="-0.655466" r3="0" r4="0.105172" r5="0.988852" r6="0.105405" r7="0" r8="0.647057" r9="-0.148533" r10="0.747833" r11="0" r12="0" r13="0" r14="0" r15="1" id="2015" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-20.3024" t1="8.50976" t2="210.322" s0="1.12712" s1="1.43789" s2="1.08214" q0="0.0679471" q1="0.348521" q2="-0.0309368" r0="0.755153" r1="-0.0104481" r2="-0.655466" r3="0" r4="0.105172" r5="0.988852" r6="0.105405" r7="0" r8="0.647057" r9="-0.148533" r10="0.747833" r11="0" r12="0" r13="0" r14="0" r15="1" id="2016" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="63.3585" t1="-7.36865" t2="93.334" s0="0.730061" s1="0.754353" s2="0.791711" q0="-0.129214" q1="-0.210062" q2="0.0153134" r0="0.911279" r1="0.0839629" r2="0.403139" r3="0" r4="0.0246089" r5="0.966138" r6="-0.256848" r7="0" r8="-0.411054" r9="0.243981" r10="0.878355" r11="0" r12="0" r13="0" r14="0" r15="1" id="2017" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="34.84" t1="-6.86083" t2="74.3899" s0="1.12712" s1="1.43789" s2="1.08214" q0="-0.031625" q1="0.362792" q2="-0.138012" r0="0.698669" r1="-0.277179" r2="-0.659571" r3="0" r4="0.231286" r5="0.959905" r6="-0.158396" r7="0" r8="0.677029" r9="-0.041883" r10="0.734763" r11="0" r12="0" r13="0" r14="0" r15="1" id="2018" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="35.1288" t1="-6.52792" t2="75.5595" s0="0.713836" s1="1.177" s2="0.79171" q0="-0.104311" q1="-0.223476" q2="-0.0957433" r0="0.881783" r1="-0.138042" r2="0.451002" r3="0" r4="0.231286" r5="0.959905" r6="-0.158396" r7="0" r8="-0.411054" r9="0.243981" r10="0.878355" r11="0" r12="0" r13="0" r14="0" r15="1" id="2019" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="44.1366" t1="-7.10179" t2="81.0319" s0="0.730061" s1="0.754353" s2="0.791711" q0="-0.129214" q1="-0.210062" q2="0.0153134" r0="0.911279" r1="0.0839629" r2="0.403139" r3="0" r4="0.0246089" r5="0.966138" r6="-0.256848" r7="0" r8="-0.411054" r9="0.243981" r10="0.878355" r11="0" r12="0" r13="0" r14="0" r15="1" id="2020" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="53.0216" t1="-7.6002" t2="55.8134" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.0540215" q1="-0.646201" q2="-0.0186101" r0="0.164156" r1="0.041492" r2="0.985561" r3="0" r4="0.098143" r5="0.993471" r6="-0.0581717" r7="0" r8="-0.98154" r9="0.106275" r10="0.159012" r11="0" r12="0" r13="0" r14="0" r15="1" id="2021" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="55.2266" t1="-7.51237" t2="57.2501" s0="1.8036" s1="1.70803" s2="1.63136" q0="-0.056576" q1="-0.921566" q2="0.00798749" r0="-0.698695" r1="0.110411" r2="0.706848" r3="0" r4="0.0981427" r5="0.993471" r6="-0.0581717" r7="0" r8="-0.708656" r9="0.0287277" r10="-0.704969" r11="0" r12="0" r13="0" r14="0" r15="1" id="2022" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="62.2667" t1="-6.53935" t2="53.2554" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.0570918" q1="-0.837878" q2="-0.00227638" r0="-0.404091" r1="0.0932005" r2="0.909958" r3="0" r4="0.0981435" r5="0.993471" r6="-0.0581709" r7="0" r8="-0.909439" r9="0.0658002" r10="-0.410599" r11="0" r12="0" r13="0" r14="0" r15="1" id="2023" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="31.8661" t1="-5.62593" t2="41.0528" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.0540215" q1="-0.646201" q2="-0.0186101" r0="0.164156" r1="0.041492" r2="0.985561" r3="0" r4="0.098143" r5="0.993471" r6="-0.0581717" r7="0" r8="-0.98154" r9="0.106275" r10="0.159012" r11="0" r12="0" r13="0" r14="0" r15="1" id="2024" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="288.108" t1="-9.09626" t2="85.3422" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.183089" q1="0.0652008" q2="-0.0911225" r0="0.974891" r1="-0.154122" r2="-0.160729" r3="0" r4="0.201872" r5="0.91635" r6="0.34576" r7="0" r8="0.0939949" r9="-0.369525" r10="0.924455" r11="0" r12="0" r13="0" r14="0" r15="1" id="2449" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="293.332" t1="-7.26617" t2="86.6753" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.0562313" q1="-0.501093" q2="-0.0263792" r0="0.496419" r1="0.0108153" r2="0.868015" r3="0" r4="0.101893" r5="0.992284" r6="-0.0706366" r7="0" r8="-0.862082" r9="0.12351" r10="0.491487" r11="0" r12="0" r13="0" r14="0" r15="1" id="2450" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="290.207" t1="-8.15355" t2="88.8993" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.114343" q1="-0.640842" q2="-0.0896861" r0="0.162557" r1="-0.281761" r2="0.945614" r3="0" r4="-0.0113421" r5="0.957764" r6="0.287331" r7="0" r8="-0.986634" r9="-0.0574328" r10="0.152495" r11="0" r12="0" r13="0" r14="0" r15="1" id="2451" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="285.519" t1="-9.50233" t2="64.0539" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.111004" q1="-0.667848" q2="-0.0937876" r0="0.090367" r1="-0.285192" r2="0.954201" r3="0" r4="-0.011342" r5="0.957764" r6="0.287331" r7="0" r8="-0.995844" r9="-0.0367878" r10="0.0833156" r11="0" r12="0" r13="0" r14="0" r15="1" id="2452" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="289.741" t1="-9.63753" t2="65.6702" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2453" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="265.528" t1="-7.63626" t2="50.1001" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2454" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="261.652" t1="-7.59779" t2="47.0761" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2455" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="313.704" t1="-9.23918" t2="72.0879" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.109163" q1="0.623251" q2="0.0959232" r0="0.204713" r1="0.283487" r2="-0.936871" r3="0" r4="-0.0113425" r5="0.957764" r6="0.287331" r7="0" r8="0.978756" r9="-0.0481939" r10="0.199282" r11="0" r12="0" r13="0" r14="0" r15="1" id="2456" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="316.933" t1="-9.02988" t2="67.2319" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.123738" q1="-0.551639" q2="-0.0762029" r0="0.379776" r1="-0.261692" r2="0.887292" r3="0" r4="-0.011342" r5="0.957764" r6="0.287331" r7="0" r8="-0.925009" r9="-0.119185" r10="0.360767" r11="0" r12="0" r13="0" r14="0" r15="1" id="2457" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="319.878" t1="-8.95706" t2="69.7406" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2458" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="317.493" t1="-9.05101" t2="74.8599" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2459" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="324.454" t1="-8.65385" t2="59.6683" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2460" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="322.648" t1="-8.18463" t2="48.0596" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2461" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="323.556" t1="-6.43346" t2="54.6283" s0="1.65981" s1="2.52625" s2="1.63136" q0="-0.0414968" q1="-0.48223" q2="-0.0306183" r0="0.533033" r1="-0.013531" r2="0.845986" r3="0" r4="0.093575" r5="0.994681" r6="-0.0430498" r7="0" r8="-0.840904" r9="0.10211" r10="0.531464" r11="0" r12="0" r13="0" r14="0" r15="1" id="2462" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="324.87" t1="-7.69701" t2="18.434" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2463" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="326.043" t1="-7.67227" t2="14.9148" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2464" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="343.263" t1="-7.57176" t2="75.5837" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2465" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="347.92" t1="-5.55307" t2="85.0414" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.137645" q1="-0.354009" q2="-0.0466038" r0="0.745012" r1="-0.183568" r2="0.641296" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.666955" r9="-0.221339" r10="0.711464" r11="0" r12="0" r13="0" r14="0" r15="1" id="2466" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="343.034" t1="-5.6223" t2="74.0674" s0="1.65981" s1="3.14972" s2="1.5234" q0="-0.0249423" q1="-0.479465" q2="-0.0341667" r0="0.537892" r1="-0.035979" r2="0.842246" r3="0" r4="0.0838149" r5="0.996421" r6="-0.0109626" r7="0" r8="-0.838837" r9="0.0764894" r10="0.538983" r11="0" r12="0" r13="0" r14="0" r15="1" id="2467" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="343.818" t1="-7.64159" t2="70.9995" s0="1.65981" s1="2.52625" s2="1.63136" q0="0.144349" q1="-0.152835" q2="-0.0167679" r0="0.95272" r1="-0.0769048" r2="0.293955" r3="0" r4="-0.0113418" r5="0.957764" r6="0.287331" r7="0" r8="-0.303636" r9="-0.27708" r10="0.911609" r11="0" r12="0" r13="0" r14="0" r15="1" id="2468" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="285.576" t1="-9.00756" t2="67.4581" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="1088" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree4.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="331.211" t1="-7.34495" t2="68.7915" s0="0.797296" s1="0.797296" s2="0.797296" q0="0" q1="0.977487" q2="0" r0="-0.910961" r1="0" r2="-0.412491" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.412491" r9="0" r10="-0.910961" r11="0" r12="0" r13="0" r14="0" r15="1" id="2469" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="285.295" t1="-8.65478" t2="68.8158" s0="1" s1="1" s2="1" q0="0" q1="-0.301945" q2="0" r0="0.817658" r1="0" r2="0.575704" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.575704" r9="-0" r10="0.817658" r11="0" r12="0" r13="0" r14="0" r15="1" id="2470" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="288.668" t1="-8.65478" t2="65.3784" s0="1" s1="1" s2="1" q0="0" q1="0.0595487" q2="0" r0="0.992908" r1="0" r2="-0.118886" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.118886" r9="0" r10="0.992908" r11="0" r12="0" r13="0" r14="0" r15="1" id="2471" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="292.936" t1="-8.65478" t2="63.139" s0="1" s1="1" s2="1" q0="0" q1="0.0595487" q2="0" r0="0.992908" r1="0" r2="-0.118886" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.118886" r9="0" r10="0.992908" r11="0" r12="0" r13="0" r14="0" r15="1" id="2472" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="311.229" t1="-8.65478" t2="72.3576" s0="1" s1="1" s2="1" q0="0" q1="0.0595487" q2="0" r0="0.992908" r1="0" r2="-0.118886" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.118886" r9="0" r10="0.992908" r11="0" r12="0" r13="0" r14="0" r15="1" id="2473" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="311.257" t1="-8.65478" t2="72.3576" s0="1" s1="1" s2="1" q0="0" q1="0.0595487" q2="0" r0="0.992908" r1="0" r2="-0.118886" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.118886" r9="0" r10="0.992908" r11="0" r12="0" r13="0" r14="0" r15="1" id="2474" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="316.267" t1="-8.65478" t2="65.0809" s0="1" s1="1" s2="1" q0="0" q1="-0.579987" q2="0" r0="0.32723" r1="0" r2="0.944945" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.944945" r9="-0" r10="0.32723" r11="0" r12="0" r13="0" r14="0" r15="1" id="2475" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="313.815" t1="-8.74419" t2="75.01" s0="1" s1="1" s2="1" q0="0" q1="-0.579987" q2="0" r0="0.32723" r1="0" r2="0.944945" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.944945" r9="-0" r10="0.32723" r11="0" r12="0" r13="0" r14="0" r15="1" id="2476" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="339.401" t1="-6.71896" t2="76.3317" s0="1" s1="1" s2="1" q0="0" q1="-0.579987" q2="0" r0="0.32723" r1="0" r2="0.944945" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.944945" r9="-0" r10="0.32723" r11="0" r12="0" r13="0" r14="0" r15="1" id="2477" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="339.401" t1="-6.71896" t2="76.3317" s0="1" s1="1" s2="1" q0="-0" q1="-0.946163" q2="-0" r0="-0.79045" r1="0" r2="0.612527" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.612527" r9="0" r10="-0.79045" r11="0" r12="0" r13="0" r14="0" r15="1" id="2478" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="329.473" t1="-7.22341" t2="71.3383" s0="1" s1="1" s2="1" q0="-0" q1="-0.946163" q2="-0" r0="-0.79045" r1="0" r2="0.612527" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.612527" r9="0" r10="-0.79045" r11="0" r12="0" r13="0" r14="0" r15="1" id="2479" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="330.296" t1="-6.78889" t2="70.5604" s0="0.950393" s1="1.19905" s2="1" q0="0" q1="0.977487" q2="0" r0="-0.910961" r1="0" r2="-0.412491" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.412491" r9="0" r10="-0.910961" r11="0" r12="0" r13="0" r14="0" r15="1" id="2480" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Plants/Trees/Test/TestTree3.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="106.698" t1="10.3329" t2="-319.437" s0="1.15166" s1="1.15166" s2="1.15166" q0="0.43251" q1="-0.218593" q2="-0.715503" r0="-0.119455" r1="-0.909166" r2="-0.398934" r3="0" r4="0.530991" r5="-0.39802" r6="0.748084" r7="0" r8="-0.838915" r9="-0.122468" r10="0.530304" r11="0" r12="0" r13="0" r14="0" r15="1" id="1086" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="85.1146" t1="11.5659" t2="-304.099" s0="0.940747" s1="0.940747" s2="0.940747" q0="-0.205945" q1="-0.419516" q2="0.526911" r0="0.0927424" r1="0.920903" r2="0.378599" r3="0" r4="-0.575314" r5="0.359903" r6="-0.734495" r7="0" r8="-0.812658" r9="-0.149695" r10="0.563187" r11="0" r12="0" r13="0" r14="0" r15="1" id="2571" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="137.328" t1="-1.96107" t2="-291.835" s0="0.737658" s1="0.737658" s2="0.737658" q0="0.74276" q1="0.252832" q2="-0.199784" r0="0.792325" r1="0.141074" r2="-0.593564" r3="0" r4="0.610099" r5="-0.183211" r6="0.770852" r7="0" r8="-4.76837e-007" r9="-0.972899" r10="-0.231232" r11="0" r12="0" r13="0" r14="0" r15="1" id="2572" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="203.488" t1="25.0027" t2="-361.411" s0="0.737658" s1="0.737658" s2="0.737658" q0="-0.273293" q1="0.162454" q2="-0.565483" r0="0.307676" r1="-0.94948" r2="0.0618229" r3="0" r4="0.77189" r5="0.211081" r6="-0.599692" r7="0" r8="0.556346" r9="0.232231" r10="0.79784" r11="0" r12="0" r13="0" r14="0" r15="1" id="2573" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="104.341" t1="-2.88649" t2="-290.034" s0="0.737658" s1="0.737658" s2="0.737658" q0="0.0126445" q1="-0.467169" q2="0.136574" r0="0.526202" r1="0.22677" r2="0.819565" r3="0" r4="-0.250399" r5="0.962376" r6="-0.105517" r7="0" r8="-0.812657" r9="-0.149695" r10="0.563187" r11="0" r12="0" r13="0" r14="0" r15="1" id="2574" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="168.771" t1="15.9566" t2="-340.448" s0="0.737658" s1="0.737658" s2="0.737658" q0="-0.0895969" q1="0.305045" q2="0.103849" r0="0.792326" r1="0.141074" r2="-0.593564" r3="0" r4="-0.250399" r5="0.962376" r6="-0.105517" r7="0" r8="0.556346" r9="0.232231" r10="0.79784" r11="0" r12="0" r13="0" r14="0" r15="1" id="2575" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.979" t1="-6.56134" t2="196.369" s0="-1" s1="1" s2="1.5" q0="0" q1="0.673676" q2="0" r0="0.0923211" r1="0" r2="-0.995729" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.995729" r9="0" r10="0.0923211" r11="0" r12="0" r13="0" r14="0" r15="1" id="2595" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Wall.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="133.244" t1="-7.40107" t2="207.306" s0="1" s1="1" s2="1" q0="-0.0617532" q1="0.993356" q2="-0.0266553" r0="-0.974934" r1="-0.127664" r2="-0.182225" r3="0" r4="-0.117708" r5="0.990952" r6="-0.0644893" r7="0" r8="0.188809" r9="-0.0414236" r10="-0.98114" r11="0" r12="0" r13="0" r14="0" r15="1" id="2596" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Wall.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="137.97" t1="-6.53887" t2="201.477" s0="1.62774" s1="1.62774" s2="1.62774" q0="0.00539255" q1="-0.037021" q2="-0.144039" r0="0.955764" r1="-0.28527" r2="0.071664" r3="0" r4="0.284472" r5="0.958447" r6="0.02133" r7="0" r8="-0.074771" r9="-3.35276e-008" r10="0.997201" r11="0" r12="0" r13="0" r14="0" r15="1" id="2597" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Pillar.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="137.863" t1="-6.00697" t2="199.382" s0="1.62774" s1="1.62774" s2="1.62774" q0="0" q1="-0.0374117" q2="0" r0="0.997201" r1="0" r2="0.074771" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.074771" r9="-0" r10="0.997201" r11="0" r12="0" r13="0" r14="0" r15="1" id="2598" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Pillar.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.698" t1="-6.00697" t2="200.557" s0="1.62774" s1="1.62774" s2="1.62774" q0="0" q1="-0.0374117" q2="0" r0="0.997201" r1="0" r2="0.074771" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.074771" r9="-0" r10="0.997201" r11="0" r12="0" r13="0" r14="0" r15="1" id="2599" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Pillar.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.854" t1="-6.00697" t2="198.482" s0="1.62774" s1="1.62774" s2="1.62774" q0="0" q1="-0.0374117" q2="0" r0="0.997201" r1="0" r2="0.074771" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.074771" r9="-0" r10="0.997201" r11="0" r12="0" r13="0" r14="0" r15="1" id="2600" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Pillar.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="130.095" t1="-6.2467" t2="200.886" s0="1.62774" s1="1.62774" s2="1.62774" q0="0" q1="0.9993" q2="0" r0="-0.997201" r1="0" r2="-0.074771" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.074771" r9="0" r10="-0.997201" r11="0" r12="0" r13="0" r14="0" r15="1" id="2601" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Pillar.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="130.26" t1="-6.31696" t2="198.812" s0="1.62774" s1="1.62774" s2="1.62774" q0="0" q1="-0.0374117" q2="0" r0="0.997201" r1="0" r2="0.074771" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.074771" r9="-0" r10="0.997201" r11="0" r12="0" r13="0" r14="0" r15="1" id="2602" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Pillar.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="133.844" t1="-7.03924" t2="201.311" s0="1.26071" s1="1.62774" s2="1.94714" q0="0" q1="-0.733066" q2="0" r0="-0.0747702" r1="0" r2="0.997201" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.997201" r9="-0" r10="-0.0747702" r11="0" r12="0" r13="0" r14="0" r15="1" id="2603" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Pillar.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="134.195" t1="-7.41236" t2="197.439" s0="1.62774" s1="1.62774" s2="1.62774" q0="-0.562518" q1="-0.0309215" q2="-0.0210597" r0="0.997201" r1="-1.56462e-007" r2="0.0747714" r3="0" r4="0.0695758" r5="0.366259" r6="-0.927908" r7="0" r8="-0.0273856" r9="0.930513" r10="0.365234" r11="0" r12="0" r13="0" r14="0" r15="1" id="2604" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Pillar.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.264" t1="-6.74637" t2="202.751" s0="1" s1="1" s2="1" q0="0" q1="0.673676" q2="0" r0="0.0923211" r1="0" r2="-0.995729" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.995729" r9="0" r10="0.0923211" r11="0" r12="0" r13="0" r14="0" r15="1" id="2605" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1Wall.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.035" t1="-7.63476" t2="196.144" s0="0.955337" s1="0.955337" s2="0.955337" q0="0.194032" q1="-0.91041" q2="0.0767495" r0="-0.669475" r1="-0.298463" r2="0.680238" r3="0" r4="-0.408132" r5="0.912922" r6="-0.00111832" r7="0" r8="-0.620671" r9="-0.278376" r10="-0.732991" r11="0" r12="0" r13="0" r14="0" r15="1" id="2606" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="134.392" t1="-7.75096" t2="208.08" s0="1.43167" s1="1.43167" s2="1.43167" q0="0" q1="0.493744" q2="0" r0="0.512435" r1="0" r2="-0.858726" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.858726" r9="0" r10="0.512435" r11="0" r12="0" r13="0" r14="0" r15="1" id="2607" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="126.064" t1="-6.61239" t2="194.859" s0="1.43167" s1="1.43167" s2="1.43167" q0="-0.0684747" q1="0" q2="0" r0="1" r1="0" r2="-0" r3="0" r4="-0" r5="0.990622" r6="-0.136628" r7="0" r8="0" r9="0.136628" r10="0.990622" r11="0" r12="0" r13="0" r14="0" r15="1" id="2608" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="126.064" t1="-6.57787" t2="195.235" s0="1.43167" s1="1.43167" s2="1.43167" q0="0" q1="0.999999" q2="0" r0="-0.999996" r1="0" r2="-0.00274" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.00274" r9="0" r10="-0.999996" r11="0" r12="0" r13="0" r14="0" r15="1" id="2609" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.896" t1="-6.02959" t2="196.526" s0="1.05208" s1="1.05208" s2="1.05208" q0="0" q1="0.999999" q2="0" r0="-0.999996" r1="0" r2="-0.00274" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.00274" r9="0" r10="-0.999996" r11="0" r12="0" r13="0" r14="0" r15="1" id="2610" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.829" t1="-5.46469" t2="197.029" s0="1.05208" s1="1.05208" s2="1.05208" q0="0" q1="0.999999" q2="0" r0="-0.999996" r1="0" r2="-0.00274" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.00274" r9="0" r10="-0.999996" r11="0" r12="0" r13="0" r14="0" r15="1" id="2611" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="125.832" t1="-5.77989" t2="197.402" s0="1.05208" s1="1.05208" s2="1.05208" q0="0" q1="0.999999" q2="0" r0="-0.999996" r1="0" r2="-0.00274" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.00274" r9="0" r10="-0.999996" r11="0" r12="0" r13="0" r14="0" r15="1" id="2612" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="134.005" t1="-7.51642" t2="196.046" s0="1.43167" s1="1.43167" s2="1.43167" q0="0" q1="0" q2="0" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="2613" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="128.927" t1="-7.62836" t2="193.558" s0="1.43167" s1="1.43167" s2="1.43167" q0="0" q1="-0.308351" q2="0" r0="0.809839" r1="0" r2="0.586652" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.586652" r9="-0" r10="0.809839" r11="0" r12="0" r13="0" r14="0" r15="1" id="2614" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="128.933" t1="-7.778" t2="194.813" s0="1.43167" s1="1.43167" s2="1.43167" q0="0" q1="-0.308351" q2="0" r0="0.809839" r1="0" r2="0.586652" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.586652" r9="-0" r10="0.809839" r11="0" r12="0" r13="0" r14="0" r15="1" id="2615" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="133.17" t1="-7.68439" t2="207.99" s0="1.43167" s1="1.43167" s2="1.43167" q0="0" q1="-0.308351" q2="0" r0="0.809839" r1="0" r2="0.586652" r3="0" r4="-0" r5="1" r6="0" r7="0" r8="-0.586652" r9="-0" r10="0.809839" r11="0" r12="0" r13="0" r14="0" r15="1" id="2616" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Ruins/Ruins1LongBrick.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="130.882" t1="-7.74418" t2="204.291" s0="1" s1="1" s2="1" q0="-0.669447" q1="0" q2="0" r0="1" r1="0" r2="-0" r3="0" r4="-0" r5="0.103682" r6="-0.99461" r7="0" r8="0" r9="0.99461" r10="0.103682" r11="0" r12="0" r13="0" r14="0" r15="1" id="2619" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Post1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="133.856" t1="-5.22774" t2="201.324" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="2620" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Post1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="130.219" t1="-5.60405" t2="198.775" s0="1" s1="1" s2="1" q0="0" q1="0" q2="0" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" id="2621" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Buildings/Post1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-70.3154" t1="108.199" t2="-76.4152" s0="1" s1="1" s2="1" q0="-0.307867" q1="-0.102812" q2="-0.861762" r0="-0.506408" r1="-0.60868" r2="0.610786" r3="0" r4="0.73529" r5="-0.674831" r6="-0.0628698" r7="0" r8="0.450445" r9="0.417267" r10="0.789296" r11="0" r12="0" r13="0" r14="0" r15="1" id="5" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-224.397" t1="21.6049" t2="102.253" s0="1" s1="1" s2="1" q0="0.0487625" q1="0.38866" q2="-0.223095" r0="0.598345" r1="-0.36038" r2="-0.715618" r3="0" r4="0.436188" r5="0.895702" r6="-0.0863617" r7="0" r8="0.672104" r9="-0.26047" r10="0.693132" r11="0" r12="0" r13="0" r14="0" r15="1" id="185" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="53.7423" t1="-8.52732" t2="47.6441" s0="1" s1="1" s2="1" q0="0.953013" q1="0.0974407" q2="0.28608" r0="0.817327" r1="0.197586" r2="0.541236" r3="0" r4="0.173863" r5="-0.980151" r6="0.0952652" r7="0" r8="0.549317" r9="0.0162382" r10="-0.835457" r11="0" r12="0" r13="0" r14="0" r15="1" id="36" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="19.7188" t1="-2.51823" t2="64.4499" s0="1.19695" s1="1" s2="1.05137" q0="0.788838" q1="0.100527" q2="0.606133" r0="0.244994" r1="0.177053" r2="0.953221" r3="0" r4="0.140145" r5="-0.979325" r6="0.145881" r7="0" r8="0.959342" r9="0.0978495" r10="-0.264742" r11="0" r12="0" r13="0" r14="0" r15="1" id="37" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Rocks/ChunkyRock.xml">
+            <parameters />
+        </EnvObject>
+        <Decal t0="-323.51" t1="90.3442" t2="270.295" s0="41.7846" s1="51.2092" s2="44.6585" q0="-0.142409" q1="0.339436" q2="-0.110836" r0="0.744998" r1="-0.301316" r2="-0.595136" r3="0" r4="0.107961" r5="0.93487" r6="-0.338175" r7="0" r8="0.658273" r9="0.187688" r10="0.729006" r11="0" r12="0" r13="0" r14="0" r15="1" id="11" type_file="Data/Objects/Decals/ThickMoss.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="-213.862" t1="60.581" t2="363.773" s0="67.6505" s1="36.489" s2="65.1109" q0="-0.239563" q1="-0.666849" q2="-0.350965" r0="-0.135728" r1="-0.110193" r2="0.984599" r3="0" r4="0.749201" r5="0.638866" r6="0.174778" r7="0" r8="-0.648286" r9="0.761385" r10="-0.00415546" r11="0" r12="0" r13="0" r14="0" r15="1" id="12" type_file="Data/Objects/Decals/ChunkyRock.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="130.872" t1="-5.60015" t2="199.089" s0="18.5293" s1="18.5293" s2="18.5293" q0="0.0340015" q1="0.560513" q2="-0.0367089" r0="0.368955" r1="-0.0225729" r2="-0.929173" r3="0" r4="0.0988061" r5="0.994993" r6="0.0150619" r7="0" r8="0.92418" r9="-0.0973651" r10="0.369338" r11="0" r12="0" r13="0" r14="0" r15="1" id="47" type_file="Data/Objects/Decals/TanMud.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="207.477" t1="13.312" t2="-215.241" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.46848" q1="-0.560849" q2="-0.060513" r0="0.363574" r1="-0.607782" r2="0.705985" r3="0" r4="-0.443202" r5="0.55373" r6="0.70495" r7="0" r8="-0.819381" r9="-0.569196" r10="-0.0680484" r11="0" r12="0" r13="0" r14="0" r15="1" id="97" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="11.904" t1="39.7636" t2="-71.7784" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.316228" q1="0.00958405" q2="-0.414488" r0="0.656216" r1="-0.701297" r2="-0.278501" r3="0" r4="0.71342" r5="0.4564" r6="0.531724" r7="0" r8="-0.245789" r9="-0.547614" r10="0.799816" r11="0" r12="0" r13="0" r14="0" r15="1" id="127" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="-62.103" t1="97.8512" t2="-66.9095" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.449833" q1="-0.0352091" q2="-0.338268" r0="0.76867" r1="-0.590376" r2="-0.246175" r3="0" r4="0.527023" r5="0.36645" r6="0.766786" r7="0" r8="-0.362481" r9="-0.719146" r10="0.592821" r11="0" r12="0" r13="0" r14="0" r15="1" id="229" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="-11.5292" t1="84.3702" t2="-93.4838" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.425522" q1="-0.0194086" q2="-0.347075" r0="0.758324" r1="-0.596494" r2="-0.262944" r3="0" r4="0.563459" r5="0.396939" r6="0.724537" r7="0" r8="-0.327809" r9="-0.697592" r10="0.637108" r11="0" r12="0" r13="0" r14="0" r15="1" id="336" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="86.765" t1="5.55985" t2="172.808" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.181225" q1="-0.129025" q2="0.0568852" r0="0.960233" r1="0.0639654" r2="0.271773" r3="0" r4="-0.157496" r5="0.927843" r6="0.338087" r7="0" r8="-0.230536" r9="-0.367445" r10="0.90102" r11="0" r12="0" r13="0" r14="0" r15="1" id="337" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="-106.149" t1="57.5398" t2="-3.54868" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.355479" q1="-0.0385636" q2="-0.264166" r0="0.857458" r1="-0.50067" r2="-0.118725" r3="0" r4="0.445836" r5="0.607701" r6="0.657214" r7="0" r8="-0.256898" r9="-0.616465" r10="0.744295" r11="0" r12="0" r13="0" r14="0" r15="1" id="338" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="-0.22039" t1="30.8018" t2="-26.6136" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.116495" q1="-0.563158" q2="-0.352349" r0="0.117407" r1="-0.651511" r2="0.7495" r3="0" r4="0.38909" r5="0.724558" r6="0.56888" r7="0" r8="-0.913688" r9="0.224832" r10="0.338564" r11="0" r12="0" r13="0" r14="0" r15="1" id="339" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="38.0783" t1="-7.6213" t2="-66.9791" s0="26.3966" s1="26.3966" s2="26.3966" q0="-0.039368" q1="-0.519359" q2="-0.192565" r0="0.38637" r1="-0.279399" r2="0.879008" r3="0" r4="0.361183" r5="0.922738" r6="0.13454" r7="0" r8="-0.848684" r9="0.265501" r10="0.457433" r11="0" r12="0" r13="0" r14="0" r15="1" id="340" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="75.0844" t1="4.64141" t2="-112.143" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.152361" q1="-0.544181" q2="-0.241038" r0="0.291535" r1="-0.546193" r2="0.78529" r3="0" r4="0.214544" r5="0.837373" r6="0.502769" r7="0" r8="-0.93219" r9="0.0219051" r10="0.361306" r11="0" r12="0" r13="0" r14="0" r15="1" id="341" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="53.7016" t1="44.596" t2="-156.128" s0="26.3966" s1="26.3966" s2="26.3966" q0="-0.0880108" q1="-0.437478" q2="-0.427067" r0="0.252453" r1="-0.594716" r2="0.76327" r3="0" r4="0.748727" r5="0.619736" r6="0.235236" r7="0" r8="-0.612924" r9="0.512095" r10="0.601734" r11="0" r12="0" r13="0" r14="0" r15="1" id="342" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="9.75937" t1="104.486" t2="-122.702" s0="26.3966" s1="26.3966" s2="26.3966" q0="-0.0609555" q1="-0.458512" q2="-0.363219" r0="0.315677" r1="-0.531629" r2="0.78595" r3="0" r4="0.643425" r5="0.728713" r6="0.234482" r7="0" r8="-0.69739" r9="0.43168" r10="0.572102" r11="0" r12="0" r13="0" r14="0" r15="1" id="343" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="-115.512" t1="47.9422" t2="3.3884" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.419975" q1="-0.141862" q2="-0.0608839" r0="0.952337" r1="-0.228055" r2="0.202597" r3="0" r4="-0.0102588" r5="0.639828" r6="0.76845" r7="0" r8="-0.304876" r9="-0.733901" r10="0.606992" r11="0" r12="0" r13="0" r14="0" r15="1" id="344" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="-117.227" t1="32.5619" t2="38.2098" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.339855" q1="-0.103202" q2="-0.128405" r0="0.945723" r1="-0.307938" r2="0.10384" r3="0" r4="0.167642" r5="0.736021" r6="0.655873" r7="0" r8="-0.278396" r9="-0.602866" r10="0.747695" r11="0" r12="0" r13="0" r14="0" r15="1" id="345" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="104.493" t1="25.8667" t2="86.0602" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.319045" q1="-0.0614174" q2="0.247894" r0="0.869553" r1="0.413307" r2="0.270288" r3="0" r4="-0.491687" r5="0.673517" r6="0.551923" r7="0" r8="0.0460698" r9="-0.612823" r10="0.788876" r11="0" r12="0" r13="0" r14="0" r15="1" id="346" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="52.5211" t1="-6.33689" t2="55.8" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.106178" q1="-0.167854" q2="-0.0472886" r0="0.939177" r1="-0.12823" r2="0.318595" r3="0" r4="0.05694" r5="0.97298" r6="0.223759" r7="0" r8="-0.338679" r9="-0.192008" r10="0.921102" r11="0" r12="0" r13="0" r14="0" r15="1" id="347" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="48.5863" t1="37.0016" t2="-150.535" s0="49.4214" s1="26.6567" s2="47.5661" q0="0.384845" q1="0.899317" q2="0.0330612" r0="-0.619728" r1="0.705752" r2="-0.343294" r3="0" r4="0.67864" r5="0.701602" r6="0.21726" r7="0" r8="0.394187" r9="-0.0983303" r10="-0.913754" r11="0" r12="0" r13="0" r14="0" r15="1" id="348" type_file="Data/Objects/Decals/ChunkyRock.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="26.2827" t1="-1.4667" t2="76.5896" s0="28.542" s1="15.0559" s2="26.6007" q0="0.364494" q1="0.930372" q2="-0.0190209" r0="-0.731907" r1="0.676917" r2="-0.078066" r3="0" r4="0.679543" r5="0.733565" r6="-0.0102412" r7="0" r8="0.050334" r9="-0.0605448" r10="-0.996896" r11="0" r12="0" r13="0" r14="0" r15="1" id="350" type_file="Data/Objects/Decals/ChunkyRock.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="24.7469" t1="35.8576" t2="-93.1978" s0="49.4214" s1="26.6567" s2="47.5661" q0="0.475642" q1="0.844636" q2="0.198623" r0="-0.505721" r1="0.860924" r2="-0.0552913" r3="0" r4="0.746055" r5="0.468627" r6="0.473066" r7="0" r8="0.433185" r9="0.197989" r10="-0.87929" r11="0" r12="0" r13="0" r14="0" r15="1" id="351" type_file="Data/Objects/Decals/ChunkyRock.xml" i="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="35.0525" t1="61.6546" t2="-145.448" s0="31.3242" s1="16.8955" s2="30.1483" q0="0.512023" q1="0.84197" q2="0.0264722" r0="-0.419229" r1="0.87111" r2="-0.255764" r3="0" r4="0.853322" r5="0.474264" r6="0.216599" r7="0" r8="0.309981" r9="-0.127444" r10="-0.942162" r11="0" r12="0" r13="0" r14="0" r15="1" id="352" type_file="Data/Objects/Decals/ChunkyRock.xml" i="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="-11.2857" t1="54.7166" t2="-67.3268" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.326108" q1="0.0180023" q2="-0.365881" r0="0.731614" r1="-0.625967" r2="-0.270011" r3="0" r4="0.64945" r5="0.519569" r6="0.555214" r7="0" r8="-0.207257" r9="-0.581561" r10="0.786659" r11="0" r12="0" r13="0" r14="0" r15="1" id="353" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="38.4149" t1="11.3145" t2="-97.5894" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.292546" q1="0.0490277" q2="-0.384571" r0="0.699403" r1="-0.643651" r2="-0.310723" r3="0" r4="0.701022" r5="0.533045" r6="0.473742" r7="0" r8="-0.139295" r9="-0.549161" r10="0.824026" r11="0" r12="0" r13="0" r14="0" r15="1" id="354" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="44.5072" t1="23.3882" t2="-119.983" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.268244" q1="0.0528762" q2="-0.365187" r0="0.727684" r1="-0.621579" r2="-0.290026" r3="0" r4="0.678314" r5="0.589366" r6="0.438792" r7="0" r8="-0.101812" r9="-0.51603" r10="0.850498" r11="0" r12="0" r13="0" r14="0" r15="1" id="370" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="59.6864" t1="20.7758" t2="-132.181" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.210023" q1="0.0282511" q2="-0.200902" r0="0.917681" r1="-0.372425" r2="-0.138428" r3="0" r4="0.396158" r5="0.831057" r6="0.390388" r7="0" r8="-0.0303486" r9="-0.41309" r10="0.910184" r11="0" r12="0" r13="0" r14="0" r15="1" id="383" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="69.1759" t1="22.16" t2="-147.931" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.14727" q1="0.0365205" q2="-0.176915" r0="0.934735" r1="-0.333329" r2="-0.123138" r3="0" r4="0.354842" r5="0.894026" r6="0.273505" r7="0" r8="0.0189212" r9="-0.29935" r10="0.953956" r11="0" r12="0" r13="0" r14="0" r15="1" id="384" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="132.098" t1="19.3014" t2="131.19" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.308206" q1="0.125525" q2="0.301797" r0="0.786324" r1="0.616628" r2="-0.0382579" r3="0" r4="-0.461878" r5="0.627856" r6="0.626471" r7="0" r8="0.41032" r9="-0.474939" r10="0.778505" r11="0" r12="0" r13="0" r14="0" r15="1" id="385" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="13.4442" t1="52.4204" t2="-86.8277" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.301018" q1="0.017377" q2="-0.415745" r0="0.653709" r1="-0.702994" r2="-0.280113" r3="0" r4="0.723918" r5="0.47309" r6="0.502125" r7="0" r8="-0.220472" r9="-0.531023" r10="0.818173" r11="0" r12="0" r13="0" r14="0" r15="1" id="386" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="22.1441" t1="16.7266" t2="-76.9725" s0="49.4214" s1="26.6567" s2="47.5661" q0="0.481652" q1="0.78505" q2="0.267747" r0="-0.375983" r1="0.907721" r2="-0.186223" r3="0" r4="0.604763" r5="0.392645" r6="0.692887" r7="0" r8="0.702067" r9="0.147893" r10="-0.696584" r11="0" r12="0" r13="0" r14="0" r15="1" id="387" type_file="Data/Objects/Decals/ChunkyRock.xml" i="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="19.8029" t1="4.28859" t2="-20.9701" s0="49.4214" s1="26.6567" s2="47.5661" q0="0.320592" q1="0.937075" q2="0.0485949" r0="-0.760941" r1="0.613416" r2="-0.211401" r3="0" r4="0.588259" r5="0.789719" r6="0.174058" r7="0" r8="0.273717" r9="0.00808974" r10="-0.961776" r11="0" r12="0" r13="0" r14="0" r15="1" id="388" type_file="Data/Objects/Decals/ChunkyRock.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="20.1995" t1="0.719269" t2="35.2616" s0="40.0585" s1="21.6066" s2="38.5547" q0="0.312643" q1="0.942734" q2="-0.0523719" r0="-0.78298" r1="0.578611" r2="-0.228368" r3="0" r4="0.600346" r5="0.799023" r6="-0.0338708" r7="0" r8="0.162874" r9="-0.16362" r10="-0.972986" r11="0" r12="0" r13="0" r14="0" r15="1" id="389" type_file="Data/Objects/Decals/ChunkyRock.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="23.2933" t1="2.43745" t2="58.1869" s0="28.542" s1="15.0559" s2="26.6007" q0="0.45484" q1="0.884625" q2="-0.102462" r0="-0.58612" r1="0.803127" r2="-0.107009" r3="0" r4="0.806324" r5="0.565245" r6="-0.174184" r7="0" r8="-0.0794056" r9="-0.188376" r10="-0.978882" r11="0" r12="0" r13="0" r14="0" r15="1" id="390" type_file="Data/Objects/Decals/ChunkyRock.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="15.6471" t1="59.6782" t2="-98.2619" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.261873" q1="0.0466749" q2="-0.447382" r0="0.595342" r1="-0.739566" r2="-0.314023" r3="0" r4="0.788457" r5="0.462544" r6="0.405448" r7="0" r8="-0.154606" r9="-0.488974" r10="0.858488" r11="0" r12="0" r13="0" r14="0" r15="1" id="391" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="36.1838" t1="-9.05312" t2="-23.7574" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.00703989" q1="0.155685" q2="-0.180338" r0="0.886481" r1="-0.348089" r2="-0.304935" r3="0" r4="0.352473" r5="0.934857" r6="-0.0424777" r7="0" r8="0.299856" r9="-0.0698257" r10="0.951426" r11="0" r12="0" r13="0" r14="0" r15="1" id="392" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="11.2518" t1="12.3598" t2="22.2393" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.0558273" q1="0.153804" q2="-0.310265" r0="0.76016" r1="-0.56393" r2="-0.322706" r3="0" r4="0.598276" r5="0.801238" r6="0.00912039" r7="0" r8="0.253421" r9="-0.200001" r10="0.946455" r11="0" r12="0" r13="0" r14="0" r15="1" id="393" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="34.6058" t1="-10.1628" t2="25.1347" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.0685962" q1="0.150745" q2="-0.171718" r0="0.895578" r1="-0.312837" r2="-0.316343" r3="0" r4="0.3542" r5="0.931615" r6="0.0814598" r7="0" r8="0.269227" r9="-0.185002" r10="0.945141" r11="0" r12="0" r13="0" r14="0" r15="1" id="394" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="32.849" t1="47.9589" t2="-123.103" s0="49.4214" s1="26.6567" s2="47.5661" q0="0.509596" q1="0.825988" q2="0.112699" r0="-0.389914" r1="0.889843" r2="-0.236952" r3="0" r4="0.793838" r5="0.455221" r6="0.40323" r7="0" r8="0.466677" r9="-0.0308768" r10="-0.883889" r11="0" r12="0" r13="0" r14="0" r15="1" id="395" type_file="Data/Objects/Decals/ChunkyRock.xml" i="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="15.6381" t1="84.3847" t2="-125.078" s0="27.3497" s1="14.7518" s2="26.323" q0="0.487032" q1="0.847568" q2="0.0676085" r0="-0.445884" r1="0.85258" r2="-0.27257" r3="0" r4="0.798589" r5="0.516459" r6="0.309072" r7="0" r8="0.404279" r9="-0.0798609" r10="-0.911142" r11="0" r12="0" r13="0" r14="0" r15="1" id="396" type_file="Data/Objects/Decals/ChunkyRock.xml" i="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+        <Decal t0="18.6115" t1="6.29259" t2="88.0642" s0="26.3966" s1="26.3966" s2="26.3966" q0="0.18955" q1="0.108227" q2="-0.170579" r0="0.918379" r1="-0.286779" r2="-0.272649" r3="0" r4="0.368836" r5="0.869947" r6="0.32734" r7="0" r8="0.143316" r9="-0.401186" r10="0.904716" r11="0" r12="0" r13="0" r14="0" r15="1" id="397" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml" i="1" io="0" color_r="1" color_g="1" color_b="1">
+            <parameters />
+        </Decal>
+    </ActorObjects>

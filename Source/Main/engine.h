@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: engine.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -182,6 +183,7 @@ class Engine : public ModLoadingCallback {
     void ClearLoadedLevel();
     static void StaticScriptableUICallback(void* instance, const std::string& level);
     void ScriptableUICallback(const std::string& level);
+    bool IsLevelLoaded() const { return level_loaded_; }  // test bridge
     static void NewLevel();
 
     void SetForcedSplitScreenMode(ForcedSplitScreenMode mode) { forced_split_screen_mode = mode; }
@@ -190,6 +192,13 @@ class Engine : public ModLoadingCallback {
     bool quitting_;
     bool paused;
     bool user_paused;
+    // Overgrowth Online: the test bridge's fixed view ("view"): the camera here
+    // every frame, the game paused
+    bool view_override_ = false;
+    vec3 view_override_pos_;
+    vec3 view_override_target_;
+    float view_override_fov_ = 0.0f;
+    bool view_override_gui_ = false;  // the level's GUI drawn too
     bool menu_paused;
     bool slow_motion;
     bool check_save_level_changes_dialog_is_showing;
@@ -316,6 +325,10 @@ class Engine : public ModLoadingCallback {
    public:
     void InjectWindowResizeEvent(ivec2 size);
     void SetGameSpeed(float val, bool hard);
+    // Overgrowth Online: run at the host's speed (our saved setting stays); the
+    // speed this machine runs at now
+    void FollowGameSpeed(float val);
+    float GameSpeed() const { return current_global_scale_mult; }
 
     bool RequestedInterruptLoading();
 };

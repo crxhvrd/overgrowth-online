@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: riggedobject.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -38,6 +39,8 @@
 
 #include <Math/quaternions.h>
 #include <Math/overgrowth_geometry.h>
+
+#include <Online/char_snapshot.h>
 
 #include <Objects/softinfo.h>
 #include <Objects/itemobjectscriptreader.h>
@@ -243,6 +246,10 @@ class RiggedObject : public Object {
     int last_draw_frame = 0;
 
     std::vector<mat4> network_display_bone_matrices;  // Final interpolated bone matrices for rendering, from server when client.
+    bool network_proxy = false;                        // Overgrowth Online: shown from another machine's stream (MovementObject sets it)
+    const CharSnapshot::Rig &NetworkRig();             // Overgrowth Online: joints between physics bones, for compact snapshots
+    CharSnapshot::Rig network_rig;
+    float network_rig_scale = 0.0f;
     std::vector<mat4> display_bone_matrices;          // Final interpolated bone matrices for rendering
     std::vector<BoneTransform> display_bone_transforms;
 #ifdef USE_SSE
@@ -318,6 +325,10 @@ class RiggedObject : public Object {
     static void GetCubicSplineWeights(float interp, float *weights);
     static const mat4 InterpolateBetweenFourBonesQuadratic(const NetworkBone *bones, float inter_step);
     static const mat4 InterpolateBetweenTwoBones(const NetworkBone &current, const NetworkBone &next, float interp_step);
+    // Overgrowth Online: display matrix of physics bone i from its streamed world transform
+    mat4 NetworkBoneMatrix(int bone, const quaternion &rotation, const vec3 &translation, float scale) const;
+    mat4 NetworkAttachMatrix(int bone, const quaternion& rotation, const vec3& translation) const;  // the same bone unscaled: where gear attaches
+    void NetworkUpdateAttachedItems() { UpdateAttachedItems(); }  // Overgrowth Online: proxies' weapons follow the streamed bones
     bool CheckIfNextStepLeadsToStop();
     bool CheckIfOverShot();
     void InterpolateNoNewData();

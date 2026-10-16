@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: ping.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -28,9 +29,10 @@ namespace OnlineMessages {
 class Ping : public OnlineMessageBase {
    public:
     uint32_t ping_id;
+    double send_ms;  // sender's OnlineClockMs()
 
    public:
-    Ping(uint32_t ping_id);
+    Ping(uint32_t ping_id, double send_ms = 0.0);
 
     static binn* Serialize(void* object);
     static void Deserialize(void* object, binn* source);

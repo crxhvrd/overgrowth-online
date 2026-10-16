@@ -25,6 +25,7 @@
 #include "threatcheck.as"
 
 int progress = 0;
+float progress_sync_next = 0.0f;  // online host: the progress again now and then (late joiners)
 bool queued_goal_check = true;
 
 float blackout_amount = 0.0;
@@ -292,6 +293,11 @@ void IncrementProgress() {
     ++progress;
     win_time = -1.0;
 
+    if(Online_IsHosting()){
+        level.SendMessage("ohl og_progress "+progress);  // clients follow
+        level.SendMessage("coop_checkpoint "+progress);  // the engine gets downed players up
+    }
+
     TriggerGoalPre();
 
     if(params.HasParam("goal_"+progress)){
@@ -329,6 +335,18 @@ void IncrementProgress() {
      if(win_time == -1.0){
         PossibleWinEvent("character_defeated", -1, progress);
     }
+}
+
+// Online, a guest: the goal steps up to the host's goal, as IncrementProgress
+// runs them (they switch on the "?" talkers)
+void CoopFollowProgress(int to){
+    while(progress < to){
+        TriggerGoalPost(_all_but_sting);
+        ++progress;
+        win_time = -1.0;
+        TriggerGoalPre();
+    }
+    progress = to;  // (lower: the host started over)
 }
 
 void SetEnabledCharacterAndItems(int id, bool enabled){
@@ -422,14 +440,14 @@ void CheckReset() {
         }
     }
 
-    // Place player character at correct spawn point
+    // Place player character at correct spawn point. Co-op: the first player
+    // on it, the others on safe spots beside it (not in the water)
     array<int> player_ids = GetControlledCharacterIDs();
     for(uint i = 0; i < player_ids.length(); i++) {
         MovementObject@ mo = ReadCharacter(player_ids[i]);
-        if(progress == 0){ // Spawn at actual initial player spawn point
-            Object@ obj = ReadObjectFromID(mo.GetID());
-            mo.position = obj.GetTranslation();
-            mo.SetRotationFromFacing(obj.GetRotation() * vec3(0,0,1));
+        Object@ spawn = null;
+        if(progress == 0){ // Spawn at actual initial player spawn point (the level's player)
+            @spawn = ReadObjectFromID(ReadCharacter(player_ids[0]).GetID());
         } else { // Spawn at a custom spawn point
             string param_str = params.GetString("player_spawn");
             token_iter.Init();
@@ -437,13 +455,16 @@ void CheckReset() {
                 token_iter.FindNextToken(param_str);
             }
             int id = atoi(token_iter.GetToken(param_str));
-            if(ObjectExists(id)){
-                Object@ obj = ReadObjectFromID(id);
-                if(obj.GetType() == _placeholder_object){
-                    mo.position = obj.GetTranslation();
-                    mo.SetRotationFromFacing(obj.GetRotation() * vec3(0,0,1));
-                    mo.Execute("SetCameraFromFacing(); SetOnGround(true); FixDiscontinuity();");
-                }
+            if(ObjectExists(id) && ReadObjectFromID(id).GetType() == _placeholder_object){
+                @spawn = ReadObjectFromID(id);
+            }
+        }
+        if(spawn !is null){
+            vec3 facing = spawn.GetRotation() * vec3(0,0,1);
+            mo.position = i == 0 ? spawn.GetTranslation() : Online_SafeSpotNear(spawn.GetTranslation(), facing, int(i));
+            mo.SetRotationFromFacing(facing);
+            if(progress != 0){
+                mo.Execute("SetCameraFromFacing(); SetOnGround(true); FixDiscontinuity();");
             }
         }
     }
@@ -455,7 +476,9 @@ void CheckReset() {
 
 
 void PossibleWinEvent(const string &in event, int val, int goal_check, int recursion = 0){
-    if(ko_time != -1.0){
+    // Online the host decides goals (clients follow its progress), and they
+    // stop only when every player is down
+    if(Online_IsActive() ? (Online_IsClient() || AllPlayersDown()) : ko_time != -1.0){
         return;
     }
     Log(info, "PossibleWinEvent("+event+", "+val+", "+goal_check+", " + recursion + ")");
@@ -526,6 +549,9 @@ void PossibleWinEvent(const string &in event, int val, int goal_check, int recur
                             mo.QueueScriptMessage("restore_health");
                             LeaveTelemetryZone();
                         }
+                        if(Online_IsHosting()){
+                            level.SendMessage("ohl og_heal");  // the other players heal themselves
+                        }
                         if(no_delay) {
                             win_time = the_time + 2.0;
                         } else {
@@ -589,6 +615,16 @@ void ReceiveMessage(string msg) {
                 if(token_iter.FindNextToken(msg)){
                     crowd_override = true;
                     crowd_pitch_override = atof(token_iter.GetToken(msg));
+                }
+            }
+        } else if(sub_msg == "ohl" && Online_IsClient() && token_iter.FindNextToken(msg)){
+            string what = token_iter.GetToken(msg);
+            if(what == "og_progress" && token_iter.FindNextToken(msg)){
+                CoopFollowProgress(atoi(token_iter.GetToken(msg)));
+            } else if(what == "og_heal"){
+                int player_id = GetPlayerCharacterID();
+                if(player_id != -1){
+                    ReadCharacter(player_id).QueueScriptMessage("restore_health");
                 }
             }
         } else if(sub_msg == "set_camera_dof"){
@@ -692,10 +728,19 @@ void ReceiveMessage(string msg) {
         if(token_iter.FindNextToken(msg)){
             int checkpoint_id = atoi(token_iter.GetToken(msg));
             if(progress >= checkpoint_id){
-                int player_id = GetPlayerCharacterID();
-                if(player_id != -1 && ObjectExists(player_id)){
-                    MovementObject@ char = ReadCharacter(player_id);
-                    char.ReceiveMessage("fall_death");
+                // The character that fell (online: on the machine that runs it)
+                int fell = token_iter.FindNextToken(msg) ? atoi(token_iter.GetToken(msg)) : -1;
+                if(fell != -1 && MovementObjectExists(fell)){
+                    MovementObject@ char = ReadCharacterID(fell);
+                    if(!char.remote){
+                        char.ReceiveMessage("fall_death");
+                    }
+                } else {
+                    int player_id = GetPlayerCharacterID();
+                    if(player_id != -1 && ObjectExists(player_id)){
+                        MovementObject@ char = ReadCharacter(player_id);
+                        char.ReceiveMessage("fall_death");
+                    }
                 }
             }
         }
@@ -729,7 +774,12 @@ void SetMusicLayer(int layer){
 void Update() {
     EnterTelemetryZone("Overgrowth Level Update");
 
-    if(GetInputPressed(0, "k")){
+    if(Online_IsHosting() && the_time >= progress_sync_next){
+        progress_sync_next = the_time + 5.0f;
+        level.SendMessage("ohl og_progress "+progress);
+    }
+
+    if(DebugKeysEnabled() && GetInputPressed(0, "k")){  // (a debug key: it changed progress on any machine)
         ++progress;
         if(!params.HasParam("goal_"+progress)){
             progress = 0;
@@ -786,6 +836,9 @@ void Update() {
         bool use_keyboard = (max(last_mouse_event_time, last_keyboard_event_time) > last_controller_event_time);
         if(char.GetIntVar("knocked_out") != _awake) {
             string respawn = params.GetString("death_message");
+            if(Online_IsActive()){
+                respawn = "\nYou are down. You get up at the next checkpoint; if everyone is down, the level starts over.";
+            }
             int index = respawn.findFirst("$attack$");
             while(index != -1) {
                 respawn.erase(index, 8);
@@ -905,7 +958,7 @@ void PreDraw(float curr_game_time) {
         ko_time = -1.0f;
     }
 
-    if(win_time != -1.0 && the_time > win_time && ko_time == -1.0){
+    if(win_time != -1.0 && the_time > win_time && (Online_IsActive() ? (Online_IsHosting() && !AllPlayersDown()) : ko_time == -1.0)){
         while(progress < win_target){
             IncrementProgress();
         }

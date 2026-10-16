@@ -52,6 +52,16 @@ void ReceiveMessage(string msg){
     if(msg == "reset"){
         Reset();
     }
+    if(msg == "coop_played"){  // online: the host played it
+        played = true;
+    }
+    if(msg == "coop_request"){  // online, the host: a guest's talk
+        if(played){
+            level.SendMessage("ohl coop_talked "+hotspot.GetID());  // its "?" goes
+        } else {
+            TryToPlayDialogue();
+        }
+    }
     if(msg == "activate"){
         if(played){
             played = false;
@@ -80,6 +90,11 @@ void HandleEvent(string event, MovementObject @mo){
 }
 
 void TryToPlayDialogue() {
+    // Online a guest asks the host: dialogues are the host's, and its start reaches everyone
+    if(!played && Online_IsClient()){
+        level.SendMessage("ohr coop_talk "+hotspot.GetID());
+        return;
+    }
     if(!played){
         bool player_in_valid_state = false;
         for(int i=0, len=GetNumCharacters(); i<len; ++i){
@@ -95,6 +110,9 @@ void TryToPlayDialogue() {
                 level.SendMessage("start_dialogue \""+params.GetString("Dialogue")+"\"");                
             }
             played = true;
+            if(Online_IsHosting()){
+                level.SendMessage("ohl coop_talked "+hotspot.GetID());  // the guests' copies are used too
+            }
         }
     }
 }

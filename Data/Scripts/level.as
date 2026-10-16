@@ -25,6 +25,7 @@
 #include "dialogue.as"
 #include "menu_common.as"
 #include "settings.as"
+#include "coop_revive.as"
 int controller_id = 0;
 bool has_gui = false;
 bool toggle_gui = false;
@@ -151,6 +152,35 @@ void ReceiveMessage(string msg) {
         return;
     }
     string token = token_iter.GetToken(msg);
+
+    // Online co-op: reviving a teammate (coop_revive.as)
+    if(CoopReviveMessage(msg)){
+        return;
+    }
+
+    // Online co-op: talking to story characters (start_dialogue.as)
+    if(token == "ohr" && Online_IsHosting()){
+        // "ohr <player> coop_talk <hotspot>": a guest pressed attack there
+        if(token_iter.FindNextToken(msg) && token_iter.FindNextToken(msg) && token_iter.GetToken(msg) == "coop_talk" &&
+                token_iter.FindNextToken(msg)){
+            int id = atoi(token_iter.GetToken(msg));
+            if(ObjectExists(id) && ReadObjectFromID(id).GetType() == _hotspot_object &&
+                    ReadObjectFromID(id).GetScriptParams().HasParam("Dialogue")){  // (a dialogue hotspot, nothing else)
+                ReadObjectFromID(id).QueueScriptMessage("coop_request");
+            }
+        }
+        return;
+    }
+    if(token == "ohl" && Online_IsClient()){
+        if(token_iter.FindNextToken(msg) && token_iter.GetToken(msg) == "coop_talked" && token_iter.FindNextToken(msg)){
+            int id = atoi(token_iter.GetToken(msg));
+            if(ObjectExists(id) && ReadObjectFromID(id).GetType() == _hotspot_object){
+                ReadObjectFromID(id).QueueScriptMessage("coop_played");
+            }
+        }
+        return;
+    }
+
     if(token == "cleartext"){
         has_display_text = false;
     } else if(token == "dispose_level"){
@@ -228,10 +258,14 @@ void ReceiveMessage(string msg) {
         CharactersNoticeEachOther();
     } else if(token == "start_dialogue"){
         token_iter.FindNextToken(msg);
-        dialogue_queue.push_back(token_iter.GetToken(msg));
+        if(!Online_IsClient()){  // online the host starts it everywhere (a client's own waited for the host forever)
+            dialogue_queue.push_back(token_iter.GetToken(msg));
+        }
     } else if(token == "start_dialogue_fade"){
         token_iter.FindNextToken(msg);
-        dialogue_queue.push_back(token_iter.GetToken(msg));
+        if(!Online_IsClient()){
+            dialogue_queue.push_back(token_iter.GetToken(msg));
+        }
         if(reset_time < the_time - 0.1){
             const float fade_time = 0.2f;
             fade_out_start = the_time;
@@ -290,6 +324,7 @@ void DrawGUI() {
     EnterTelemetryZone("dialogue.Display()");
     dialogue.Display();
     LeaveTelemetryZone();
+    CoopReviveDraw();
     LeaveTelemetryZone();
 }
 
@@ -394,7 +429,33 @@ void DrawGUI3() {
 
 
 bool capture_input = false;
+// Online co-op: a client's character stands still while a dialogue plays
+// (the dialogue freezes the level's characters, not the joined ones)
+bool coop_dialogue_frozen = false;
+
+void CoopDialogueFreeze() {
+    bool want = Online_IsClient() && level.DialogueCameraControl();
+    if(want == coop_dialogue_frozen){
+        return;
+    }
+    coop_dialogue_frozen = want;
+    int num = GetNumCharacters();
+    for(int i = 0; i < num; ++i){
+        MovementObject@ char = ReadCharacter(i);
+        if(char.controlled && !char.remote){
+            if(want){
+                // Dialogue control pins a character to its dialogue spot: here, where it stands
+                char.Execute("dialogue_position = this_mo.position; vec3 f = this_mo.GetFacing(); "
+                             "dialogue_rotation = atan2(-f.z, f.x) * 180.0f / 3.1415f;");
+            }
+            char.ReceiveScriptMessage(want ? "set_dialogue_control true" : "set_dialogue_control false");
+        }
+    }
+}
+
 void Update(int paused) {
+    CoopDialogueFreeze();
+    CoopReviveUpdate();
     const bool kDialogueQueueDebug = false;
     if(kDialogueQueueDebug){
         string str;

@@ -99,6 +99,8 @@ class ItemObject : public Object {
     void SetPosition(const vec3& pos);
     vec3 GetPhysicsPosition();
     void SetPhysicsTransform(const mat4& transform);
+    bool IsThrownStraight() const { return thrown_ == kThrownStraight; }  // Overgrowth Online
+    double net_released_ms = -1e9;  // Overgrowth Online: when a network throw or drop let go of it
     void SetVelocities(const vec3& linear_vel, const vec3& angular_vel);
     void SetInterpolation(int count, int period);
     void ActivatePhysics();

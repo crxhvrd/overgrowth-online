@@ -56,6 +56,9 @@ const vec3& Camera::GetFlatFacing() const {
 }
 
 void Camera::SetFlatFacing(const vec3& v) {
+    if (view_locked_) {
+        return;
+    }
     flat_facing = v;
 }
 
@@ -86,12 +89,37 @@ Camera::Camera() : m_camera_object(NULL),
     reset();
 }
 
+void Camera::LockView(const vec3& eye, const vec3& target, float fov) {
+    view_locked_ = false;
+    for (int i = 0; i < 2; ++i) {  // (twice: the previous values too, nothing to blend)
+        SetPos(eye);
+        LookAt(target);
+        SetZRotation(0.0f);
+        SetDistance(0.0f);
+    }
+    SetVelocity(vec3(0.0f));
+    if (fov > 0.0f) {
+        SetFOV(fov);
+    }
+    view_locked_ = true;
+}
+
+void Camera::UnlockView() {
+    view_locked_ = false;
+}
+
 void Camera::SetDistance(const float new_val) {
+    if (view_locked_) {
+        return;
+    }
     old_chase_distance = chase_distance;
     chase_distance = new_val;
 }
 
 void Camera::SetYRotation(const float new_val) {
+    if (view_locked_) {
+        return;
+    }
     old_y_rotation = y_rotation;
     y_rotation = new_val;
 
@@ -104,24 +132,39 @@ void Camera::SetYRotation(const float new_val) {
 }
 
 void Camera::SetXRotation(const float new_val) {
+    if (view_locked_) {
+        return;
+    }
     old_x_rotation = x_rotation;
     x_rotation = new_val;
 }
 
 void Camera::SetFacing(const vec3& _facing) {
+    if (view_locked_) {
+        return;
+    }
     facing = _facing;
 }
 
 void Camera::SetUp(const vec3& _up) {
+    if (view_locked_) {
+        return;
+    }
     up = _up;
 }
 
 void Camera::SetZRotation(const float new_val) {
+    if (view_locked_) {
+        return;
+    }
     old_z_rotation = z_rotation;
     z_rotation = new_val;
 }
 
 void Camera::SetPos(const vec3& new_val) {
+    if (view_locked_) {
+        return;
+    }
     old_pos = pos;
     pos = new_val;
 }
@@ -361,6 +404,9 @@ mat4 Camera::GetPerspectiveMatrix() const {
 
 // Set the camera field of view
 void Camera::SetFOV(const float degrees) {
+    if (view_locked_) {
+        return;
+    }
     target_horz_fov = degrees;
 }
 
@@ -795,6 +841,9 @@ const vec3& Camera::GetVelocity() const {
 }
 
 void Camera::SetVelocity(const vec3& vel) {
+    if (view_locked_) {
+        return;
+    }
     velocity = vel;
 }
 

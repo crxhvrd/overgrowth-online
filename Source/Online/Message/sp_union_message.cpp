@@ -36,6 +36,15 @@ SPUnionMessage::SPUnionMessage(ObjectID param_id, const std::string& key_name, i
     this->param_id = Online::Instance()->GetOriginalID(param_id);
 }
 
+SPUnionMessage::SPUnionMessage(ObjectID param_id, const std::string& key_name, float value, ScriptParam::ScriptParamType type, ScriptParamEditorType::Type editor_type, const std::string& editor_details) : OnlineMessageBase(OnlineMessageCategory::LEVEL_PERSISTENT),
+                                                                                                                                                                                                               key_name(key_name),
+                                                                                                                                                                                                               type(type),
+                                                                                                                                                                                                               editor_type(editor_type),
+                                                                                                                                                                                                               editor_details(editor_details) {
+    value_float = value;
+    this->param_id = Online::Instance()->GetOriginalID(param_id);
+}
+
 binn* SPUnionMessage::Serialize(void* object) {
     SPUnionMessage* t = static_cast<SPUnionMessage*>(object);
     binn* l = binn_object();

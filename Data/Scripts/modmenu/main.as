@@ -952,7 +952,7 @@ IMContainer@ AddModItem(IMDivider@ parent, ModID mod_id, uint index, bool fadein
     
     if (ModGetSupportsOnline(mod_id)) {
         // Add floating background
-        IMImage online_marker("Textures/ui/menus/main/icon-online.png");
+        IMImage online_marker("Textures/ui/menus/main/icon-steam.png");  // (icon-online.png is not in the 1.4 data)
         float image_size = title_container.getSizeY() * 0.8f;
 
         online_marker.setSize(vec2(image_size, image_size));

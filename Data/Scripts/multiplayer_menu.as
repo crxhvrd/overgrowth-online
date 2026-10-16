@@ -63,15 +63,28 @@ void Initialize() {
 	AddVerticalBar();
 }
 
+// Overgrowth Online: the story campaigns in co-op, the linear ones the co-op
+// rules know (Online::CoopCampaign), and the Arena, player against player
+// (online_arena.as). The 1.4 data marks none as online, so this doesn't ask;
+// Large Battles and Versus stay out.
+bool CoopCampaign(Campaign &in camp) {
+    return camp.GetMainScript().findFirst("linear_campaign") >= 0 && camp.GetMenuScript().findFirst("arena") < 0 &&
+        camp.GetMenuScript().findFirst("aio_battle") < 0;  // (Versus runs on linear_campaign too, with an arena menu)
+}
+
+bool ArenaCampaign(Campaign &in camp) {
+    return camp.GetID() == "com-wolfire-arena";
+}
+
 void SetPlayMenuList() {
     array<Campaign>@ campaigns = GetCampaigns();
     for( uint i = 0; i < campaigns.length(); i++ ) {
         Campaign camp = campaigns[i];
-        if (camp.GetSupportsOnline()) {
+        if (CoopCampaign(camp) || ArenaCampaign(camp)) {
             string camp_thumbnail_path = camp.GetThumbnail();
             play_menu.insertLast(
                 LevelInfo(  camp.GetMenuScript(),
-                    camp.GetTitle(),
+                    ArenaCampaign(camp) ? camp.GetTitle() + " (PvP)" : camp.GetTitle(),
                     camp_thumbnail_path,
                     camp.GetID(),
                     0,
@@ -124,12 +137,11 @@ void BuildUI(){
     float button_width = 550.0f;
     bool animated = false;
 
-    // Setup name Textbox
-    text_box_playername.on_value_changed_message = "update_playername";
-    text_box_playername.input_text = GetConfigValueString("playername");
-    text_box_playername.default_text = "Enter Player Name...";
-    @text_box_playername.validator = AlphaNumericalTextValidator();
-    AddTextInput(buttons_holder, text_box_playername, "activate_playername_text_input");
+    // Steam friends hosting (multiplayer_join_friend.as)
+    AddButton("Join a friend", buttons_holder, play_icon);
+
+    // Your character (and name): their own screen
+    AddButton("Your character", buttons_holder, settings_icon);
 
     // Setup ip Textbox
     text_box_ip.on_enter_message = "Connect by IP";
@@ -182,6 +194,14 @@ void Update() {
             Online_Host();
 
             this_ui.SendCallback(message.getString(0));
+        }
+        else if (message.name == "Join a friend")
+        {
+            this_ui.SendCallback("multiplayer_join_friend.as");
+        }
+        else if (message.name == "Your character")
+        {
+            this_ui.SendCallback("multiplayer_character_menu.as");
         }
         else if (message.name == "Connect by IP")
         {

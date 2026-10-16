@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<Mod>
+    <Id>ogmp-test</Id>
+    <Name>OG MP test hook</Name>
+    <Author>test</Author>
+    <Category>Test</Category>
+    <Description>Test-only level hook: hosts or connects by config (mpt_role, mpt_ip) and logs the online session.</Description>
+    <Thumbnail>Data/Images/thumb.png</Thumbnail>
+    <Version>0.1</Version>
+    <SupportedVersion>*</SupportedVersion>
+    <SupportsOnline>true</SupportsOnline>
+    <LevelHookFile>Data/Scripts/mptest_hook.as</LevelHookFile>
+</Mod>

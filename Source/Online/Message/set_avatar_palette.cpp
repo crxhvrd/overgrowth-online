@@ -62,9 +62,12 @@ void SetAvatarPalette::Execute(const OnlineMessageRef& ref, void* object, PeerID
         if (o != nullptr && o->GetType() == _movement_object) {
             MovementObject* mov = static_cast<MovementObject*>(o);
             OGPalette palette(*mov->GetPalette());
-            palette[sap->channel].color = sap->color;
-
-            mov->ApplyPalette(palette, true);
+            // (Overgrowth Online) a channel this character doesn't have, e.g. its owner
+            // is already another character: writing it overran the palette
+            if (sap->channel < palette.size()) {
+                palette[sap->channel].color = sap->color;
+                mov->ApplyPalette(palette, true);
+            }
         }
     }
 }

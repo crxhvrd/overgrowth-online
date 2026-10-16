@@ -1,0 +1,1300 @@
+<?xml version="2.0" ?>
+<Type>saved</Type>
+    <Name>S2-A4 (battle)</Name>
+    <Description />
+    <Shader>post</Shader>
+    <LoadingScreen>
+        <Image>Data/LevelLoading/t2/s2/a4.jpg</Image>
+    </LoadingScreen>
+    <Terrain>
+        <Heightmap>Data/Textures/Terrain/PlainsHills/PlainsHills_Height.png</Heightmap>
+        <ShaderExtra />
+        <DetailMap />
+        <ColorMap>Data/Textures/Terrain/eroded_plateau/eroded_plateau_c.tga</ColorMap>
+        <DetailMaps>
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/volcanic.tga" materialpath="Data/Materials/rock.xml" normalpath="Data/Textures/Terrain/DetailTextures/volcanic_normal.tga" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/pebbles.tga" materialpath="Data/Materials/gravel.xml" normalpath="Data/Textures/Terrain/DetailTextures/pebbles_normal.tga" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/smooth_mud.tga" materialpath="Data/Materials/dirt.xml" normalpath="Data/Textures/Terrain/DetailTextures/smooth_mud_normal.tga" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/rubble.tga" materialpath="Data/Materials/rocks.xml" normalpath="Data/Textures/Terrain/DetailTextures/rubble_normal.tga" />
+        </DetailMaps>
+        <DetailObjects />
+    </Terrain>
+    <OutOfDate NavMesh="true" NavMeshParamHash="-1674835251" />
+    <AmbientSounds />
+    <Script>level.as</Script>
+    <LevelScriptParameters>
+    </LevelScriptParameters>
+    <NavMeshParameters agent_height="1.7" agent_max_climb="1.5" agent_max_slope="60" agent_radius="0.4" cell_height="0.2" cell_size="0.3" />
+    <Sky>
+        <DomeTexture>Data/Textures/skies/DarkSunset.tga</DomeTexture>
+        <SunAngularRad>0.112</SunAngularRad>
+        <SunColorAngle>250.69</SunColorAngle>
+        <RayToSun r0="0.982056" r1="0.175185" r2="0.0698307" />
+    </Sky>
+    <ActorObjects>
+        <ActorObject euler_x="0" euler_y="0.546813" euler_z="0" id="2" is_player="1" q0="0" q1="0.270013" q2="0" q3="0.962857" s0="1" s1="1" s2="1" t0="-94.2887" t1="157.3170" t2="181.3160" type_file="Data/Objects/therium/IGF_Characters/ghostspawn.xml">
+            <parameters>
+                <parameter name="Aggression" type="float" val="0.5" />
+                <parameter name="Attack Damage" type="float" val="1" />
+                <parameter name="Attack Knockback" type="float" val="1" />
+                <parameter name="Attack Speed" type="float" val="1" />
+                <parameter name="Block Follow-up" type="float" val="0.5" />
+                <parameter name="Block Skill" type="float" val="0.5" />
+                <parameter name="Character Scale" type="float" val="1" />
+                <parameter name="Damage Resistance" type="float" val="1" />
+                <parameter name="Ear Size" type="float" val="1" />
+                <parameter name="Fat" type="float" val="0.5" />
+                <parameter name="Focus FOV distance" type="float" val="10" />
+                <parameter name="Focus FOV horizontal" type="float" val="0.62834" />
+                <parameter name="Focus FOV vertical" type="float" val="0.62834" />
+                <parameter name="Ground Aggression" type="float" val="0.5" />
+                <parameter name="Knockout Shield" type="int" val="0" />
+                <parameter name="Left handed" type="int" val="0" />
+                <parameter name="Lives" type="int" val="1" />
+                <parameter name="Movement Speed" type="float" val="1" />
+                <parameter name="Muscle" type="float" val="0.5" />
+                <parameter name="Peripheral FOV distance" type="float" val="4" />
+                <parameter name="Peripheral FOV horizontal" type="float" val="1.41376" />
+                <parameter name="Peripheral FOV vertical" type="float" val="1.41376" />
+                <parameter name="Static" type="int" val="0" />
+                <parameter name="Teams" type="string" val="player, Ghost" />
+            </parameters>
+            <Connections>
+                <Connection id="-1" />
+            </Connections>
+            <ItemConnections />
+            <Palette />
+        </ActorObject>
+        <Decal color_b="0.214441" color_g="0.214441" color_r="0.219608" euler_x="0" euler_y="0" euler_z="0" id="7" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="17.2347" s1="17.2347" s2="17.2347" t0="-73.2914" t1="154.862" t2="132.54" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.214441" color_g="0.214441" color_r="0.219608" euler_x="0" euler_y="0" euler_z="0" id="8" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="23.4573" s1="17.2347" s2="27.1628" t0="-70.1876" t1="154.862" t2="141.808" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.214441" color_g="0.214441" color_r="0.219608" euler_x="0" euler_y="0" euler_z="0" id="9" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="26.1003" s1="18.8197" s2="33.7625" t0="-103.386" t1="159.19" t2="149.954" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <ReflectionCaptureObject euler_x="0" euler_y="0" euler_z="0" gicoeff00="0.106628" gicoeff01="0.0559769" gicoeff02="0.0814819" gicoeff03="0.0272179" gicoeff04="0.0186844" gicoeff05="0.0232277" gicoeff06="0.0928345" gicoeff07="0.0548401" gicoeff08="0.0833435" gicoeff09="0.0290909" gicoeff10="0.0164604" gicoeff11="0.0191517" gicoeff12="0.0773926" gicoeff13="0.0444565" gicoeff14="0.0608826" gicoeff15="0.045414" gicoeff16="0.0267067" gicoeff17="0.0374527" id="17" q0="0" q1="0" q2="0" q3="1" s0="27.033" s1="27.033" s2="27.033" t0="-95.0375" t1="161.168" t2="169.87">
+            <parameters>
+                <parameter name="Global" type="string" val="0" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="-1.5708" euler_z="3.14159" id="24" overbright="0" q0="0" q1="-0.707107" q2="0" q3="0.707107" s0="1.6512" s1="1.6512" s2="1.6512" t0="-58.2528" t1="174.257" t2="92.5052" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <Hotspot euler_x="3.14159" euler_y="1.27437" euler_z="3.14159" id="25" q0="0" q1="0.803774" q2="0" q3="0.594935" s0="76.1813" s1="23.3426" s2="1.00028" t0="-134.183" t1="194.404" t2="170.543" type_file="Data/Objects/Hotspots/boundary.xml">
+            <parameters />
+        </Hotspot>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="0" euler_y="-1.0472" euler_z="-3.14159" id="26" overbright="0" q0="-0.499999" q1="0" q2="-0.866026" q3="0" s0="1.6512" s1="1.6512" s2="1.6512" t0="-62.9521" t1="160.837" t2="135.356" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <Hotspot euler_x="3.14159" euler_y="1.51359" euler_z="3.14159" id="27" q0="0" q1="0.727041" q2="0" q3="0.686594" s0="103.461" s1="36.8136" s2="0.999991" t0="-185.085" t1="167.462" t2="-155.42" type_file="Data/Objects/Hotspots/boundary.xml">
+            <parameters />
+        </Hotspot>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="-0.523597" euler_z="3.14159" id="28" overbright="0" q0="0" q1="-0.965926" q2="0" q3="0.258818" s0="1.6512" s1="1.6512" s2="1.6512" t0="-53.3992" t1="178.122" t2="44.2911" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-0.192548" euler_y="-1.01848" euler_z="0.436857" id="29" overbright="0" q0="0.023219" q1="-0.491914" q2="0.142575" q3="0.858577" s0="1.69031" s1="0.672741" s2="2.02559" t0="-33.501" t1="163.745" t2="57.2555" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="0.212829" euler_y="-1.45929" euler_z="-0.0623106" id="30" overbright="0" q0="0.0584873" q1="-0.664978" q2="0.0476799" q3="0.743041" s0="1.69031" s1="0.672741" s2="2.02559" t0="-26.3602" t1="164.123" t2="66.7028" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="2.10905" euler_y="-1.10678" euler_z="-2.19201" id="31" overbright="0" q0="0.107485" q1="-0.776635" q2="-0.164558" q3="0.598503" s0="1.69031" s1="0.672741" s2="2.02559" t0="-26.362" t1="158.699" t2="83.1901" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-0.157697" euler_y="-0.783805" euler_z="0.729442" id="32" overbright="0" q0="0.0678064" q1="-0.381681" q2="0.300516" q3="0.871442" s0="-1.63077" s1="0.558474" s2="1.85698" t0="-35.8202" t1="157.915" t2="53.6846" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="0" euler_y="-1.0472" euler_z="-3.14159" id="33" overbright="0" q0="-0.499999" q1="0" q2="-0.866026" q3="0" s0="1.6512" s1="1.6512" s2="1.6512" t0="-66.5699" t1="159.513" t2="131.512" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-0.116825" euler_y="-0.355637" euler_z="0.451704" id="34" overbright="0" q0="-0.0164565" q1="-0.184964" q2="0.209966" q3="0.959912" s0="1.6903" s1="0.672741" s2="2.02559" t0="-85.5026" t1="172.78" t2="20.4918" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-0.125928" euler_y="-0.801319" euler_z="0.327392" id="35" overbright="0" q0="0.00627028" q1="-0.393491" q2="0.125549" q3="0.910694" s0="1.69031" s1="0.672741" s2="2.02559" t0="-74.2383" t1="175.329" t2="23.871" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="0.283278" euler_y="-1.18677" euler_z="-0.390459" id="36" overbright="0" q0="0.00742226" q1="-0.565759" q2="-0.0817824" q3="0.820471" s0="1.69031" s1="0.672741" s2="2.02559" t0="-66.9174" t1="174.536" t2="33.3561" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-0.21482" euler_y="-0.0139485" euler_z="0.754147" id="37" overbright="0" q0="-0.0971167" q1="-0.0459184" q2="0.365375" q3="0.924641" s0="-1.63077" s1="0.558474" s2="2.02559" t0="-93.2377" t1="163.375" t2="16.3737" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="0" euler_y="1.0472" euler_z="0" id="38" overbright="0" q0="0" q1="0.5" q2="0" q3="0.866025" s0="1.6512" s1="1.6512" s2="1.6512" t0="-53.9327" t1="186.633" t2="45.0085" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="3.14159" euler_y="1.5708" euler_z="3.14159" id="39" overbright="0" q0="0" q1="0.707107" q2="0" q3="0.707107" s0="1.6512" s1="1.6512" s2="1.6512" t0="-77.1793" t1="169.112" t2="72.3056" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="3.14159" euler_y="-1.5708" euler_z="3.14159" id="40" overbright="0" q0="0" q1="-0.707107" q2="0" q3="0.707107" s0="1.6512" s1="1.6512" s2="1.6512" t0="-75.883" t1="177.919" t2="73.3397" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-1.92597" euler_y="1.34445" euler_z="-1.62548" id="41" overbright="0" q0="-0.18335" q1="0.710919" q2="0.0269767" q3="0.678418" s0="1.8996" s1="1.8996" s2="1.8996" t0="-198.749" t1="171.082" t2="60.3967" type_file="Data/Objects/Environment/Land/jagged_outcrop.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="0" euler_y="0" euler_z="0" id="42" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="1.6512" s1="1.6512" s2="1.6512" t0="-54.1224" t1="168.561" t2="44.3894" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="3.14159" euler_y="-0.523597" euler_z="3.14159" id="43" overbright="0" q0="0" q1="-0.965926" q2="0" q3="0.258818" s0="1.6512" s1="1.6512" s2="1.6512" t0="-77.8579" t1="169.503" t2="52.4387" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="0" euler_y="0.523599" euler_z="0" id="44" overbright="0" q0="0" q1="0.258819" q2="0" q3="0.965926" s0="1.6512" s1="1.6512" s2="1.6512" t0="-77.9294" t1="177.931" t2="53.1482" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="0" euler_y="0" euler_z="0" id="45" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="1.6512" s1="1.6512" s2="1.6512" t0="-72.2278" t1="162.693" t2="70.0116" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="0" euler_y="0" euler_z="0" id="46" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="1.6512" s1="1.6512" s2="1.6512" t0="-105.174" t1="168.21" t2="81.1563" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="1.5708" euler_z="3.14159" id="47" overbright="0" q0="0" q1="0.707107" q2="0" q3="0.707107" s0="1.6512" s1="1.6512" s2="1.6512" t0="-104.895" t1="177.882" t2="81.3632" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <Hotspot euler_x="0" euler_y="-1.39211" euler_z="0" id="48" q0="0" q1="-0.641197" q2="0" q3="0.767376" s0="200.918" s1="28.6974" s2="0.999874" t0="157.852" t1="185.545" t2="-46.2109" type_file="Data/Objects/Hotspots/boundary.xml">
+            <parameters />
+        </Hotspot>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="0.164436" euler_y="-0.45705" euler_z="0.252723" id="49" overbright="0" q0="0.107806" q1="-0.213895" q2="0.140791" q3="0.960627" s0="1.6903" s1="0.672741" s2="2.02559" t0="-93.1779" t1="168.025" t2="-5.9349" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="2.93965" euler_y="-1.16024" euler_z="-2.93774" id="50" overbright="0" q0="0.0297036" q1="-0.833441" q2="-0.0283866" q3="0.551079" s0="1.69026" s1="0.672725" s2="2.02555" t0="-18.3637" t1="176.905" t2="107.108" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="0.801546" euler_y="-1.33358" euler_z="-0.737092" id="51" overbright="0" q0="0.0808303" q1="-0.641665" q2="-0.035583" q3="0.761883" s0="1.69026" s1="0.672725" s2="2.02555" t0="-21.0984" t1="175.39" t2="123.874" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="0.212829" euler_y="-1.45929" euler_z="-0.0623106" id="52" overbright="0" q0="0.0584873" q1="-0.664978" q2="0.0476799" q3="0.743041" s0="0.689503" s1="0.274422" s2="0.826272" t0="-78.8677" t1="176.402" t2="59.7137" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="0.110065" euler_y="-1.36221" euler_z="0.314157" id="53" overbright="0" q0="0.140555" q1="-0.614272" q2="0.155553" q3="0.760735" s0="0.689503" s1="0.274422" s2="0.826272" t0="-80.5479" t1="173.563" t2="64.5507" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-0.252748" euler_y="-1.1716" euler_z="0.529297" id="54" overbright="0" q0="0.0420929" q1="-0.556834" q2="0.148964" q3="0.816072" s0="0.689503" s1="0.274422" s2="0.826272" t0="-84.467" t1="173.417" t2="46.7759" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-2.12617" euler_y="-1.08358" euler_z="2.32808" id="55" overbright="0" q0="-0.0659617" q1="-0.786811" q2="0.204281" q3="0.578659" s0="0.689503" s1="0.274422" s2="0.826272" t0="-82.3081" t1="173.744" t2="39.0179" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-0.256479" euler_y="-0.671233" euler_z="0.323963" id="56" overbright="0" q0="-0.0664928" q1="-0.341845" q2="0.109457" q3="0.930989" s0="0.689503" s1="0.274422" s2="0.826272" t0="-91.6586" t1="175.443" t2="35.0333" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-0.227765" euler_y="-0.794847" euler_z="0.481431" id="57" overbright="0" q0="-0.0100861" q1="-0.398429" q2="0.175679" q3="0.900161" s0="0.689503" s1="0.274422" s2="0.826272" t0="-95.7753" t1="172.283" t2="35.5729" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="-1.5708" euler_z="3.14159" id="58" overbright="0" q0="0" q1="-0.707107" q2="0" q3="0.707107" s0="1.6512" s1="1.6512" s2="1.6512" t0="-100.964" t1="166.396" t2="84.2171" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="0" euler_y="0" euler_z="3.14159" id="59" overbright="0" q0="0" q1="0" q2="1" q3="0" s0="1.6512" s1="1.6512" s2="1.6512" t0="-122.844" t1="172.597" t2="64.9082" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="0" euler_z="0" id="60" overbright="0" q0="-1" q1="0" q2="0" q3="0" s0="1.6512" s1="1.6512" s2="1.6512" t0="-122.596" t1="181.304" t2="65.2757" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-1.75324" euler_y="1.27606" euler_z="-1.69929" id="61" overbright="0" q0="-0.121439" q1="0.715265" q2="-0.0837129" q3="0.683111" s0="0.883495" s1="0.883495" s2="0.883495" t0="-56.7685" t1="156.808" t2="86.9945" type_file="Data/Objects/Environment/Land/jagged_outcrop.xml">
+            <parameters />
+        </EnvObject>
+        <Hotspot euler_x="3.14159" euler_y="0.0303892" euler_z="3.14159" id="62" q0="0" q1="0.999885" q2="0" q3="0.015194" s0="114.864" s1="30.2841" s2="1.00047" t0="13.5329" t1="180.521" t2="228.155" type_file="Data/Objects/Hotspots/boundary.xml">
+            <parameters />
+        </Hotspot>
+        <Hotspot euler_x="0" euler_y="0.139919" euler_z="0" id="63" q0="0" q1="0.0699025" q2="0" q3="0.997554" s0="118.378" s1="37.4203" s2="0.999986" t0="-53.9075" t1="162.738" t2="-32.2758" type_file="Data/Objects/Hotspots/boundary.xml">
+            <parameters />
+        </Hotspot>
+        <Decal color_b="1" color_g="1" color_r="1" euler_x="0" euler_y="-1.5708" euler_z="0" id="64" overbright="0" q0="-0.5" q1="-0.5" q2="-0.5" q3="0.5" s0="5.10737" s1="5.10737" s2="5.10737" t0="-119.542" t1="173.797" t2="64.9951" type_file="Data/Objects/Decals/crete_stains/leaky_rust.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="1" color_g="1" color_r="1" euler_x="0.151689" euler_y="0.24416" euler_z="0.102115" id="65" overbright="0" q0="0.0689127" q1="0.125107" q2="0.0412944" q3="0.988885" s0="18.9199" s1="9.04371" s2="32.699" t0="-84.7835" t1="158.654" t2="86.8103" type_file="Data/Objects/Decals/DarkStonyDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="1" color_g="1" color_r="1" euler_x="3.04685" euler_y="0.115144" euler_z="3.0708" id="66" overbright="0" q0="0.0325671" q1="0.996695" q2="0.0452126" q3="0.0591128" s0="18.9199" s1="5.43538" s2="32.699" t0="-86.2894" t1="156.839" t2="108.041" type_file="Data/Objects/Decals/DarkStonyDirt.xml">
+            <parameters />
+        </Decal>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="1.5708" euler_z="3.14159" id="67" overbright="0" q0="0" q1="0.707107" q2="0" q3="0.707107" s0="1.6512" s1="1.6512" s2="1.6512" t0="-64.8489" t1="162.24" t2="98.3748" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="0" euler_z="3.14159" id="68" overbright="0" q0="0" q1="1" q2="0" q3="0" s0="1.6512" s1="1.6512" s2="1.6512" t0="-64.0683" t1="170.748" t2="98.7411" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="-1.5708" euler_z="3.14159" id="69" overbright="0" q0="0" q1="-0.707107" q2="0" q3="0.707107" s0="1.6512" s1="1.6512" s2="1.6512" t0="-58.2528" t1="164.398" t2="92.5052" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="0" euler_y="0" euler_z="0" id="70" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="1.6512" s1="1.6512" s2="1.6512" t0="-52.0832" t1="168.561" t2="78.5073" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="0" euler_y="0" euler_z="0" id="71" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="1.6512" s1="1.66098" s2="2.30261" t0="-51.3588" t1="177.411" t2="77.5591" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="3.14159" euler_y="1.5708" euler_z="3.14159" id="72" overbright="0" q0="0" q1="0.707107" q2="0" q3="0.707107" s0="1.65163" s1="1.65163" s2="1.65163" t0="-107.668" t1="168.852" t2="105.731" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="3.14159" euler_y="0" euler_z="3.14159" id="73" overbright="0" q0="0" q1="-1" q2="0" q3="0" s0="1.65163" s1="1.65163" s2="1.65163" t0="-108.252" t1="176.677" t2="104.87" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="3.14159" euler_y="0" euler_z="3.14159" id="74" overbright="0" q0="0" q1="-1" q2="0" q3="0" s0="1.65163" s1="1.65163" s2="1.65163" t0="-104.762" t1="167.869" t2="101.205" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="0" euler_z="3.14159" id="75" overbright="0" q0="0" q1="1" q2="0" q3="0" s0="1.6512" s1="1.6512" s2="1.6512" t0="-98.1378" t1="162.175" t2="132.773" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="-1.5708" euler_z="3.14159" id="76" overbright="0" q0="0" q1="-0.707107" q2="0" q3="0.707107" s0="1.6512" s1="1.6512" s2="1.6512" t0="-97.8536" t1="171.744" t2="132.36" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="0" euler_y="0.523599" euler_z="0" id="77" overbright="0" q0="0" q1="0.258819" q2="0" q3="0.965926" s0="1.6512" s1="1.6512" s2="1.6512" t0="-74.2937" t1="157.964" t2="132.067" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="0" euler_y="1.0472" euler_z="3.14159" id="78" overbright="0" q0="-0.500001" q1="0" q2="0.866025" q3="0" s0="1.6512" s1="1.6512" s2="1.6512" t0="-74.2583" t1="167.255" t2="131.032" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <Decal color_b="0.99999" color_g="0.99999" color_r="1" euler_x="2.98109" euler_y="-0.881496" euler_z="-3.14159" id="79" overbright="0" q0="-0.0342" q1="-0.901522" q2="-0.0725047" q3="0.425243" s0="13.5709" s1="7.11157" s2="13.5709" t0="-92.4395" t1="154.174" t2="126.163" type_file="Data/Objects/Decals/dark_crete_rubble.xml">
+            <parameters />
+        </Decal>
+        <EnvObject color_b="0.541207" color_g="0.65098" color_r="0.541207" euler_x="0" euler_y="0.181416" euler_z="1.41904" id="80" overbright="0" q0="-0.0590124" q1="0.0687235" q2="0.648791" q3="0.755556" s0="2.54992" s1="1.6686" s2="1.95621" t0="-89.1518" t1="167.659" t2="132.592" type_file="Data/Objects/therium/rope/rope around stump.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.63851" color_g="0.694118" color_r="0.634233" euler_x="0.101057" euler_y="0.144397" euler_z="1.44348" id="81" overbright="0" q0="-0.00978396" q1="0.0873628" q2="0.655393" q3="0.750155" s0="2.64755" s1="2.64755" s2="2.64755" t0="-92.2805" t1="167.873" t2="132.958" type_file="Data/Objects/Buildings/Post1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.63851" color_g="0.694118" color_r="0.634233" euler_x="0.0598316" euler_y="0.0933932" euler_z="1.37273" id="82" overbright="0" q0="-0.00645608" q1="0.0550281" q2="0.631674" q3="0.773252" s0="2.64755" s1="2.64755" s2="2.64755" t0="-86.3075" t1="167.333" t2="132.249" type_file="Data/Objects/Buildings/Post1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.541207" color_g="0.65098" color_r="0.541207" euler_x="-0.0335801" euler_y="0.0792963" euler_z="-2.68796" id="83" overbright="0" q0="0.0348446" q1="0.0252587" q2="-0.973335" q3="0.225315" s0="6.09103" s1="6.09103" s2="6.09103" t0="-84.2054" t1="166.902" t2="132.059" type_file="Data/Objects/therium/rope/knot.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.541207" color_g="0.65098" color_r="0.541207" euler_x="-0.159679" euler_y="0.295209" euler_z="0.312094" id="84" overbright="0" q0="-0.100713" q1="0.132559" q2="0.164822" q3="0.972172" s0="6.09103" s1="6.09103" s2="6.09103" t0="-92.146" t1="167.824" t2="132.951" type_file="Data/Objects/therium/rope/knot.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.541207" color_g="0.65098" color_r="0.541207" euler_x="0" euler_y="0" euler_z="0" id="85" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="1.97723" s1="1.97723" s2="1.97723" t0="-84.5364" t1="164.642" t2="132.133" type_file="Data/Objects/therium/rope/dangeling rope.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.541207" color_g="0.65098" color_r="0.541207" euler_x="3.14159" euler_y="0" euler_z="3.14159" id="86" overbright="0" q0="0" q1="1" q2="0" q3="0" s0="1.97723" s1="1.97723" s2="1.97723" t0="-91.8462" t1="165.672" t2="132.964" type_file="Data/Objects/therium/rope/dangeling rope.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="2.09456" euler_y="0.0132778" euler_z="-1.58854" id="87" overbright="0" q0="0.609298" q1="-0.61547" q2="-0.360648" q3="0.346245" s0="2.01922" s1="2.01922" s2="2.01922" t0="-53.0133" t1="154.645" t2="158.915" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-2.04456" euler_y="1.36064" euler_z="-1.34221" id="88" overbright="0" q0="-0.315508" q1="0.669359" q2="0.168297" q3="0.651221" s0="2.04412" s1="2.04412" s2="2.04412" t0="-113.48" t1="158.733" t2="165.953" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="-0.523597" euler_z="3.14159" id="89" overbright="0" q0="0" q1="-0.965926" q2="0" q3="0.258818" s0="1.6512" s1="1.6512" s2="1.6512" t0="-102.888" t1="160.197" t2="185.955" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="-0.00176052" euler_y="1.0472" euler_z="3.13854" id="90" overbright="0" q0="-0.5" q1="0" q2="0.866025" q3="0.000880262" s0="1.6512" s1="1.6512" s2="1.6512" t0="-102.792" t1="169.401" t2="184.688" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="3.12299" euler_y="-0.116919" euler_z="-2.97569" id="91" overbright="0" q0="0.0821705" q1="-0.994861" q2="-0.00441497" q3="0.0589922" s0="0.737177" s1="0.293397" s2="0.883408" t0="-80.5554" t1="162.835" t2="153.448" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-2.91349" euler_y="0.0727471" euler_z="3.1305" id="92" overbright="0" q0="0.00964535" q1="0.992808" q2="-0.113926" q3="0.0354979" s0="0.59045" s1="0.235" s2="0.707576" t0="-74.9698" t1="161.062" t2="151.175" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-2.83824" euler_y="-0.522268" euler_z="2.59586" id="93" overbright="0" q0="-0.219801" q1="-0.930186" q2="0.0717957" q3="0.285109" s0="0.419686" s1="0.167035" s2="0.502937" t0="-71.6352" t1="158.647" t2="150.24" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-2.62521" euler_y="-0.27979" euler_z="2.37638" id="94" overbright="0" q0="-0.324408" q1="-0.901475" q2="0.184224" q3="0.219463" s0="0.428" s1="0.179295" s2="0.432958" t0="-70.2545" t1="155.56" t2="148.46" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="2.68785" euler_y="0.377317" euler_z="-2.5152" id="95" overbright="0" q0="-0.335011" q1="0.897531" q2="0.266491" q3="0.105775" s0="0.36129" s1="0.143794" s2="0.432958" t0="-82.5347" t1="155.433" t2="153.212" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="2.72945" euler_y="0.0572315" euler_z="-3.06195" id="96" overbright="0" q0="-0.044803" q1="0.977433" q2="0.205484" q3="0.0198416" s0="0.36129" s1="0.143794" s2="0.432958" t0="-76.7854" t1="157.541" t2="154.842" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.524073" euler_y="-0.316311" euler_z="-0.378957" id="97" overbright="0" q0="0.222585" q1="-0.19758" q2="-0.139578" q3="0.944424" s0="1.8996" s1="1.8996" s2="1.83089" t0="-119.679" t1="155.187" t2="270.146" type_file="Data/Objects/Environment/Land/jagged_outcrop.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="-0.000291852" euler_y="-0.523597" euler_z="-3.1405" id="98" overbright="0" q0="-0.258818" q1="0" q2="-0.965926" q3="0.000488281" s0="1.6512" s1="1.6512" s2="1.6512" t0="-70.9316" t1="159.842" t2="126.415" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="0" euler_y="-1.0472" euler_z="0" id="99" overbright="0" q0="0" q1="-0.500001" q2="0" q3="0.866025" s0="1.6512" s1="1.6512" s2="1.6512" t0="-67.5586" t1="161.505" t2="121.156" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="3.14159" euler_y="-0.523597" euler_z="3.14159" id="100" overbright="0" q0="0" q1="-0.965926" q2="0" q3="0.258818" s0="1.6512" s1="1.6512" s2="1.6512" t0="-60.762" t1="163.528" t2="122.301" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.14159" euler_y="1.0472" euler_z="3.14159" id="101" overbright="0" q0="0" q1="0.866025" q2="0" q3="0.500001" s0="1.6512" s1="1.6512" s2="1.6512" t0="-65.8768" t1="163.528" t2="103.549" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.132592" euler_y="0.163164" euler_z="-0.274133" id="102" overbright="5.367" q0="0.0765183" q1="0.0715279" q2="-0.141232" q3="0.98442" s0="1" s1="1" s2="1" t0="-64.7917" t1="166.385" t2="81.1494" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0541952" euler_y="0.0115032" euler_z="0.151981" id="103" overbright="5.367" q0="-0.0274521" q1="0.00367597" q2="0.0760436" q3="0.99672" s0="1" s1="1" s2="1" t0="-69.5162" t1="167.061" t2="81.7674" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.124477" euler_y="0.195283" euler_z="0.185284" id="104" overbright="5.367" q0="0.0526357" q1="0.102607" q2="0.085853" q3="0.989611" s0="1" s1="1" s2="1" t0="-67.7947" t1="164.632" t2="88.305" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0300877" euler_y="-0.319055" euler_z="-0.0124157" id="105" overbright="5.367" q0="0.013866" q1="-0.158923" q2="-0.00373868" q3="0.987186" s0="1" s1="1" s2="1" t0="-70.9256" t1="161.828" t2="92.3744" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0442417" euler_y="0.37416" euler_z="-0.122565" id="106" overbright="5.367" q0="0.0330803" q1="0.184265" q2="-0.0642668" q3="0.980215" s0="1" s1="1" s2="1" t0="-74.4917" t1="163.465" t2="86.1349" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.110122" euler_y="0.0936207" euler_z="-0.0391816" id="107" overbright="5.367" q0="0.0558774" q1="0.0456365" q2="-0.0221131" q3="0.997149" s0="1" s1="1" s2="1" t0="-99.8126" t1="162.096" t2="103.176" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0219347" euler_y="-0.182906" euler_z="-0.0752379" id="108" overbright="5.367" q0="0.00747903" q1="-0.0916661" q2="-0.0364498" q3="0.995094" s0="1" s1="1" s2="1" t0="-100.762" t1="161.987" t2="100.886" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0673713" euler_y="0.182825" euler_z="-0.0336913" id="109" overbright="5.367" q0="0.0350707" q1="0.0906554" q2="-0.019839" q3="0.995067" s0="1" s1="1" s2="1" t0="-103.046" t1="163.546" t2="96.8168" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0876483" euler_y="-0.0851364" euler_z="-0.0919684" id="110" overbright="5.367" q0="0.0417699" q1="-0.0444816" q2="-0.0440199" q3="0.997165" s0="1" s1="1" s2="1" t0="-98.7591" t1="163.084" t2="95.0482" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.000741073" euler_y="0.280962" euler_z="0.0334201" id="111" overbright="5.367" q0="-0.00197279" q1="0.140006" q2="0.0164928" q3="0.990011" s0="1" s1="1" s2="1" t0="-97.1813" t1="162.235" t2="99.143" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0945626" euler_y="0.825019" euler_z="-0.021917" id="112" overbright="5.367" q0="0.0476849" q1="0.399963" q2="-0.0289752" q3="0.914831" s0="1" s1="1" s2="1" t0="-101.673" t1="165.608" t2="73.3152" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0890054" euler_y="0.338223" euler_z="-0.0246756" id="113" overbright="5.367" q0="0.0459245" q1="0.167586" q2="-0.0196365" q3="0.984591" s0="1" s1="1" s2="1" t0="-98.4845" t1="164.841" t2="75.0543" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.94294" euler_y="-0.105286" euler_z="3.10499" id="114" overbright="5.367" q0="-0.0234028" q1="-0.993431" q2="-0.0999654" q3="0.0505383" s0="1" s1="1" s2="1" t0="-81.7242" t1="167.961" t2="67.5451" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.90254" euler_y="0.158105" euler_z="3.08622" id="115" overbright="5.367" q0="0.0179868" q1="0.989646" q2="0.116652" q3="0.0816671" s0="1" s1="1" s2="1" t0="-81.1884" t1="166.812" t2="69.5581" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.104" euler_y="-0.362005" euler_z="3.0946" id="116" overbright="5.367" q0="-0.0264903" q1="-0.983139" q2="-0.0227133" q3="0.1795" s0="1" s1="1" s2="1" t0="-116.028" t1="170.223" t2="46.7348" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12463" euler_y="-0.47978" euler_z="3.06749" id="117" overbright="5.367" q0="-0.037993" q1="-0.970588" q2="-0.0170324" q3="0.237119" s0="1" s1="1" s2="1" t0="-114.237" t1="170.122" t2="46.1922" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.00659342" euler_y="0.659843" euler_z="-0.0342957" id="118" overbright="5.367" q0="0.00867351" q1="0.323866" q2="-0.01729" q3="0.945905" s0="1" s1="1" s2="1" t0="-113.56" t1="169.542" t2="50.0996" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0416747" euler_y="0.777661" euler_z="-0.0724596" id="119" overbright="5.367" q0="-0.0055389" q1="0.379474" q2="-0.0256169" q3="0.924831" s0="1" s1="1" s2="1" t0="-99.9236" t1="168.423" t2="41.7934" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.00326678" euler_y="0.514886" euler_z="-0.00346778" id="120" overbright="5.367" q0="0.00202102" q1="0.254605" q2="-0.00209262" q3="0.967041" s0="1" s1="1" s2="1" t0="-97.4958" t1="167.601" t2="42.5421" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0253071" euler_y="-0.112209" euler_z="0.124288" id="121" overbright="5.367" q0="-0.0091267" q1="-0.0567468" q2="0.0612932" q3="0.996463" s0="1" s1="1" s2="1" t0="-95.0616" t1="168.165" t2="43.9311" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0515852" euler_y="0.0960518" euler_z="0.112321" id="122" overbright="5.367" q0="-0.0284132" q1="0.0464699" q2="0.0572837" q3="0.996871" s0="1" s1="1" s2="1" t0="-93.5928" t1="168.112" t2="39.7377" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0937219" euler_y="0.45485" euler_z="0.0661838" id="123" overbright="5.367" q0="-0.0530643" q1="0.223589" q2="0.0427546" q3="0.972298" s0="1" s1="1" s2="1" t0="-96.4786" t1="167.622" t2="38.7689" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0562737" euler_y="0.156037" euler_z="0.0449936" id="124" overbright="5.367" q0="-0.029793" q1="0.0772577" q2="0.0246097" q3="0.996262" s0="1" s1="1" s2="1" t0="-99.1231" t1="168.354" t2="39.2943" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0919858" euler_y="0.602104" euler_z="-0.0260381" id="125" overbright="5.367" q0="-0.0400489" q1="0.296758" q2="0.00121208" q3="0.954112" s0="1" s1="1" s2="1" t0="-110.756" t1="168.874" t2="55.1822" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.108432" euler_y="0.853601" euler_z="-0.0756316" id="126" overbright="5.367" q0="-0.0336655" q1="0.414922" q2="-0.0119485" q3="0.909155" s0="1" s1="1" s2="1" t0="-108.292" t1="168.298" t2="53.7924" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0559305" euler_y="0.521375" euler_z="0.00611842" id="127" overbright="5.367" q0="-0.0278049" q1="0.25756" q2="0.0101616" q3="0.965809" s0="1" s1="1" s2="1" t0="-109.069" t1="169.035" t2="50.3016" type_file="Data/Objects/therium/spiritlantern.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-0.887644" euler_y="-0.531309" euler_z="-0.363624" id="128" overbright="0" q0="-0.450374" q1="-0.158281" q2="-0.268442" q3="0.836689" s0="0.501742" s1="0.501742" s2="0.501742" t0="-105.783" t1="165.614" t2="56.5073" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.46949" euler_y="1.0873" euler_z="-0.682467" id="129" overbright="0" q0="-0.412223" q1="0.553684" q2="0.114269" q3="0.714457" s0="0.736823" s1="0.736823" s2="0.736823" t0="-78.6298" t1="153.996" t2="142.609" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="1.94594" euler_y="0.809478" euler_z="-3.09473" id="130" overbright="0" q0="-0.239378" q1="0.754377" q2="0.524857" q3="0.313271" s0="0.736823" s1="0.736823" s2="0.736823" t0="-65.7665" t1="152.316" t2="156.381" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.39177" euler_y="0.641141" euler_z="-0.274863" id="131" overbright="0" q0="-0.569539" q1="0.322912" q2="0.100312" q3="0.749193" s0="0.301392" s1="0.301392" s2="0.301392" t0="-88.015" t1="155.07" t2="154.034" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-0.772462" euler_y="-0.125821" euler_z="-0.426563" id="132" overbright="0" q0="-0.379763" q1="0.0226595" q2="-0.218834" q3="0.898542" s0="0.257737" s1="0.257737" s2="0.257737" t0="-82.829" t1="154.317" t2="150.915" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.24685" euler_y="0.353275" euler_z="-0.341715" id="133" overbright="0" q0="-0.54211" q1="0.238308" q2="-0.0347992" q3="0.805056" s0="1.01901" s1="1.01901" s2="1.01901" t0="-79.5682" t1="152.535" t2="162.168" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="0" euler_y="0" euler_z="0" id="134" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="1.6512" s1="1.6512" s2="1.6512" t0="-97.816" t1="160.676" t2="168.236" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="2.93968" euler_y="1.53433" euler_z="2.93686" id="135" overbright="0" q0="0.00360215" q1="0.719612" q2="0.00160301" q3="0.694365" s0="1.6512" s1="1.6512" s2="1.6512" t0="-97.891" t1="170.326" t2="168.106" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.1337" euler_y="-0.385549" euler_z="-3.14158" id="136" overbright="0" q0="-0.000751525" q1="-0.981469" q2="-0.00387049" q3="0.191581" s0="1.6512" s1="1.6512" s2="1.6512" t0="-83.0077" t1="158.755" t2="168.342" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="-3.13211" euler_y="-0.661624" euler_z="-0.00872674" id="137" overbright="0" q0="-0.945766" q1="0.00258607" q2="-0.324824" q3="0.0030688" s0="1.6512" s1="1.6512" s2="1.6512" t0="-81.0798" t1="163.314" t2="168.169" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="-3.13211" euler_y="-0.661624" euler_z="-0.00872674" id="138" overbright="0" q0="-0.945766" q1="0.00258607" q2="-0.324824" q3="0.0030688" s0="1.6512" s1="1.6512" s2="1.6512" t0="-65.0188" t1="155.318" t2="158.222" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="3.08557" euler_y="-0.107914" euler_z="3.04678" id="139" overbright="0" q0="-0.0488094" q1="-0.99696" q2="-0.0304909" q3="0.0525237" s0="0.36129" s1="0.143794" s2="0.432958" t0="-85.0894" t1="158.077" t2="160.39" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="3.13363" euler_y="-0.498078" euler_z="-3.09739" id="140" overbright="0" q0="0.020437" q1="-0.968927" q2="0.00158778" q3="0.246496" s0="0.36129" s1="0.143794" s2="0.432958" t0="-88.5035" t1="157.825" t2="160.694" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="-3.08838" euler_y="0.460952" euler_z="2.88654" id="141" overbright="0" q0="0.129804" q1="0.964537" q2="-0.054732" q3="0.223212" s0="0.486385" s1="0.193582" s2="0.582867" t0="-91.2896" t1="161.549" t2="179.788" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="2.93642" euler_y="1.03175" euler_z="2.71267" id="142" overbright="0" q0="0.134794" q1="0.856216" q2="-0.0173949" q3="0.49842" s0="0.486385" s1="0.193582" s2="0.582867" t0="-88.197" t1="158.222" t2="182.436" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="2.38611" euler_y="0.722651" euler_z="2.12456" id="143" overbright="0" q0="0.309451" q1="0.822945" q2="0.141365" q3="0.454992" s0="0.37264" s1="0.148311" s2="0.44656" t0="-85.5709" t1="156.916" t2="185.748" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <Group euler_x="0.0277128" euler_y="0.92619" euler_z="-0.0290607" id="144" q0="0.0188854" q1="0.446449" q2="-0.0191873" q3="0.894404" s0="16.3149" s1="33.7944" s2="15.5057" t0="-58.226" t1="167.152" t2="193.972" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.043252" euler_y="0.211112" euler_z="0.0762816" id="145" overbright="0" q0="0.0174717" q1="0.106079" q2="0.0356338" q3="0.993565" s0="0.998038" s1="0.998038" s2="0.998038" t0="-61.8" t1="159.718" t2="195.221" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.664692" euler_y="-0.0159775" euler_z="-1.58038" id="146" overbright="0" q0="0.224221" q1="-0.237111" q2="-0.669753" q3="0.667034" s0="1.16648" s1="1.16648" s2="1.16648" t0="-57.2473" t1="182.308" t2="194.797" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-3.08971" euler_y="0.115565" euler_z="-2.63818" id="147" overbright="0" q0="-0.247108" q1="0.96692" q2="-0.0106997" q3="0.0623606" s0="0.606653" s1="0.606653" s2="0.606653" t0="-56.8101" t1="179.544" t2="194.142" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0521583" euler_y="1.24573" euler_z="-0.00178334" id="176" overbright="0" q0="0.0216993" q1="0.583148" q2="-0.0159359" q3="0.81192" s0="1.16648" s1="1.16648" s2="1.16648" t0="-58.4347" t1="161.581" t2="196.556" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0245543" euler_y="-0.825503" euler_z="-0.0692605" id="178" overbright="0" q0="-0.00264835" q1="-0.40125" q2="-0.0267916" q3="0.915573" s0="1.16648" s1="1.16648" s2="1.16648" t0="-60.952" t1="165.569" t2="191.708" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0170452" euler_y="0.215531" euler_z="-0.0475689" id="179" overbright="0" q0="0.0110285" q1="0.107321" q2="-0.0245598" q3="0.99386" s0="1.16648" s1="1.16648" s2="1.16648" t0="-61.7044" t1="166.606" t2="195.395" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.81616" euler_y="-0.91019" euler_z="-2.80086" id="180" overbright="0" q0="0.080101" q1="-0.885595" q2="-0.0698671" q3="0.452133" s0="1.10772" s1="1.10772" s2="1.10772" t0="-56.7781" t1="162.325" t2="191.163" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12154" euler_y="0.591008" euler_z="3.0792" id="181" overbright="0" q0="0.0269176" q1="0.956233" q2="0.000504494" q3="0.291365" s0="1.16648" s1="1.16648" s2="1.16648" t0="-55.1504" t1="163.411" t2="195.894" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.1231" euler_y="-0.450106" euler_z="3.09842" id="182" overbright="0" q0="-0.0231004" q1="-0.974469" q2="-0.0138267" q3="0.222902" s0="1.16648" s1="1.16648" s2="1.16648" t0="-55.1636" t1="164.535" t2="192.155" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.91005" euler_y="0.568323" euler_z="-2.75603" id="183" overbright="0" q0="-0.15089" q1="0.942013" q2="-0.055474" q3="0.294561" s0="1.06965" s1="1.06965" s2="1.06965" t0="-55.6976" t1="166.711" t2="195.439" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0304164" euler_y="0.991436" euler_z="-0.0257591" id="184" overbright="0" q0="0.0195014" q1="0.475397" q2="-0.0185607" q3="0.879359" s0="1.16648" s1="1.16648" s2="1.16648" t0="-59.8308" t1="166.066" t2="197.467" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.81539" euler_y="-1.51881" euler_z="-2.86701" id="185" overbright="0" q0="-0.0128064" q1="-0.724186" q2="-0.0236813" q3="0.689079" s0="1.01854" s1="1.01854" s2="1.01854" t0="-58.3331" t1="167.582" t2="190.742" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.05146" euler_y="1.38475" euler_z="3.00179" id="186" overbright="0" q0="0.0250174" q1="0.769084" q2="-0.00994745" q3="0.638581" s0="1.01854" s1="1.01854" s2="1.01854" t0="-57.166" t1="168.223" t2="197.457" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0170423" euler_y="0.214768" euler_z="-0.0475819" id="187" overbright="0" q0="0.0110191" q1="0.106942" q2="-0.0245638" q3="0.993901" s0="1.01854" s1="1.01854" s2="1.01854" t0="-61.1269" t1="169.192" t2="195.137" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.01757" euler_y="-0.291911" euler_z="3.11386" id="188" overbright="0" q0="-0.0227043" q1="-0.987246" q2="-0.0633175" q3="0.144294" s0="1.16648" s1="1.16648" s2="1.16648" t0="-56.4518" t1="161.826" t2="192.639" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.91018" euler_y="1.02421" euler_z="0.927911" id="189" overbright="0" q0="0.145695" q1="0.565071" q2="0.157767" q3="0.796604" s0="1.16648" s1="1.16648" s2="1.16648" t0="-58.328" t1="163.893" t2="196.633" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.52933" euler_y="0.445207" euler_z="-2.18597" id="190" overbright="0" q0="-0.368556" q1="0.856421" q2="-0.164217" q3="0.322091" s0="0.860684" s1="0.860684" s2="0.860684" t0="-57.1361" t1="179.876" t2="194.647" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0583169" euler_y="-1.28109" euler_z="-0.107106" id="191" overbright="0" q0="-0.00863466" q1="-0.597773" q2="-0.0255" q3="0.801213" s0="1.16648" s1="1.16648" s2="1.16648" t0="-59.4351" t1="159.909" t2="192.55" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.233108" euler_y="-0.628544" euler_z="-0.413751" id="192" overbright="0" q0="0.045172" q1="-0.323197" q2="-0.158836" q3="0.931812" s0="1.16648" s1="1.16648" s2="1.16648" t0="-58.7139" t1="179.121" t2="193.72" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0195685" euler_y="-0.55307" euler_z="-0.0614944" id="193" overbright="0" q0="0.00101495" q1="-0.273171" q2="-0.0269029" q3="0.961589" s0="1.16648" s1="1.16648" s2="1.16648" t0="-60.7941" t1="162.426" t2="193.467" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.53587" euler_y="-1.11277" euler_z="-2.25433" id="194" overbright="0" q0="0.205626" q1="-0.799671" q2="-0.0123898" q3="0.563995" s0="0.912429" s1="0.912429" s2="0.912429" t0="-57.8382" t1="178.957" t2="192.786" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-3.12337" euler_y="0.125331" euler_z="-2.91665" id="195" overbright="0" q0="-0.111444" q1="0.991754" q2="-0.0020096" q3="0.063247" s0="0.769517" s1="0.769517" s2="0.769517" t0="-56.3481" t1="178.236" t2="194.188" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.91018" euler_y="1.02421" euler_z="0.927911" id="196" overbright="0" q0="0.145695" q1="0.565071" q2="0.157767" q3="0.796604" s0="1.16648" s1="1.16648" s2="1.16648" t0="-58.5926" t1="157.711" t2="196.375" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.64602" euler_y="-0.0940235" euler_z="2.4494" id="197" overbright="0" q0="0.339348" q1="0.907055" q2="0.245915" q3="0.0402492" s0="1.16648" s1="1.16648" s2="1.16648" t0="-56.1708" t1="159.573" t2="193.382" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.86323" euler_y="-0.90833" euler_z="2.65258" id="198" overbright="0" q0="-0.15638" q1="-0.878202" q2="0.0157871" q3="0.451727" s0="0.935481" s1="0.935481" s2="0.935481" t0="-57.0158" t1="176.531" t2="192.364" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.1056" euler_y="1.08979" euler_z="3.05846" id="199" overbright="0" q0="0.0262088" q1="0.854692" q2="-0.00615713" q3="0.518437" s0="0.935481" s1="0.935481" s2="0.935481" t0="-56.4699" t1="176.763" t2="195.358" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.11804" euler_y="-0.7855" euler_z="3.10703" id="200" overbright="0" q0="-0.0204677" q1="-0.92358" q2="-0.0174894" q3="0.382459" s0="0.816838" s1="0.816838" s2="0.816838" t0="-56.1345" t1="174.503" t2="192.114" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.959829" euler_y="-1.11362" euler_z="-1.05658" id="201" overbright="0" q0="0.102231" q1="-0.602443" q2="-0.168842" q3="0.773372" s0="0.816838" s1="0.816838" s2="0.816838" t0="-58.7743" t1="175.225" t2="192.082" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.10626" euler_y="1.07993" euler_z="3.05922" id="202" overbright="0" q0="0.0262389" q1="0.857239" q2="-0.00602779" q3="0.514214" s0="0.816838" s1="0.816838" s2="0.816838" t0="-56.459" t1="173.938" t2="196.427" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0309395" euler_y="1.00244" euler_z="-0.0251368" id="203" overbright="0" q0="0.0196035" q1="0.480229" q2="-0.0184531" q3="0.87673" s0="0.816838" s1="0.816838" s2="0.816838" t0="-59.0696" t1="174.451" t2="196.602" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.185025" euler_y="-0.509103" euler_z="-0.390008" id="204" overbright="0" q0="0.0391242" q1="-0.263306" q2="-0.163903" q3="0.949882" s0="0.816838" s1="0.816838" s2="0.816838" t0="-60.0143" t1="174.286" t2="193.284" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.12127" euler_y="0.489182" euler_z="-0.335256" id="205" overbright="0" q0="-0.0176417" q1="0.248136" q2="-0.147112" q3="0.957327" s0="0.816838" s1="0.816838" s2="0.816838" t0="-59.7678" t1="175.955" t2="195.633" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.700583" euler_y="1.08098" euler_z="-1.18595" id="206" overbright="0" q0="0.0260683" q1="0.565237" q2="-0.303641" q3="0.76657" s0="0.935481" s1="0.935481" s2="0.935481" t0="-57.3324" t1="178.619" t2="195.759" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0229868" euler_y="-0.666504" euler_z="0.236883" id="207" overbright="0" q0="0.0278665" q1="-0.326088" q2="0.107923" q3="0.938745" s0="0.769517" s1="0.769517" s2="0.769517" t0="-59.2507" t1="177.569" t2="193.685" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.548779" euler_y="-0.126389" euler_z="-0.15746" id="208" overbright="0" q0="0.2648" q1="-0.0818699" q2="-0.0584965" q3="0.959039" s0="1.16648" s1="1.16648" s2="1.16648" t0="-60.7104" t1="156.865" t2="194.132" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.687004" euler_y="0.189996" euler_z="-0.103392" id="209" overbright="0" q0="-0.330205" q1="0.106519" q2="-0.0165315" q3="0.937734" s0="1.16648" s1="1.16648" s2="1.16648" t0="-60.6415" t1="156.924" t2="194.056" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.67451" color_g="0.607843" color_r="0.580392" euler_x="0.0329121" euler_y="0.926068" euler_z="-0.0225562" id="210" overbright="0" q0="0.0197584" q1="0.44641" q2="-0.0174385" q3="0.89444" s0="1.52287" s1="1.52287" s2="1.52287" t0="-58.255" t1="165.786" t2="194.075" type_file="Data/Objects/Plants/simple/simple_conifer_trunk.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="0.0072687" euler_y="0.0829438" euler_z="-1.68809" id="148" overbright="0" q0="0.0333972" q1="0.0248339" q2="-0.746791" q3="0.663755" s0="2.01922" s1="2.01922" s2="2.01922" t0="-77.0537" t1="157.07" t2="198.497" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-0.472212" euler_y="-0.750696" euler_z="-0.629275" id="149" overbright="0" q0="-0.317253" q1="-0.271577" q2="-0.361482" q3="0.833623" s0="1.63303" s1="1.63303" s2="1.63303" t0="-64.9062" t1="150.243" t2="205.747" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-2.0285" euler_y="0.856756" euler_z="-3.13624" id="150" overbright="0" q0="0.217368" q1="0.772947" q2="-0.479577" q3="0.353991" s0="1.26224" s1="1.26224" s2="1.26224" t0="-40.3205" t1="148.729" t2="166.743" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="1.65169" euler_y="0.664103" euler_z="-3.10833" id="151" overbright="0" q0="-0.232523" q1="0.691194" q2="0.644801" q3="0.228945" s0="0.607154" s1="0.607154" s2="0.607154" t0="-55.5266" t1="151.511" t2="169.496" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="-3.1338" euler_y="-0.138043" euler_z="-0.00395422" id="152" overbright="0" q0="-0.99761" q1="0.00170368" q2="-0.0689736" q3="0.00375056" s0="3.94058" s1="3.94058" s2="3.94058" t0="38.0074" t1="139.296" t2="140.872" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="-0.0553821" euler_y="-1.43258" euler_z="-3.09467" id="156" overbright="0" q0="0.656647" q1="-0.00548142" q2="0.754178" q3="0.000488281" s0="1.6512" s1="1.6512" s2="1.6512" t0="-79.868" t1="157.933" t2="160.143" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <Decal color_b="0.219606" color_g="0.219606" color_r="0.219608" euler_x="0" euler_y="0" euler_z="0" id="157" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="18.8119" s1="18.8119" s2="18.8119" t0="-76.6578" t1="167.795" t2="53.5957" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Prefab euler_x="0" euler_y="0" euler_z="0" id="158" os0="4.01" os1="4.01" os2="4.01" prefab_locked="true" prefab_path="Data/Prefabs/hotspot_jumprecovering.xml" q0="0" q1="0" q2="0" q3="1" s0="4.01" s1="4.01" s2="4.01" t0="-76.0984" t1="175.244" t2="129.917" version="1">
+            <parameters />
+        </Prefab>
+        <Decal color_b="0.219606" color_g="0.219606" color_r="0.219608" euler_x="0" euler_y="0" euler_z="0" id="159" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="18.8119" s1="18.8119" s2="18.8119" t0="-76.5966" t1="167.796" t2="65.3695" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.219606" color_g="0.219606" color_r="0.219608" euler_x="0" euler_y="0" euler_z="0" id="160" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="18.8119" s1="18.8119" s2="18.8119" t0="-81.1056" t1="167.796" t2="46.278" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.219606" color_g="0.219606" color_r="0.219608" euler_x="0" euler_y="0" euler_z="0" id="166" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="18.8119" s1="18.8119" s2="18.8119" t0="-89.105" t1="167.796" t2="37.7266" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-0.795233" euler_y="-0.914926" euler_z="-0.437908" id="172" overbright="0" q0="-0.427563" q1="-0.322035" q2="-0.346614" q3="0.770287" s0="0.666009" s1="0.666009" s2="0.666009" t0="-72.6765" t1="152.268" t2="183.517" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.80172" euler_y="0.147847" euler_z="3.03236" id="174" overbright="0" q0="0.0884646" q1="0.77805" q2="-0.621479" q3="0.0240029" s0="0.567126" s1="0.567126" s2="0.567126" t0="-64.9713" t1="150.872" t2="187.672" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.541207" color_g="0.65098" color_r="0.541207" euler_x="-2.96041" euler_y="0.101569" euler_z="2.22724" id="175" overbright="0" q0="0.443162" q1="0.890443" q2="-0.103386" q3="0.00548094" s0="6.09103" s1="6.09103" s2="6.09103" t0="-94.1988" t1="168.154" t2="133.12" type_file="Data/Objects/therium/rope/knot.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="-3.1313" euler_y="-0.661585" euler_z="-0.013701" id="211" overbright="0" q0="-0.945762" q1="0.00480801" q2="-0.324814" q3="0.00264078" s0="1.6512" s1="1.6512" s2="1.6512" t0="-79.3799" t1="167.671" t2="160.877" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.07033" euler_y="0.43796" euler_z="3.01364" id="212" overbright="0" q0="0.0546441" q1="0.973999" q2="0.0208219" q3="0.218875" s0="0.998038" s1="0.998038" s2="0.998038" t0="-12.6643" t1="162.218" t2="174.933" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.493709" euler_y="-0.635835" euler_z="-0.711512" id="214" overbright="0" q0="0.112002" q1="-0.364977" q2="-0.249216" q3="0.890022" s0="0.606653" s1="0.606653" s2="0.606653" t0="-16.9069" t1="182.219" t2="173.881" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12624" euler_y="-0.588158" euler_z="-3.12117" id="215" overbright="0" q0="0.00754896" q1="-0.957014" q2="-0.00438545" q3="0.28991" s0="1.16648" s1="1.16648" s2="1.16648" t0="-14.4774" t1="164.29" t2="171.934" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.99594" euler_y="1.48269" euler_z="3.00841" id="216" overbright="0" q0="-7.49897e-005" q1="0.737245" q2="0.00872989" q3="0.675569" s0="1.16648" s1="1.16648" s2="1.16648" t0="-15.3742" t1="167.98" t2="177.53" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12746" euler_y="0.44238" euler_z="-3.13573" id="217" overbright="0" q0="-0.00440759" q1="0.975604" q2="0.00753601" q3="0.219364" s0="1.16648" s1="1.16648" s2="1.16648" t0="-12.5064" t1="169.104" t2="175.132" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0535061" euler_y="0.287762" euler_z="-0.217022" id="218" overbright="0" q0="-0.0107949" q1="0.145358" q2="-0.103328" q3="0.983909" s0="1.10772" s1="1.10772" s2="1.10772" t0="-19.0705" t1="164.931" t2="175.232" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0403644" euler_y="-1.24878" euler_z="-0.0263845" id="219" overbright="0" q0="0.0086612" q1="-0.58465" q2="0.00109612" q3="0.811239" s0="1.16648" s1="1.16648" s2="1.16648" t0="-17.4475" t1="166.256" t2="170.561" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.013052" euler_y="-0.207798" euler_z="0.00921427" id="220" overbright="0" q0="0.0069685" q1="-0.103679" q2="0.00525899" q3="0.994573" s0="1.16648" s1="1.16648" s2="1.16648" t0="-19.7008" t1="167.25" t2="173.59" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.877528" euler_y="-1.08296" euler_z="-0.921743" id="221" overbright="0" q0="0.118561" q1="-0.579808" q2="-0.148898" q3="0.792209" s0="1.06965" s1="1.06965" s2="1.06965" t0="-17.2314" t1="169.508" t2="171.443" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12808" euler_y="-0.333706" euler_z="-3.12526" id="222" overbright="0" q0="0.00693124" q1="-0.986066" q2="-0.00530806" q3="0.166125" s0="1.16648" s1="1.16648" s2="1.16648" t0="-12.7331" t1="168.729" t2="172.321" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0196548" euler_y="0.86349" euler_z="0.0268478" id="223" overbright="0" q0="0.00330778" q1="0.418518" q2="0.00807922" q3="0.908167" s0="1.01854" s1="1.01854" s2="1.01854" t0="-18" t1="170.087" t2="176.814" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.11354" euler_y="-1.09801" euler_z="-3.10471" id="224" overbright="0" q0="0.00841085" q1="-0.852949" q2="-0.00233965" q3="0.521921" s0="1.01854" s1="1.01854" s2="1.01854" t0="-14.8085" t1="171.013" t2="170.828" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12746" euler_y="0.443144" euler_z="-3.13575" id="225" overbright="0" q0="-0.0044046" q1="0.97552" q2="0.00753774" q3="0.219737" s0="1.01854" s1="1.01854" s2="1.01854" t0="-13.0739" t1="171.705" t2="175.132" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0808684" euler_y="-0.365368" euler_z="-0.0119218" id="226" overbright="0" q0="-0.0408318" q1="-0.181281" q2="-0.0132004" q3="0.982495" s0="1.16648" s1="1.16648" s2="1.16648" t0="-18.436" t1="164.499" t2="173.838" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.88324" euler_y="-0.534702" euler_z="2.65595" id="227" overbright="0" q0="-0.196937" q1="-0.936562" q2="0.0576062" q3="0.284164" s0="1.16648" s1="1.16648" s2="1.16648" t0="-14.4722" t1="166.605" t2="171.94" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="1.3511" euler_y="-0.663361" euler_z="-1.39801" id="228" overbright="0" q0="0.289077" q1="-0.574958" q2="-0.31889" q3="0.695821" s0="0.860684" s1="0.860684" s2="0.860684" t0="-16.3343" t1="182.551" t2="173.699" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0354206" euler_y="1.20186" euler_z="0.0449461" id="229" overbright="0" q0="0.00189973" q1="0.565508" q2="0.00852094" q3="0.824697" s0="1.16648" s1="1.16648" s2="1.16648" t0="-16.1643" t1="162.435" t2="175.616" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.33495" euler_y="1.20794" euler_z="-2.28625" id="230" overbright="0" q0="-0.111171" q1="0.781306" q2="-0.0773002" q3="0.609284" s0="1.16648" s1="1.16648" s2="1.16648" t0="-15.6657" t1="181.687" t2="175.35" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.10532" euler_y="1.21091" euler_z="3.11955" id="231" overbright="0" q0="-0.00126009" q1="0.822173" q2="0.00863875" q3="0.569171" s0="1.16648" s1="1.16648" s2="1.16648" t0="-14.4821" t1="164.911" t2="175.863" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0544341" euler_y="0.592924" euler_z="-0.403394" id="232" overbright="0" q0="0.0840019" q1="0.280896" q2="-0.199311" q3="0.935049" s0="0.912429" s1="0.912429" s2="0.912429" t0="-16.9325" t1="181.535" t2="175.546" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.28115" euler_y="-0.741511" euler_z="-0.379338" id="233" overbright="0" q0="0.060615" q1="-0.376933" q2="-0.124135" q3="0.915881" s0="0.769517" s1="0.769517" s2="0.769517" t0="-17.2688" t1="180.937" t2="173.488" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.88324" euler_y="-0.534702" euler_z="2.65595" id="234" overbright="0" q0="-0.196937" q1="-0.936562" q2="0.0576062" q3="0.284164" s0="1.16648" s1="1.16648" s2="1.16648" t0="-14.5347" t1="160.412" t2="171.952" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.887157" euler_y="-0.443343" euler_z="0.725603" id="235" overbright="0" q0="-0.320944" q1="-0.334241" q2="0.224489" q3="0.857253" s0="1.16648" s1="1.16648" s2="1.16648" t0="-18.246" t1="162.289" t2="172.95" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.030568" euler_y="0.279819" euler_z="0.304695" id="236" overbright="0" q0="-0.00620211" q1="0.140119" q2="0.148152" q3="0.978968" s0="0.935481" s1="0.935481" s2="0.935481" t0="-17.8861" t1="179.14" t2="175.24" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.06926" euler_y="-1.39315" euler_z="-3.05849" id="237" overbright="0" q0="0.00866364" q1="-0.766846" q2="-0.00107633" q3="0.641772" s0="0.935481" s1="0.935481" s2="0.935481" t0="-16.484" t1="179.5" t2="172.552" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.012876" euler_y="0.127656" euler_z="0.0135465" id="238" overbright="0" q0="0.00599266" q1="0.0638252" q2="0.00634861" q3="0.997923" s0="0.816838" s1="0.816838" s2="0.816838" t0="-18.7738" t1="177.151" t2="174.785" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.681474" euler_y="1.04299" euler_z="-0.747401" id="239" overbright="0" q0="-0.0983528" q1="0.54291" q2="-0.143348" q3="0.8216" s0="0.816838" s1="0.816838" s2="0.816838" t0="-16.6907" t1="177.74" t2="176.46" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.06506" euler_y="-1.40299" euler_z="-3.05422" id="240" overbright="0" q0="0.00866887" q1="-0.763671" q2="-0.0010336" q3="0.645547" s0="0.816838" s1="0.816838" s2="0.816838" t0="-15.892" t1="176.718" t2="171.539" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12802" euler_y="-0.344712" euler_z="-3.1251" id="241" overbright="0" q0="0.0069604" q1="-0.985137" q2="-0.00526986" q3="0.171549" s0="0.816838" s1="0.816838" s2="0.816838" t0="-13.7096" t1="177.106" t2="173.021" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.54117" euler_y="1.11192" euler_z="-2.47242" id="242" overbright="0" q0="-0.119035" q1="0.817659" q2="-0.0717003" q3="0.55868" s0="0.816838" s1="0.816838" s2="0.816838" t0="-14.9923" t1="176.782" t2="176.211" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-3.11412" euler_y="0.153564" euler_z="-2.87055" id="243" overbright="0" q0="-0.133651" q1="0.987961" q2="-0.00320933" q3="0.0778468" s0="0.816838" s1="0.816838" s2="0.816838" t0="-13.7214" t1="178.54" t2="174.299" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-3.12321" euler_y="-0.600823" euler_z="-2.55507" id="244" overbright="0" q0="0.278722" q1="-0.913608" q2="0.0939411" q3="0.28073" s0="0.935481" s1="0.935481" s2="0.935481" t0="-15.5224" t1="181.324" t2="172.867" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.47311" euler_y="1.23435" euler_z="2.31428" id="245" overbright="0" q0="0.135823" q1="0.781722" q2="0.0252107" q3="0.608134" s0="0.769517" s1="0.769517" s2="0.769517" t0="-15.2911" t1="180.111" t2="175.616" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.53768" euler_y="0.783244" euler_z="-2.99652" id="246" overbright="0" q0="0.0492552" q1="0.888379" q2="-0.24774" q3="0.383382" s0="1.16648" s1="1.16648" s2="1.16648" t0="-14.2448" t1="159.387" t2="174.968" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.46129" euler_y="0.468584" euler_z="-3.07521" id="247" overbright="0" q0="-0.107841" q1="0.913873" q2="0.331599" q3="0.207963" s0="1.16648" s1="1.16648" s2="1.16648" t0="-14.3447" t1="159.446" t2="174.989" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.67451" color_g="0.607843" color_r="0.580392" euler_x="3.12942" euler_y="-0.268488" euler_z="-3.13023" id="248" overbright="0" q0="0.00481692" q1="-0.990973" q2="-0.00526974" q3="0.133871" s0="1.52287" s1="1.52287" s2="1.52287" t0="-16.058" t1="168.411" t2="174.027" type_file="Data/Objects/Plants/simple/simple_conifer_trunk.xml">
+            <parameters />
+        </EnvObject>
+        <Hotspot euler_x="0" euler_y="0" euler_z="0" id="250" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="-102.95" t1="168.011" t2="67.3224" type_file="Data/Objects/Hotspots/ambient_sound.xml">
+            <parameters>
+                <parameter name="Delay Max" type="float" val="10" />
+                <parameter name="Delay Min" type="float" val="3" />
+                <parameter name="Fade Distance" type="float" val="1" />
+                <parameter name="Gain" type="float" val="0.203" />
+                <parameter name="Global" type="int" val="1" />
+                <parameter name="Sound Path" type="string" val="Data/Sounds/wind.wav" />
+                <parameter name="Wind Scale" type="int" val="0" />
+            </parameters>
+        </Hotspot>
+        <Group euler_x="0" euler_y="0" euler_z="0" id="251" q0="0" q1="0" q2="0" q3="1" s0="214.902" s1="0.332212" s2="214.903" t0="70.3175" t1="139.749" t2="432.401" version="1">
+            <parameters />
+        </Group>
+        <Hotspot euler_x="0" euler_y="0" euler_z="0" id="252" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="-99.7048" t1="167.561" t2="72.63" type_file="Data/Objects/Hotspots/ambient_sound.xml">
+            <parameters>
+                <parameter name="Delay Max" type="float" val="10" />
+                <parameter name="Delay Min" type="float" val="3" />
+                <parameter name="Fade Distance" type="float" val="1" />
+                <parameter name="Gain" type="float" val="0.065" />
+                <parameter name="Global" type="int" val="1" />
+                <parameter name="Sound Path" type="string" val="Data/Sounds/ambient/night_woods_normalized.wav" />
+                <parameter name="Wind Scale" type="int" val="0" />
+            </parameters>
+        </Hotspot>
+        <Group euler_x="0" euler_y="0" euler_z="0" id="254" q0="0" q1="0" q2="0" q3="1" s0="214.902" s1="0.332212" s2="214.903" t0="283.817" t1="139.749" t2="217.901" version="1">
+            <parameters />
+        </Group>
+        <Group euler_x="0" euler_y="0.287249" euler_z="0" id="256" q0="0" q1="0.143131" q2="0" q3="0.989704" s0="31.0869" s1="23.1515" s2="12.0607" t0="-85.0528" t1="171.713" t2="81.4089" version="1">
+            <parameters />
+            <EnvObject color_b="0.743007" color_g="0.743007" color_r="0.796078" euler_x="-0.114167" euler_y="-1.29826" euler_z="0.224058" id="168" overbright="0" q0="0.0223061" q1="-0.60481" q2="0.0546398" q3="0.794179" s0="2.22614" s1="1.72426" s2="1.73207" t0="-75.0253" t1="166.894" t2="79.7108" type_file="Data/Objects/Crete/CreteBlockBroken.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.799992" color_g="0.799992" color_r="0.8" euler_x="0.932912" euler_y="-1.29827" euler_z="0.224058" id="169" overbright="0" q0="0.416368" q1="-0.496482" q2="0.349696" q3="0.67665" s0="1.95587" s1="1.34307" s2="1.11388" t0="-83.0174" t1="179.271" t2="80.7293" type_file="Data/Objects/Crete/CreteBlockBroken.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.743007" color_g="0.743007" color_r="0.796078" euler_x="-0.79083" euler_y="-1.29827" euler_z="0.224058" id="170" overbright="0" q0="-0.242557" q1="-0.58866" q2="-0.149203" q3="0.756561" s0="1.71271" s1="1.32659" s2="1.33259" t0="-93.4175" t1="172.251" t2="83.8255" type_file="Data/Objects/Crete/CreteBlockBroken.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.836448" color_g="0.894959" color_r="0.960784" euler_x="-2.03373" euler_y="1.32056" euler_z="-3.08289" id="171" overbright="0" q0="0.302784" q1="0.680895" q2="-0.39999" q3="0.533586" s0="6.72748" s1="4.963" s2="4.96301" t0="-89.6467" t1="178.042" t2="81.926" type_file="Data/Objects/Crete/CreteBlockInterior.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.852042" color_g="0.932521" color_r="0.952941" euler_x="-3.04185" euler_y="0.302108" euler_z="0.693084" id="213" overbright="0" q0="0.931234" q1="0.328307" q2="-0.158097" q3="0.00469469" s0="1.04398" s1="1.04398" s2="1.70817" t0="-77.577" t1="174.585" t2="79.3978" type_file="Data/Objects/Crete/CreteCube.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.852042" color_g="0.932521" color_r="0.952941" euler_x="0.197739" euler_y="-0.0246665" euler_z="-0.140512" id="249" overbright="0" q0="0.097596" q1="-0.0191711" q2="-0.0686357" q3="0.99267" s0="1.04398" s1="1.04398" s2="1.39925" t0="-96.7222" t1="166.709" t2="83.9951" type_file="Data/Objects/Crete/CreteCube.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.743007" color_g="0.743007" color_r="0.796078" euler_x="-3.13748" euler_y="0.0198162" euler_z="-0.0698463" id="253" overbright="0" q0="-0.999339" q1="0.0349346" q2="0.00983001" q3="0.00240218" s0="1.26939" s1="0.983215" s2="0.987664" t0="-74.5272" t1="170.097" t2="78.14" type_file="Data/Objects/Crete/CreteBlockBroken.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.836448" color_g="0.894959" color_r="0.960784" euler_x="-0.00930031" euler_y="-0.648235" euler_z="0.162999" id="255" overbright="0" q0="-0.0215328" q1="0.31777" q2="-0.0756935" q3="-0.944898" s0="4.96301" s1="4.96301" s2="4.96301" t0="-75.2992" t1="165.444" t2="76.7526" type_file="Data/Objects/Crete/CreteBlockInterior.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group euler_x="0" euler_y="0" euler_z="0" id="257" q0="0" q1="0" q2="0" q3="1" s0="214.902" s1="0.332212" s2="214.903" t0="279.817" t1="139.749" t2="429.901" version="1">
+            <parameters />
+        </Group>
+        <Decal color_b="0.219606" color_g="0.219606" color_r="0.219608" euler_x="0" euler_y="0" euler_z="0" id="258" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="24.8366" s1="24.8366" s2="24.8366" t0="-98.7324" t1="167.796" t2="12.9161" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="259" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-94.7931" t1="166.736" t2="43.9168" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Group euler_x="0" euler_y="0" euler_z="0" id="260" q0="0" q1="0" q2="0" q3="1" s0="214.902" s1="0.332212" s2="214.903" t0="85.3175" t1="139.749" t2="-201.599" version="1">
+            <parameters />
+        </Group>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="261" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-97.6281" t1="166.736" t2="42.5437" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="262" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-99.9938" t1="166.736" t2="42.1103" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Group euler_x="0" euler_y="0" euler_z="0" id="263" q0="0" q1="0" q2="0" q3="1" s0="214.902" s1="0.332212" s2="214.903" t0="81.3175" t1="139.749" t2="10.4013" version="1">
+            <parameters />
+        </Group>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="264" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-99.2416" t1="166.736" t2="39.5667" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="265" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-96.6491" t1="166.736" t2="38.7307" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Group euler_x="0" euler_y="0" euler_z="0" id="266" q0="0" q1="0" q2="0" q3="1" s0="214.902" s1="0.332212" s2="214.903" t0="-122.183" t1="139.749" t2="-323.599" version="1">
+            <parameters />
+        </Group>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="267" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-108.878" t1="167.422" t2="50.0288" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="268" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-108.138" t1="167.092" t2="53.6441" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Group euler_x="0" euler_y="0" euler_z="0" id="269" q0="0" q1="0" q2="0" q3="1" s0="214.902" s1="0.332212" s2="214.903" t0="-126.183" t1="139.749" t2="-111.599" version="1">
+            <parameters />
+        </Group>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="270" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-110.429" t1="167.776" t2="55.2183" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="2.17193" euler_y="-0.196432" euler_z="-2.95997" id="272" overbright="0" q0="0.034338" q1="-0.881007" q2="-0.454032" q3="0.128462" s0="0.4396" s1="0.4396" s2="0.4396" t0="-72.4301" t1="152.393" t2="175.116" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.001708" euler_y="0.296048" euler_z="-0.133162" id="273" overbright="0" q0="0.0106552" q1="0.147101" q2="-0.0659301" q3="0.986864" s0="0.922176" s1="0.807458" s2="0.936369" t0="-77.621" t1="154.765" t2="184.341" type_file="Data/Objects/Plants/Trees/temperate/thick_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="0" euler_y="-1.0472" euler_z="-3.14159" id="274" overbright="0" q0="-0.499999" q1="0" q2="-0.866026" q3="0" s0="1.6512" s1="1.6512" s2="1.6512" t0="-62.8696" t1="157.991" t2="141.335" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.607843" color_g="0.607843" color_r="0.607843" euler_x="3.14159" euler_y="1.0472" euler_z="0" id="275" overbright="0" q0="-0.866026" q1="0" q2="0.499999" q3="0" s0="1.6512" s1="1.6512" s2="1.6512" t0="-63.2978" t1="167.119" t2="143.177" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.99564" euler_y="1.37807" euler_z="2.87886" id="276" overbright="0" q0="0.0548791" q1="0.769244" q2="-0.0272681" q3="0.63601" s0="0.922176" s1="0.807458" s2="0.936369" t0="-88.4659" t1="156.24" t2="167.317" type_file="Data/Objects/Plants/Trees/temperate/thick_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.13708" euler_y="-0.620947" euler_z="2.95018" id="277" overbright="0" q0="-0.0916782" q1="-0.947763" q2="-0.0313352" q3="0.303905" s0="0.614885" s1="0.538394" s2="0.624349" t0="-89.2198" t1="156.214" t2="168.588" type_file="Data/Objects/Plants/Trees/temperate/thick_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0098851" euler_y="-0.718503" euler_z="-0.0892557" id="278" overbright="0" q0="-0.0110622" q1="-0.351426" q2="-0.0400285" q3="0.935294" s0="0.879628" s1="0.879628" s2="0.879628" t0="-95.1472" t1="156.695" t2="163.547" type_file="Data/Objects/Plants/Trees/temperate/short_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0515543" euler_y="-0.472634" euler_z="-0.144131" id="279" overbright="0" q0="-0.0418449" q1="-0.231634" q2="-0.0759974" q3="0.968927" s0="0.738255" s1="0.738255" s2="0.738255" t0="-73.047" t1="153.362" t2="174.776" type_file="Data/Objects/Plants/Trees/temperate/short_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.103126" euler_y="0.553045" euler_z="-0.162732" id="280" overbright="0" q0="-0.0272583" q1="0.275777" q2="-0.0640601" q3="0.958697" s0="1.05018" s1="1.05018" s2="1.05018" t0="-66.8328" t1="153.109" t2="193.571" type_file="Data/Objects/Plants/Trees/temperate/short_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.14159" euler_y="-0.523597" euler_z="3.14159" id="281" overbright="0" q0="0" q1="-0.965926" q2="0" q3="0.258818" s0="5.94879" s1="5.94879" s2="5.94879" t0="-67.7294" t1="157.222" t2="182.631" type_file="Data/Objects/therium/rabbit_statue/advisorstatue.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-1.61664" euler_y="-0.169645" euler_z="-0.0258709" id="282" overbright="0" q0="-0.721223" q1="-0.0491931" q2="-0.0701611" q3="0.687383" s0="1.47637" s1="1.47637" s2="1.47637" t0="-67.4565" t1="154.161" t2="180.971" type_file="Data/Objects/Plants/Groundcover/Groundcover1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-1.61881" euler_y="-0.492002" euler_z="2.79881" id="283" overbright="0" q0="0.0458135" q1="-0.720452" q2="0.62929" q3="0.287827" s0="1.47637" s1="1.47637" s2="1.47637" t0="-68.6238" t1="153.53" t2="181.185" type_file="Data/Objects/Plants/Groundcover/Groundcover1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-1.43024" euler_y="0.633232" euler_z="-0.0748621" id="284" overbright="0" q0="-0.613884" q1="0.258229" q2="0.177164" q3="0.724622" s0="1.18941" s1="1.18941" s2="1.18941" t0="-68.9894" t1="153.641" t2="181.383" type_file="Data/Objects/Plants/Groundcover/Groundcover1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-1.06008" euler_y="-0.328666" euler_z="1.38965" id="285" overbright="0" q0="-0.292759" q1="-0.427755" q2="0.481425" q3="0.706787" s0="0.913236" s1="0.913236" s2="0.913236" t0="-68.4742" t1="153.033" t2="180.999" type_file="Data/Objects/Plants/Groundcover/Groundcover1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.29198" euler_y="-0.294848" euler_z="-2.15117" id="286" overbright="0" q0="-0.481552" q1="0.764198" q2="-0.422299" q3="0.0759776" s0="1.47637" s1="1.47637" s2="1.47637" t0="-68.6359" t1="158.036" t2="181.782" type_file="Data/Objects/Plants/Groundcover/Groundcover1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.7054" euler_y="0.359523" euler_z="-1.28305" id="287" overbright="0" q0="-0.74645" q1="0.605823" q2="0.0124605" q3="0.275019" s0="0.970603" s1="0.970603" s2="0.970603" t0="-68.8625" t1="157.923" t2="182.075" type_file="Data/Objects/Plants/Groundcover/Groundcover1.xml">
+            <parameters />
+        </EnvObject>
+        <Decal color_b="0.184314" color_g="0.352941" color_r="0.156863" euler_x="-1.57584" euler_y="0.670266" euler_z="-0.145542" id="288" overbright="0" q0="-0.650812" q1="0.280036" q2="0.184104" q3="0.68127" s0="1.59938" s1="1.90631" s2="1.47334" t0="-68.8483" t1="153.602" t2="181.051" type_file="Data/Objects/Decals/ThickMoss.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.184314" color_g="0.352941" color_r="0.156863" euler_x="-1.69493" euler_y="-0.108511" euler_z="1.4849" id="289" overbright="0" q0="-0.527239" q1="-0.532505" q2="0.416888" q3="0.514453" s0="1.05287" s1="0.532123" s2="0.969893" t0="-67.4793" t1="154.067" t2="180.979" type_file="Data/Objects/Decals/ThickMoss.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.184314" color_g="0.352941" color_r="0.156863" euler_x="-1.68369" euler_y="-0.86814" euler_z="-3.09802" id="290" overbright="0" q0="0.29481" q1="-0.670438" q2="0.611007" q3="0.30045" s0="1.38616" s1="0.776416" s2="1.42213" t0="-68.7502" t1="158.069" t2="181.959" type_file="Data/Objects/Decals/ThickMoss.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.529412" color_g="0.529412" color_r="0.529412" euler_x="0.00246794" euler_y="-0.0504859" euler_z="-0.114496" id="291" overbright="0" q0="-0.00021261" q1="-0.0252695" q2="-0.0571674" q3="0.998045" s0="10.3831" s1="0.980699" s2="10.3831" t0="-68.315" t1="152.068" t2="181.177" type_file="Data/Objects/Decals/hex_crete_debris.xml">
+            <parameters />
+        </Decal>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.00495805" euler_y="-0.100252" euler_z="-0.038719" id="292" overbright="0" q0="-0.00344539" q1="-0.0500476" q2="-0.0194581" q3="0.998551" s0="0.702626" s1="0.702626" s2="0.702626" t0="-68.0807" t1="152.329" t2="181.654" type_file="Data/Objects/Crete/hex_crete_rubble.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0681599" euler_y="0.473672" euler_z="0" id="293" overbright="0" q0="0.0331222" q1="0.234492" q2="-0.00799465" q3="0.971521" s0="0.589875" s1="0.52495" s2="0.395552" t0="-67.4426" t1="157.336" t2="181.568" type_file="Data/Prototypes/Lugaru/HangingVines_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.146338" euler_y="0.348643" euler_z="-0.0952803" id="294" overbright="0" q0="0.0801514" q1="0.169351" q2="-0.0594396" q3="0.980491" s0="-0.277527" s1="0.342561" s2="0.343023" t0="-68.6793" t1="158.321" t2="182.35" type_file="Data/Prototypes/Lugaru/HangingVines_2.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.135787" euler_y="0.411861" euler_z="-0.0146795" id="295" overbright="0" q0="0.0679033" q1="0.203514" q2="-0.0210397" q3="0.976488" s0="0.431192" s1="0.431194" s2="0.273971" t0="-68.8543" t1="158.603" t2="182.449" type_file="Data/Prototypes/Lugaru/HangingVines_1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.27661" euler_y="0.327709" euler_z="-0.434081" id="296" overbright="0" q0="-0.545853" q1="0.25452" q2="-0.0757113" q3="0.79469" s0="0.309152" s1="0.309152" s2="0.309152" t0="-90.0857" t1="155.014" t2="179.243" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.83354" euler_y="0.151622" euler_z="2.96992" id="297" overbright="0" q0="0.113751" q1="0.784496" q2="-0.609561" q3="0.00788087" s0="0.222489" s1="0.222489" s2="0.222489" t0="-92.1" t1="155.331" t2="176.948" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.06991" euler_y="-0.808607" euler_z="-0.371564" id="298" overbright="0" q0="-0.523145" q1="-0.246021" q2="-0.343191" q3="0.740279" s0="0.222489" s1="0.222489" s2="0.222489" t0="-95.9637" t1="156.236" t2="175.533" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.86641" euler_y="1.2706" euler_z="2.94548" id="299" overbright="0" q0="0.41486" q1="0.609069" q2="-0.523503" q3="0.427634" s0="0.270489" s1="0.270489" s2="0.270489" t0="-93.604" t1="155.716" t2="167.963" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.85765" euler_y="-1.34764" euler_z="3.10238" id="300" overbright="0" q0="0.361282" q1="-0.633074" q2="0.458024" q3="0.508829" s0="0.204885" s1="0.204885" s2="0.204885" t0="-89.1246" t1="155.205" t2="164.49" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.73427" euler_y="-0.411415" euler_z="2.92958" id="301" overbright="0" q0="0.052443" q1="-0.756197" q2="0.613338" q3="0.221884" s0="0.204885" s1="0.204885" s2="0.204885" t0="-78.0255" t1="153.426" t2="190.285" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="2.60055" euler_y="0.135471" euler_z="2.31591" id="302" overbright="0" q0="0.369168" q1="0.887904" q2="0.218054" q3="0.166715" s0="0.191075" s1="0.0760479" s2="0.228978" t0="-84.6188" t1="155.314" t2="185.903" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.2" color_g="0.2" color_r="0.2" euler_x="2.72103" euler_y="-0.348793" euler_z="2.19074" id="303" overbright="0" q0="-0.473048" q1="-0.839745" q2="-0.260442" q3="0.0567794" s0="0.191075" s1="0.0760479" s2="0.228978" t0="-83.0351" t1="154.665" t2="184.732" type_file="Data/Objects/Crete/sharp_coastal_crete.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-2.0256" euler_y="0.524293" euler_z="2.86664" id="304" overbright="0" q0="0.24821" q1="0.792801" q2="-0.5367" q3="0.147687" s0="0.58487" s1="0.58487" s2="0.58487" t0="-108.002" t1="165.57" t2="51.4108" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-2.19612" euler_y="-0.507065" euler_z="-3.02288" id="305" overbright="0" q0="0.165132" q1="-0.853572" q2="0.453239" q3="0.196776" s0="0.561865" s1="0.402422" s2="0.561865" t0="-98.9323" t1="163.313" t2="68.299" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.67067" euler_y="1.25275" euler_z="-0.575539" id="306" overbright="0" q0="-0.464421" q1="0.547634" q2="0.262542" q3="0.644579" s0="0.554226" s1="0.554226" s2="0.554226" t0="-87.8794" t1="165.777" t2="58.1101" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.24901" euler_y="0.616706" euler_z="-0.341713" id="307" overbright="0" q0="-0.507145" q1="0.337347" q2="0.043437" q3="0.791905" s0="0.555211" s1="0.736823" s2="0.745768" t0="-73.1908" t1="157.611" t2="101.889" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="1.87353" euler_y="-0.174385" euler_z="-3.07066" id="308" overbright="0" q0="-0.0230965" q1="-0.80391" q2="-0.587288" q3="0.0910386" s0="0.736823" s1="0.736823" s2="0.736823" t0="-98.8182" t1="156.638" t2="141.792" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="1.12636" euler_y="1.2447" euler_z="-0.229725" id="309" overbright="0" q0="0.487416" q1="0.439954" q2="-0.387912" q3="0.646831" s0="0.59643" s1="0.59643" s2="0.59643" t0="-92.3727" t1="154.963" t2="146.622" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.43203" euler_y="1.08281" euler_z="-0.200599" id="310" overbright="0" q0="-0.520754" q1="0.443157" q2="0.27182" q3="0.677157" s0="0.736823" s1="0.736823" s2="0.736823" t0="-30.5357" t1="149.857" t2="186.529" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="-1.98274" euler_y="-0.97056" euler_z="-3.1045" id="311" overbright="0" q0="0.269087" q1="-0.735303" q2="0.491482" q3="0.381271" s0="0.736823" s1="0.736823" s2="0.736823" t0="-40.0442" t1="148.304" t2="190.623" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="1.68272" euler_y="0.803896" euler_z="0.28492" id="312" overbright="0" q0="0.642161" q1="0.355498" q2="-0.201632" q3="0.648533" s0="0.927597" s1="0.927597" s2="0.927597" t0="-34.5225" t1="146.382" t2="204.613" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.270588" color_g="0.27451" color_r="0.329412" euler_x="2.18862" euler_y="0.442198" euler_z="-3.03347" id="313" overbright="0" q0="-0.147286" q1="0.860278" q2="0.457372" q3="0.170409" s0="0.927597" s1="0.927597" s2="0.927597" t0="-50.1791" t1="148.349" t2="208.017" type_file="Data/Objects/Environment/Rocks/coast_rock_large.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="-3.13329" euler_y="0.38554" euler_z="0.000183284" id="319" overbright="0" q0="-0.981469" q1="0.000705183" q2="0.191577" q3="0.00405597" s0="0.833905" s1="0.833905" s2="0.833905" t0="-84.1696" t1="155.025" t2="173.246" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="-3.08699" euler_y="1.43255" euler_z="0.0511517" id="320" overbright="0" q0="-0.754189" q1="-0.00136465" q2="0.656645" q3="0.00379794" s0="0.833905" s1="0.833905" s2="0.833905" t0="-97.051" t1="156.163" t2="171.526" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="3.08725" euler_y="-1.43255" euler_z="-3.09067" id="321" overbright="0" q0="0.00136459" q1="-0.754189" q2="-0.00377399" q3="0.656645" s0="0.590688" s1="0.590688" s2="0.590688" t0="-93.7093" t1="154.892" t2="178.342" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.247059" color_g="0.247059" color_r="0.247059" euler_x="-3.08699" euler_y="1.43255" euler_z="0.051151" id="322" overbright="0" q0="-0.754189" q1="-0.00136459" q2="0.656645" q3="0.00379794" s0="0.375154" s1="0.375154" s2="0.375154" t0="-95.0674" t1="155.72" t2="178.501" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <Decal color_b="1" color_g="1" color_r="1" euler_x="2.44293" euler_y="1.41995" euler_z="0.958091" id="324" overbright="0" q0="0.529528" q1="0.526431" q2="-0.423866" q3="0.512647" s0="8.377" s1="1.7172" s2="8.37697" t0="-21.5124" t1="165.652" t2="87.9349" type_file="Data/Objects/therium/Decals/ya.xml">
+            <parameters />
+        </Decal>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.98556" euler_y="0.821279" euler_z="2.89385" id="325" overbright="0" q0="0.0820637" q1="0.910917" q2="0.0217366" q3="0.403761" s0="0.998038" s1="0.998038" s2="0.998038" t0="-99.4971" t1="165.609" t2="150.432" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <ReflectionCaptureObject euler_x="0" euler_y="0" euler_z="0" gicoeff00="0.179199" gicoeff01="0.0869904" gicoeff02="0.12915" gicoeff03="0.0593033" gicoeff04="0.0437775" gicoeff05="0.0544434" gicoeff06="0.130127" gicoeff07="0.0756531" gicoeff08="0.116196" gicoeff09="0.0768738" gicoeff10="0.0463791" gicoeff11="0.0550003" gicoeff12="0.105881" gicoeff13="0.0595474" gicoeff14="0.0825653" gicoeff15="0.0932312" gicoeff16="0.0536957" gicoeff17="0.0750961" id="326" q0="0" q1="0" q2="0" q3="1" s0="0.48742" s1="0.48742" s2="0.48742" t0="-63.8767" t1="161.785" t2="180.8">
+            <parameters>
+                <parameter name="Global" type="string" val="1" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.909445" euler_y="-0.88788" euler_z="-1.07189" id="327" overbright="0" q0="-0.143985" q1="0.534299" q2="0.252102" q3="-0.793875" s0="0.606653" s1="0.606653" s2="0.606653" t0="-101.673" t1="185.824" t2="148.036" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12461" euler_y="-0.198918" euler_z="3.09373" id="328" overbright="0" q0="0.0246507" q1="0.994717" q2="0.010824" q3="-0.0990611" s0="1.16648" s1="1.16648" s2="1.16648" t0="-99.8944" t1="167.745" t2="146.988" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0559193" euler_y="1.2683" euler_z="0.00216981" id="329" overbright="0" q0="0.0218782" q1="0.592284" q2="-0.0156901" q3="0.805279" s0="1.16648" s1="1.16648" s2="1.16648" t0="-102.596" t1="171.58" t2="151.86" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.11688" euler_y="0.831483" euler_z="3.07211" id="330" overbright="0" q0="0.0267836" q1="0.914368" q2="-0.00272894" q3="0.403987" s0="1.16648" s1="1.16648" s2="1.16648" t0="-98.965" t1="172.473" t2="150.74" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0378106" euler_y="-0.0908144" euler_z="-0.276794" id="331" overbright="0" q0="0.0124432" q1="-0.0475548" q2="-0.136939" q3="0.989359" s0="1.10772" s1="1.10772" s2="1.10772" t0="-105.34" t1="168.741" t2="148.304" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.89956" euler_y="-1.50128" euler_z="-2.95133" id="332" overbright="0" q0="0.0130223" q1="0.730446" q2="0.0235634" q3="-0.68244" s0="1.16648" s1="1.16648" s2="1.16648" t0="-101.983" t1="169.879" t2="144.61" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0201334" euler_y="-0.596931" euler_z="-0.0625319" id="333" overbright="0" q0="0.000424856" q1="-0.294196" q2="-0.0269186" q3="0.955366" s0="1.16648" s1="1.16648" s2="1.16648" t0="-105.145" t1="171.069" t2="146.567" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="1.79092" euler_y="-1.1713" euler_z="-1.82672" id="334" overbright="0" q0="-0.123943" q1="0.726017" q2="0.148753" q3="-0.659855" s0="1.06965" s1="1.06965" s2="1.06965" t0="-101.9" t1="173.123" t2="145.538" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12492" euler_y="0.055541" euler_z="3.08945" id="335" overbright="0" q0="0.025825" q1="0.999246" q2="0.00760853" q3="0.0279738" s0="1.16648" s1="1.16648" s2="1.16648" t0="-98.1337" t1="172.065" t2="148.049" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0187171" euler_y="0.474282" euler_z="-0.042666" id="336" overbright="0" q0="0.0141055" q1="0.234667" q2="-0.0229315" q3="0.971703" s0="1.01854" s1="1.01854" s2="1.01854" t0="-104.606" t1="173.842" t2="150.221" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.11966" euler_y="-0.708796" euler_z="3.10466" id="337" overbright="0" q0="0.0211234" q1="0.937569" q2="0.0166916" q3="-0.346756" s0="1.01854" s1="1.01854" s2="1.01854" t0="-99.33" t1="174.456" t2="145.903" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.11686" euler_y="0.832247" euler_z="3.07209" id="338" overbright="0" q0="0.0267828" q1="0.914214" q2="-0.00273901" q3="0.404336" s0="1.01854" s1="1.01854" s2="1.01854" t0="-99.314" t1="175.105" t2="150.549" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0618288" euler_y="-0.754207" euler_z="-0.0911471" id="339" overbright="0" q0="-0.0454755" q1="-0.366362" q2="-0.0537064" q3="0.927807" s0="1.16648" s1="1.16648" s2="1.16648" t0="-104.255" t1="168.245" t2="147.25" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-3.07304" euler_y="-0.18764" euler_z="2.6553" id="340" overbright="0" q0="0.236443" q1="0.966522" q2="-0.0105745" q3="-0.0990878" s0="1.16648" s1="1.16648" s2="1.16648" t0="-99.7367" t1="170.055" t2="147.018" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="1.84657" euler_y="-0.660913" euler_z="-1.77548" id="341" overbright="0" q0="-0.324359" q1="0.70871" q2="0.279215" q3="-0.560857" s0="0.860684" s1="0.860684" s2="0.860684" t0="-101.053" t1="186.116" t2="148.088" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0242193" euler_y="0.812695" euler_z="-0.0336267" id="342" overbright="0" q0="0.0177665" q1="0.394985" q2="-0.020228" q3="0.918293" s0="1.16648" s1="1.16648" s2="1.16648" t0="-102.972" t1="166.067" t2="149.738" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-1.07226" euler_y="1.27234" euler_z="-1.14459" id="343" overbright="0" q0="-0.0688052" q1="0.651897" q2="-0.119372" q3="0.745685" s0="1.16648" s1="1.16648" s2="1.16648" t0="-101.12" t1="185.238" t2="149.861" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.513162" euler_y="1.53687" euler_z="0.461701" id="344" overbright="0" q0="0.0238066" q1="0.696175" q2="-0.0125728" q3="0.717367" s0="1.16648" s1="1.16648" s2="1.16648" t0="-101.347" t1="168.431" t2="150.627" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.217026" euler_y="0.232801" euler_z="-0.405882" id="345" overbright="0" q0="0.12863" q1="0.0914049" q2="-0.211329" q3="0.964593" s0="0.912429" s1="0.912429" s2="0.912429" t0="-102.374" t1="185.173" t2="149.56" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.603652" euler_y="-1.08063" euler_z="-0.707618" id="346" overbright="0" q0="-0.0689567" q1="0.549053" q2="0.140243" q3="-0.821047" s0="0.769517" s1="0.769517" s2="0.769517" t0="-101.944" t1="184.563" t2="147.523" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-3.07304" euler_y="-0.18764" euler_z="2.6553" id="347" overbright="0" q0="0.236443" q1="0.966522" q2="-0.0105745" q3="-0.0990878" s0="1.16648" s1="1.16648" s2="1.16648" t0="-100.214" t1="163.881" t2="146.947" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-1.21874" euler_y="-0.719393" euler_z="0.841779" id="348" overbright="0" q0="0.371039" q1="0.482326" q2="-0.129713" q3="-0.782858" s0="1.16648" s1="1.16648" s2="1.16648" t0="-103.891" t1="166.013" t2="146.48" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.0749859" euler_y="-0.0951009" euler_z="0.225856" id="349" overbright="0" q0="-0.0318507" q1="-0.0514158" q2="0.110711" q3="0.992011" s0="0.935481" s1="0.935481" s2="0.935481" t0="-103.298" t1="182.84" t2="148.893" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.11057" euler_y="-1.00412" euler_z="3.11655" id="350" overbright="0" q0="0.0184368" q1="0.876325" q2="0.0196189" q3="-0.480966" s0="0.935481" s1="0.935481" s2="0.935481" t0="-100.962" t1="183.063" t2="146.942" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="0.0172373" euler_y="-0.26152" euler_z="-0.0556714" id="351" overbright="0" q0="0.00491282" q1="-0.13057" q2="-0.0264702" q3="0.991073" s0="0.816838" s1="0.816838" s2="0.816838" t0="-104.078" t1="180.906" t2="148.116" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-0.320336" euler_y="0.723981" euler_z="-0.532402" id="352" overbright="0" q0="-0.0519254" q1="0.376526" q2="-0.188381" q3="0.905563" s0="0.816838" s1="0.816838" s2="0.816838" t0="-102.751" t1="181.385" t2="150.462" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.11008" euler_y="-1.01398" euler_z="3.11713" id="353" overbright="0" q0="0.0183399" q1="0.873942" q2="0.0197093" q3="-0.485284" s0="0.816838" s1="0.816838" s2="0.816838" t0="-100.217" t1="180.23" t2="146.203" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="3.12493" euler_y="0.0445362" euler_z="3.08964" id="354" overbright="0" q0="0.0257828" q1="0.999385" q2="0.00775009" q3="0.0224744" s0="0.816838" s1="0.816838" s2="0.816838" t0="-98.7384" t1="180.5" t2="148.405" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-1.51425" euler_y="1.30111" euler_z="-1.56776" id="355" overbright="0" q0="-0.0762736" q1="0.697606" q2="-0.11376" q3="0.703269" s0="0.816838" s1="0.816838" s2="0.816838" t0="-101.154" t1="180.314" t2="150.867" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-3.00668" euler_y="0.529547" euler_z="-2.90281" id="356" overbright="0" q0="-0.0971809" q1="0.958202" q2="-0.0334967" q3="0.266986" s0="0.816838" s1="0.816838" s2="0.816838" t0="-99.1377" t1="181.953" t2="149.596" type_file="Data/Objects/Plants/Trees/temperate/pine_bough.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.91239" euler_y="-0.261086" euler_z="-2.71362" id="357" overbright="0" q0="-0.223716" q1="0.959361" q2="-0.138255" q3="-0.102292" s0="0.935481" s1="0.935481" s2="0.935481" t0="-100.071" t1="184.825" t2="147.615" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="1.14129" euler_y="1.27247" euler_z="0.962822" id="358" overbright="0" q0="0.153576" q1="0.644373" q2="0.0289447" q3="0.748572" s0="0.769517" s1="0.769517" s2="0.769517" t0="-100.981" t1="183.645" t2="150.235" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_medium.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="-2.42128" euler_y="1.16746" euler_z="-2.96724" id="359" overbright="0" q0="0.125506" q1="0.794825" q2="-0.24804" q3="0.539424" s0="1.16648" s1="1.16648" s2="1.16648" t0="-101.158" t1="162.889" t2="149.838" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="1" color_g="1" color_r="1" euler_x="2.48549" euler_y="0.857326" euler_z="-3.12894" id="360" overbright="0" q0="-0.139367" q1="0.860155" q2="0.295529" q3="0.391628" s0="1.16648" s1="1.16648" s2="1.16648" t0="-101.255" t1="162.955" t2="149.82" type_file="Data/Objects/Plants/Trees/temperate/pine_bough_small.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.67451" color_g="0.607843" color_r="0.580392" euler_x="3.12435" euler_y="0.120743" euler_z="3.08442" id="361" overbright="0" q0="0.0280103" q1="0.997748" q2="0.00687969" q3="0.0605539" s0="1.52287" s1="1.52287" s2="1.52287" t0="-101.87" t1="171.996" t2="148.364" type_file="Data/Objects/Plants/simple/simple_conifer_trunk.xml">
+            <parameters />
+        </EnvObject>
+        <Decal color_b="1" color_g="1" color_r="1" euler_x="0" euler_y="1.5708" euler_z="0" id="362" overbright="0" q0="0.5" q1="0.5" q2="-0.5" q3="0.5" s0="1.33286" s1="1.33286" s2="1.33286" t0="-47.6006" t1="179.991" t2="77.3947" type_file="Data/Objects/therium/Decals/Notes/wantedposterghost.xml">
+            <parameters />
+        </Decal>
+        <Hotspot euler_x="0" euler_y="0" euler_z="0" id="363" q0="0" q1="0" q2="0" q3="1" s0="1" s1="1" s2="1" t0="-108.201" t1="168.011" t2="65.1238" type_file="Data/Objects/Hotspots/ambient_sound.xml">
+            <parameters>
+                <parameter name="Delay Max" type="float" val="10" />
+                <parameter name="Delay Min" type="float" val="3" />
+                <parameter name="Fade Distance" type="float" val="1" />
+                <parameter name="Gain" type="float" val="0.529" />
+                <parameter name="Global" type="int" val="1" />
+                <parameter name="Sound Path" type="string" val="Data/Sounds/weather/rain.wav" />
+                <parameter name="Wind Scale" type="int" val="0" />
+            </parameters>
+        </Hotspot>
+        <Hotspot euler_x="0" euler_y="0" euler_z="0" id="364" q0="0" q1="0" q2="0" q3="1" s0="282.354" s1="96.2907" s2="334.09" t0="-225.802" t1="-52.7883" t2="-137.739" type_file="Data/Objects/Hotspots/wet_cube.xml">
+            <parameters>
+                <parameter name="Water Fog" type="float" val="1" />
+                <parameter name="Wave Density" type="float" val="0.188" />
+                <parameter name="Wave Height" type="float" val="0.572" />
+            </parameters>
+        </Hotspot>
+        <Group euler_x="3.14159" euler_y="-0.044338" euler_z="3.14159" id="371" q0="0" q1="0.999754" q2="0" q3="-0.0221672" s0="31.0869" s1="23.1515" s2="12.0607" t0="-85.9071" t1="166.938" t2="121.67" version="1">
+            <parameters />
+            <EnvObject color_b="0.743007" color_g="0.743007" color_r="0.796078" euler_x="2.04169" euler_y="1.50663" euler_z="1.93911" id="271" overbright="0" q0="0.0569399" q1="0.715052" q2="-0.0155219" q3="0.696575" s0="2.22614" s1="1.72426" s2="1.73207" t0="-96.0487" t1="162.119" t2="120.906" type_file="Data/Objects/Crete/CreteBlockBroken.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.799992" color_g="0.799992" color_r="0.8" euler_x="3.08873" euler_y="1.50664" euler_z="1.93907" id="323" overbright="0" q0="0.397566" q1="0.611513" q2="-0.370932" q3="0.574806" s0="1.95587" s1="1.34307" s2="1.11388" t0="-88.0462" t1="174.496" t2="121.84" type_file="Data/Objects/Crete/CreteBlockBroken.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.743007" color_g="0.743007" color_r="0.796078" euler_x="1.365" euler_y="1.50664" euler_z="1.93909" id="365" overbright="0" q0="-0.177491" q1="0.679667" q2="0.222693" q3="0.675986" s0="1.71271" s1="1.32659" s2="1.33259" t0="-77.2067" t1="167.476" t2="121.336" type_file="Data/Objects/Crete/CreteBlockBroken.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.836448" color_g="0.894959" color_r="0.960784" euler_x="2.1772" euler_y="-1.55482" euler_z="-1.12627" id="366" overbright="0" q0="-0.360359" q1="0.61215" q2="-0.349016" q3="-0.611231" s0="6.72748" s1="4.963" s2="4.96301" t0="-81.3237" t1="173.268" t2="122.273" type_file="Data/Objects/Crete/CreteBlockInterior.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.852042" color_g="0.932521" color_r="0.952941" euler_x="-0.0555362" euler_y="-0.11238" euler_z="2.48066" id="367" overbright="0" q0="-0.0441064" q1="0.0444369" q2="-0.943528" q3="-0.32532" s0="1.04398" s1="1.04398" s2="1.70817" t0="-93.6472" t1="169.81" t2="121.824" type_file="Data/Objects/Crete/CreteCube.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.852042" color_g="0.932521" color_r="0.952941" euler_x="-2.90894" euler_y="0.26512" euler_z="-2.996" id="368" overbright="0" q0="-0.0563056" q1="0.983034" q2="-0.105193" q3="0.139299" s0="1.04398" s1="1.04398" s2="1.39925" t0="-73.9583" t1="161.934" t2="121.967" type_file="Data/Objects/Crete/CreteCube.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.743007" color_g="0.743007" color_r="0.796078" euler_x="0.0213269" euler_y="0.222495" euler_z="-3.06999" id="369" overbright="0" q0="-0.11132" q1="0.00661714" q2="0.993168" q3="-0.0343862" s0="1.26939" s1="0.983215" s2="0.987664" t0="-96.91" t1="165.323" t2="122.311" type_file="Data/Objects/Crete/CreteBlockBroken.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="0.836448" color_g="0.894959" color_r="0.960784" euler_x="3.07046" euler_y="0.887116" euler_z="2.93534" id="370" overbright="0" q0="-0.0777447" q1="-0.899437" q2="0.0122035" q3="-0.429911" s0="4.96301" s1="4.96301" s2="4.96301" t0="-96.4943" t1="160.669" t2="123.844" type_file="Data/Objects/Crete/CreteBlockInterior.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="372" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-113.351" t1="168.362" t2="49.9769" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="373" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-114.129" t1="168.472" t2="46.0432" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="374" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-115.77" t1="168.879" t2="46.7927" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <ReflectionCaptureObject euler_x="0" euler_y="0" euler_z="0" gicoeff00="0.0648651" gicoeff01="0.0353088" gicoeff02="0.0528641" gicoeff03="0.0303078" gicoeff04="0.0228996" gicoeff05="0.0298729" gicoeff06="0.0703812" gicoeff07="0.0481873" gicoeff08="0.0742035" gicoeff09="0.0246353" gicoeff10="0.0136299" gicoeff11="0.0161057" gicoeff12="0.0467224" gicoeff13="0.0292397" gicoeff14="0.0415802" gicoeff15="0.0402069" gicoeff16="0.0256195" gicoeff17="0.0360985" id="375" q0="0" q1="0" q2="0" q3="1" s0="29.2824" s1="29.2824" s2="29.2824" t0="-96.4974" t1="170.293" t2="54.9698">
+            <parameters>
+                <parameter name="Global" type="string" val="0" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="376" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-98.3062" t1="163.635" t2="74.8252" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="377" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-101.611" t1="164.198" t2="73.4209" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <EnvObject color_b="0" color_g="0" color_r="0" euler_x="2.93968" euler_y="1.53433" euler_z="2.93686" id="378" overbright="0" q0="0.00360215" q1="0.719612" q2="0.00160301" q3="0.694365" s0="0.283817" s1="0.283817" s2="0.283817" t0="-101.297" t1="173.096" t2="168.651" type_file="Data/Objects/Crete/CreteBlockStandard.xml">
+            <parameters />
+        </EnvObject>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="379" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-75.0323" t1="162.012" t2="86.0204" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="380" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-71.1851" t1="160.633" t2="92.2468" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="381" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-67.8257" t1="163.231" t2="88.2493" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="382" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-96.8499" t1="160.761" t2="99.1381" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="383" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-99.6064" t1="160.846" t2="102.98" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="384" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-100.641" t1="161.732" t2="101.004" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="385" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.9993" s1="2.9993" s2="2.9993" t0="-98.5947" t1="163.256" t2="95.1801" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.439211" color_g="0.439211" color_r="0.439216" euler_x="0" euler_y="0" euler_z="0" id="386" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="34.5553" s1="43.5183" s2="25.6913" t0="-85.258" t1="166.807" t2="85.0467" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.274507" color_g="0.274507" color_r="0.27451" euler_x="0" euler_y="0" euler_z="0" id="387" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="22.7356" s1="22.7356" s2="22.7356" t0="-102.976" t1="165.088" t2="82.9811" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.250978" color_g="0.250978" color_r="0.25098" euler_x="0" euler_y="-0.00121882" euler_z="0" id="388" overbright="0" q0="0" q1="-0.00060941" q2="0" q3="1" s0="33.4394" s1="34.6881" s2="20.8" t0="-83.8631" t1="161.705" t2="122.001" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.286272" color_g="0.286272" color_r="0.286274" euler_x="0" euler_y="0" euler_z="0" id="389" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="13.2978" s1="13.5593" s2="18.5344" t0="-104.833" t1="163.61" t2="103.306" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.458819" color_g="0.458819" color_r="0.458824" euler_x="0" euler_y="0" euler_z="0" id="390" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="14.8541" s1="10.9405" s2="22.4077" t0="-67.999" t1="158.575" t2="104.165" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.458819" color_g="0.458819" color_r="0.458824" euler_x="0" euler_y="0" euler_z="0" id="391" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="14.8541" s1="10.9405" s2="22.4077" t0="-70.1185" t1="158.575" t2="112.52" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <ReflectionCaptureObject euler_x="0" euler_y="0" euler_z="0" gicoeff00="0.123245" gicoeff01="0.0613785" gicoeff02="0.0943604" gicoeff03="0.0370789" gicoeff04="0.0271988" gicoeff05="0.0345573" gicoeff06="0.111649" gicoeff07="0.0674438" gicoeff08="0.104736" gicoeff09="0.0327873" gicoeff10="0.0181236" gicoeff11="0.0221214" gicoeff12="0.0772552" gicoeff13="0.043396" gicoeff14="0.0627594" gicoeff15="0.0626984" gicoeff16="0.0367699" gicoeff17="0.0533447" id="392" q0="0" q1="0" q2="0" q3="1" s0="29.2824" s1="29.2824" s2="29.2824" t0="-82.4028" t1="170.293" t2="102.992">
+            <parameters>
+                <parameter name="Global" type="string" val="0" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <DynamicLightObject color_b="0.8203" color_g="0.8203" color_r="0.996078" euler_x="0" euler_y="0" euler_z="0" id="395" overbright="100" q0="0" q1="0" q2="0" q3="1" s0="29.4118" s1="29.4118" s2="29.4118" t0="-96.0761" t1="167.363" t2="110.108">
+            <parameters />
+        </DynamicLightObject>
+        <DynamicLightObject color_b="0.52549" color_g="0.52549" color_r="1" euler_x="0" euler_y="0" euler_z="0" id="396" overbright="200" q0="0" q1="0" q2="0" q3="1" s0="22.0593" s1="22.0593" s2="22.0593" t0="-90.0296" t1="164.016" t2="134.906">
+            <parameters />
+        </DynamicLightObject>
+        <Decal color_b="0.188233" color_g="0.188233" color_r="0.188235" euler_x="0" euler_y="0" euler_z="0" id="397" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.88567" s1="2.88567" s2="2.88567" t0="-93.9896" t1="168.101" t2="132.95" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.188233" color_g="0.188233" color_r="0.188235" euler_x="0" euler_y="0" euler_z="0" id="398" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="2.88567" s1="2.88567" s2="2.88567" t0="-91.7917" t1="167.768" t2="132.685" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <DynamicLightObject color_b="0.239216" color_g="0.239216" color_r="1" euler_x="0" euler_y="0" euler_z="0" id="399" overbright="200" q0="0" q1="0" q2="0" q3="1" s0="22.0381" s1="22.0381" s2="22.0381" t0="-90.6018" t1="170.382" t2="168.929">
+            <parameters />
+        </DynamicLightObject>
+        <Decal color_b="0.192155" color_g="0.192155" color_r="0.192157" euler_x="0" euler_y="0" euler_z="0" id="400" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="13.3571" s1="13.3571" s2="13.3571" t0="-85.5305" t1="155.059" t2="163.182" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <DynamicLightObject color_b="0.380623" color_g="0.380623" color_r="0.980392" euler_x="0" euler_y="0" euler_z="0" id="401" overbright="200" q0="0" q1="0" q2="0" q3="1" s0="29.3498" s1="29.3498" s2="29.3498" t0="-87.4826" t1="162.147" t2="177.404">
+            <parameters />
+        </DynamicLightObject>
+        <Decal color_b="0.341173" color_g="0.341173" color_r="0.341176" euler_x="0" euler_y="-0.268304" euler_z="0" id="402" overbright="0" q0="0" q1="-0.13375" q2="0" q3="0.991015" s0="10.2646" s1="7.87274" s2="7.90395" t0="-92.2267" t1="155.987" t2="180.786" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.10196" color_g="0.10196" color_r="0.101961" euler_x="0.203385" euler_y="0.577941" euler_z="-0.346041" id="403" overbright="0" q0="0.144661" q1="0.262508" q2="-0.192665" q3="0.934368" s0="5.27077" s1="5.7991" s2="5.27077" t0="-100.161" t1="156.402" t2="174.242" type_file="Data/Objects/Decals/lichen_rubble.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="1" color_g="1" color_r="1" euler_x="0.0100493" euler_y="0.00546445" euler_z="-0.288711" id="404" overbright="0" q0="0.00536537" q1="0.00198096" q2="-0.143866" q3="0.98958" s0="15.0057" s1="15.0057" s2="15.0057" t0="-108.579" t1="162.93" t2="70.578" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <ReflectionCaptureObject euler_x="0" euler_y="0" euler_z="0" gicoeff00="0.0962982" gicoeff01="0.0486984" gicoeff02="0.074585" gicoeff03="0.0296593" gicoeff04="0.0221252" gicoeff05="0.0277901" gicoeff06="0.0918884" gicoeff07="0.0563736" gicoeff08="0.087204" gicoeff09="0.0252228" gicoeff10="0.0141602" gicoeff11="0.0171013" gicoeff12="0.0563736" gicoeff13="0.0325356" gicoeff14="0.0463104" gicoeff15="0.0561447" gicoeff16="0.0331345" gicoeff17="0.0474319" id="405" q0="0" q1="0" q2="0" q3="1" s0="27.033" s1="27.033" s2="27.033" t0="-86.4363" t1="163.395" t2="146.627">
+            <parameters>
+                <parameter name="Global" type="string" val="0" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <Decal color_b="0.10196" color_g="0.10196" color_r="0.101961" euler_x="0.27602" euler_y="0.54921" euler_z="-0.365021" id="408" overbright="0" q0="0.178967" q1="0.240094" q2="-0.209723" q3="0.930774" s0="9.58054" s1="9.58054" s2="9.58054" t0="-101.12" t1="157.772" t2="173.632" type_file="Data/Objects/Decals/lichen_rubble.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="1" color_g="1" color_r="1" euler_x="0.0100493" euler_y="0.00546445" euler_z="-0.288711" id="409" overbright="0" q0="0.00536537" q1="0.00198096" q2="-0.143866" q3="0.98958" s0="15.0057" s1="15.0057" s2="15.0057" t0="-114.541" t1="164.781" t2="63.3502" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.10196" color_g="0.10196" color_r="0.101961" euler_x="0.27602" euler_y="0.54921" euler_z="-0.365021" id="410" overbright="0" q0="0.178967" q1="0.240094" q2="-0.209723" q3="0.930774" s0="3.23461" s1="3.23461" s2="3.23461" t0="-96.2978" t1="157.088" t2="175.055" type_file="Data/Objects/Decals/lichen_rubble.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.498034" color_g="0.498034" color_r="0.498039" euler_x="0.0838159" euler_y="0.133172" euler_z="0.352446" id="411" overbright="0" q0="0.0295009" q1="0.0727776" q2="0.172026" q3="0.981957" s0="9.2608" s1="9.2608" s2="9.2608" t0="-86.614" t1="166.727" t2="61.621" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.498034" color_g="0.498034" color_r="0.498039" euler_x="-0.0942149" euler_y="0.169248" euler_z="0.421515" id="412" overbright="0" q0="-0.063546" q1="0.072745" q2="0.212113" q3="0.972459" s0="8.29485" s1="9.26081" s2="9.31367" t0="-87.7197" t1="166.99" t2="53.1678" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.498034" color_g="0.498034" color_r="0.498039" euler_x="-0.000169104" euler_y="0.122569" euler_z="-0.765302" id="413" overbright="0" q0="0.02279" q1="0.0568483" q2="-0.372676" q3="0.925936" s0="5.7594" s1="6.43009" s2="6.4668" t0="-98.2102" t1="161.614" t2="90.7693" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.234987" color_g="0.234987" color_r="0.313725" euler_x="1.40188" euler_y="1.21492" euler_z="0.373873" id="414" overbright="0" q0="0.439262" q1="0.527033" q2="-0.245086" q3="0.684994" s0="1.33556" s1="1.33556" s2="1.33556" t0="-95.5468" t1="156.863" t2="173.021" type_file="Data/Objects/Decals/lichen_rubble.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.38579" color_g="0.38579" color_r="0.435294" euler_x="1.40188" euler_y="1.21492" euler_z="0.373873" id="415" overbright="0" q0="0.439262" q1="0.527033" q2="-0.245086" q3="0.684994" s0="1.33556" s1="1.33556" s2="1.33556" t0="-95.1138" t1="156.939" t2="172.247" type_file="Data/Objects/Decals/lichen_rubble.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.498034" color_g="0.498034" color_r="0.498039" euler_x="-0.000169104" euler_y="0.122569" euler_z="-0.765302" id="416" overbright="0" q0="0.02279" q1="0.0568483" q2="-0.372676" q3="0.925936" s0="5.7594" s1="6.43009" s2="6.4668" t0="-97.4266" t1="160.949" t2="96.729" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.498034" color_g="0.498034" color_r="0.498039" euler_x="0.366636" euler_y="-0.0403963" euler_z="-0.893442" id="417" overbright="0" q0="0.155792" q1="-0.0966464" q2="-0.421365" q3="0.888165" s0="3.6873" s1="4.11669" s2="4.14019" t0="-98.7813" t1="160.88" t2="100.833" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.498034" color_g="0.498034" color_r="0.498039" euler_x="0.366636" euler_y="-0.0403963" euler_z="-0.893442" id="418" overbright="0" q0="0.155792" q1="-0.0966464" q2="-0.421365" q3="0.888165" s0="7.06142" s1="7.88374" s2="7.92874" t0="-102.452" t1="160.722" t2="107.305" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.984304" color_g="0.984304" color_r="0.984314" euler_x="-0.43574" euler_y="0.327121" euler_z="-0.846014" id="419" overbright="0" q0="-0.129205" q1="0.232517" q2="-0.363357" q3="0.892866" s0="7.06142" s1="7.88374" s2="7.92874" t0="-99.1414" t1="159.729" t2="114.153" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="0.0433687" euler_y="-0.475025" euler_z="0.24676" id="420" overbright="0" q0="0.049863" q1="-0.230849" q2="0.124647" q3="0.963682" s0="7.06142" s1="7.88374" s2="7.92874" t0="-75.7054" t1="157.322" t2="108.234" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="0.0433687" euler_y="-0.475025" euler_z="0.24676" id="421" overbright="0" q0="0.049863" q1="-0.230849" q2="0.124647" q3="0.963682" s0="7.06142" s1="7.88374" s2="7.92874" t0="-72.4478" t1="155.763" t2="120.605" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="0.0433687" euler_y="-0.475025" euler_z="0.24676" id="422" overbright="0" q0="0.049863" q1="-0.230849" q2="0.124647" q3="0.963682" s0="7.06142" s1="7.88374" s2="7.92874" t0="-72.52" t1="156.39" t2="113.722" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="0.0433687" euler_y="-0.475025" euler_z="0.24676" id="423" overbright="0" q0="0.049863" q1="-0.230849" q2="0.124647" q3="0.963682" s0="7.06142" s1="7.88374" s2="7.92874" t0="-71.1564" t1="157.598" t2="108.792" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="0.0433687" euler_y="-0.475025" euler_z="0.24676" id="424" overbright="0" q0="0.049863" q1="-0.230849" q2="0.124647" q3="0.963682" s0="7.06142" s1="7.88374" s2="7.92874" t0="-78.6637" t1="155.609" t2="131.103" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.0827019" euler_y="-0.663072" euler_z="-0.820776" id="425" overbright="0" q0="-0.165594" q1="-0.282619" q2="-0.389256" q3="0.860918" s0="7.06142" s1="7.88374" s2="7.92874" t0="-94.2446" t1="157.174" t2="134.71" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.0827019" euler_y="-0.663072" euler_z="-0.820776" id="426" overbright="0" q0="-0.165594" q1="-0.282619" q2="-0.389256" q3="0.860918" s0="7.06142" s1="7.88374" s2="7.92874" t0="-96.202" t1="157.863" t2="127.229" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.0827019" euler_y="-0.663072" euler_z="-0.820776" id="427" overbright="0" q0="-0.165594" q1="-0.282619" q2="-0.389256" q3="0.860918" s0="7.06142" s1="7.88374" s2="7.92874" t0="-103.225" t1="158.125" t2="151" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.312215" euler_y="0.622971" euler_z="-0.0639677" id="428" overbright="0" q0="-0.138236" q1="0.307325" q2="0.0175552" q3="0.941344" s0="5.02718" s1="5.61261" s2="5.64465" t0="-89.495" t1="155.893" t2="156.735" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.312215" euler_y="0.622971" euler_z="-0.0639677" id="429" overbright="0" q0="-0.138236" q1="0.307325" q2="0.0175552" q3="0.941344" s0="5.02718" s1="5.61261" s2="5.64465" t0="-86.7071" t1="155.782" t2="150.592" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.312215" euler_y="0.622971" euler_z="-0.0639677" id="430" overbright="0" q0="-0.138236" q1="0.307325" q2="0.0175552" q3="0.941344" s0="5.02718" s1="5.61261" s2="5.64465" t0="-80.9006" t1="154.553" t2="151.502" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.312215" euler_y="0.622971" euler_z="-0.0639677" id="431" overbright="0" q0="-0.138236" q1="0.307325" q2="0.0175552" q3="0.941344" s0="5.02718" s1="5.61261" s2="5.64465" t0="-83.6972" t1="154.816" t2="152.866" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.312215" euler_y="0.622971" euler_z="-0.0639677" id="432" overbright="0" q0="-0.138236" q1="0.307325" q2="0.0175552" q3="0.941344" s0="5.02718" s1="5.61261" s2="5.64465" t0="-89.1858" t1="156.28" t2="170.903" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.312215" euler_y="0.622971" euler_z="-0.0639677" id="433" overbright="0" q0="-0.138236" q1="0.307325" q2="0.0175552" q3="0.941344" s0="5.02718" s1="5.61261" s2="5.64465" t0="-88.2799" t1="155.223" t2="179.061" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.312215" euler_y="0.622971" euler_z="-0.0639677" id="434" overbright="0" q0="-0.138236" q1="0.307325" q2="0.0175552" q3="0.941344" s0="5.02718" s1="5.61261" s2="5.64465" t0="-92.9078" t1="155.954" t2="175.432" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.312215" euler_y="0.622971" euler_z="-0.0639677" id="435" overbright="0" q0="-0.138236" q1="0.307325" q2="0.0175552" q3="0.941344" s0="5.02718" s1="5.61261" s2="5.64465" t0="-100.334" t1="166.658" t2="57.3278" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.345095" color_g="0.345095" color_r="0.345098" euler_x="-0.312215" euler_y="0.622971" euler_z="-0.0639677" id="436" overbright="0" q0="-0.138236" q1="0.307325" q2="0.0175552" q3="0.941344" s0="5.02718" s1="5.61261" s2="5.64465" t0="-104.2" t1="166.5" t2="52.9598" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <DynamicLightObject color_b="0.537255" color_g="0.537255" color_r="1" euler_x="0" euler_y="0" euler_z="0" id="437" overbright="500" q0="0" q1="0" q2="0" q3="1" s0="33.1472" s1="33.1472" s2="33.1472" t0="-111.62" t1="181.573" t2="65.4911">
+            <parameters />
+        </DynamicLightObject>
+    </ActorObjects>

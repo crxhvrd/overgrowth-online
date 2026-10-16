@@ -30,6 +30,7 @@ struct PendingConnection {
 
     // Request replies
     int build_id = 0;
+    std::string oo_version;  // Overgrowth Online: the client's package version
     bool received_version = false;
 
     bool received_client_params = false;

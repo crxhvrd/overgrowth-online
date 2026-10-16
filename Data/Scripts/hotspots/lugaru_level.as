@@ -78,7 +78,8 @@ void Update() {
 				ko_time = the_time;
 			}
 			if(ko_time < the_time - 1.0){
-				if(params.GetInt("press_attack_to_restart") == 1 && (GetInputPressed(0, "attack") || ko_time < the_time - 5.0)){
+				// (online the co-op rules restart the level once everyone is down)
+				if(!Online_IsActive() && params.GetInt("press_attack_to_restart") == 1 && (GetInputPressed(0, "attack") || ko_time < the_time - 5.0)){
 	            	level.SendMessage("reset"); 				
                     level.SendMessage("skip_dialogue");                 
 				}
@@ -90,6 +91,9 @@ void Update() {
 
         bool use_keyboard = (max(last_mouse_event_time, last_keyboard_event_time) > last_controller_event_time);
         string respawn = params.GetString("death_message");
+        if(Online_IsActive()){
+            respawn = "You are down. If everyone is down, the level starts over.";
+        }
         int index = respawn.findFirst("$attack$");
         while(index != -1) {
             respawn.erase(index, 8);
@@ -101,7 +105,8 @@ void Update() {
 	} else {
         ko_time = -1.0f;
     }
-	if(ThreatsRemaining() == 0 && ThreatsPossible() != 0 && ko_time == -1.0){
+	// Online the host wins the level for everyone, unless every player is down
+	if(ThreatsRemaining() == 0 && ThreatsPossible() != 0 && (Online_IsActive() ? (Online_IsHosting() && !AllPlayersDown()) : ko_time == -1.0)){
 		if(win_time == -1.0f){
 			win_time = the_time;
 		}

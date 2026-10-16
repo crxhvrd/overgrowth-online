@@ -1,0 +1,151 @@
+<?xml version="1.0" ?>
+<Mod>
+    <Id>crxhvrd-overhaul</Id>
+    <Name>Overgrowth Online</Name>
+    <Category>Gameplay</Category>
+    <Thumbnail>Data/Images/overhaul/thumb.png</Thumbnail>
+    <PreviewImage>Data/Images/overhaul/full.png</PreviewImage>
+    <Description>Overgrowth Online: a growing ecosystem for Overgrowth, online play and improvements to the whole game (online co-op and PvP come with the Overgrowth Online build). Press F9 in any level for the Overgrowth Online window. AI: smarter, less predictable enemies built around the jump kick. They read and punish your kicks, fight in the air, use walls, ledges and high ground, throw weapons and respect yours, chase with hops, use footwork and feints, have personalities and learn your habits, and fight as teams that stick together, rescue allies and fall back to regroup. LARGE BATTLES (Play menu): 2 to 8 teams of up to 60 fighters on 128 clean maps (every campaign map without its story), each team with its own species, AI, skill, weapons, size and colours; place the teams yourself, spectate or fight. GUI: health panel, minimap, campaign objectives (the next checkpoint or the enemies to defeat), names and health above nearby characters, damage numbers, a combat log, attacker arrows. CAMERA: tune the third-person camera, a dynamic cinematic camera, first person (V), and cinematic finisher shots with slow motion when you finish an enemy or fall. WEATHER: any time of day, the sun moving or still and a moon at night, clouds, rain, storms, snow, blizzards. TRAINER: god mode, strength and speed, play as any character in your own colours, weapons, teleport, peaceful or knocked-out enemies, spawning, game speed and gravity. Replaces the game's character scripts (aschar.as, enemycontrol.as, situationawareness.as).</Description>
+    <Version>0.35.3</Version>
+    <Author>crxhvrd</Author>
+    <Tag>AI</Tag>
+    <Tag>Gameplay</Tag>
+    <SupportedVersion>*</SupportedVersion>
+    <NeedsRestart>false</NeedsRestart>
+    <SupportsOnline>true</SupportsOnline>
+    <LevelHookFile>Data/Scripts/overhaul_menu.as</LevelHookFile>
+
+    <!-- "Large Battles" game mode: Play menu entry with its own setup screen;
+         the no-op arena campaign script keeps a map's "level won" from
+         loading another level mid-battle -->
+    <Campaign title="Large Battles" thumbnail="Images/overhaul/battles.png" menu_script="aio_battle_menu.as" main_script="arena_campaign.as">
+        <Level title="Forgotten Plains" thumbnail="UI/mainmenu/images/dusk.png">overhaul_battles/forgotten_plains.xml</Level>
+        <Level title="Red Shards" thumbnail="UI/mainmenu/images/redshards.png">overhaul_battles/red_shards.xml</Level>
+        <Level title="Painted Desert" thumbnail="UI/mainmenu/images/painteddesert.png">overhaul_battles/painted_desert.xml</Level>
+        <Level title="Painted Desert (night)" thumbnail="UI/mainmenu/images/painteddesertnight.png">overhaul_battles/painted_desert_night.xml</Level>
+        <Level title="Eroded Plateau" thumbnail="UI/mainmenu/images/eroded_plateau.png">overhaul_battles/eroded_plateau.xml</Level>
+        <Level title="Dead Volcano" thumbnail="UI/mainmenu/images/caldara_level.png">overhaul_battles/dead_volcano.xml</Level>
+        <Level title="Red Desert" thumbnail="UI/mainmenu/images/red_desert.png">overhaul_battles/red_desert.xml</Level>
+        <Level title="Patchy Highlands" thumbnail="UI/mainmenu/images/forest_level.png">overhaul_battles/patchy_highlands.xml</Level>
+        <Level title="Desert Outpost" thumbnail="UI/mainmenu/images/desert.png">overhaul_battles/desert_outpost.xml</Level>
+        <Level title="Abandoned Grove" thumbnail="UI/mainmenu/images/hills.png">overhaul_battles/abandoned_grove.xml</Level>
+        <Level title="Tree Canyon" thumbnail="UI/mainmenu/images/tree_canyon.png">overhaul_battles/tree_canyon.xml</Level>
+        <Level title="Scrubby Hills (fall)" thumbnail="UI/mainmenu/images/scrubby_hills_fall.png">overhaul_battles/scrubby_hills_fall.xml</Level>
+        <Level title="Scrubby Hills (night)" thumbnail="UI/mainmenu/images/scrubby_hills.png">overhaul_battles/scrubby_hills_night.xml</Level>
+        <Level title="Shielded Stands" thumbnail="UI/mainmenu/images/shielded_stands.png">overhaul_battles/shielded_stands.xml</Level>
+        <Level title="Impressive Mountains" thumbnail="UI/mainmenu/images/impressivemountains.png">overhaul_battles/impressive_mountains.xml</Level>
+        <Level title="Grass Beach" thumbnail="UI/mainmenu/images/grass_beach.png">overhaul_battles/grass_beach.xml</Level>
+        <Level title="Waterfall Cave" thumbnail="UI/mainmenu/images/waterfall_arena.png">overhaul_battles/waterfall_cave.xml</Level>
+        <Level title="Magma Arena" thumbnail="UI/mainmenu/images/magma_arena.png">overhaul_battles/magma_arena.xml</Level>
+        <Level title="Rock Cave" thumbnail="UI/mainmenu/images/cave_arena.png">overhaul_battles/rock_cave.xml</Level>
+        <Level title="Stucco Courtyard" thumbnail="UI/mainmenu/images/stucco_arena.png">overhaul_battles/stucco_courtyard.xml</Level>
+        <Level title="Arlissian Garden" thumbnail="Images/drika/thumbnails/arlissiangarden.jpg">overhaul_battles/drika/arlissian_garden.xml</Level>
+        <Level title="Ouranian Sandstorm" thumbnail="Images/drika/thumbnails/sandstorm.jpg">overhaul_battles/drika/ouranian_sandstorm.xml</Level>
+        <Level title="Folti Search" thumbnail="Images/drika/thumbnails/foltisearch.jpg">overhaul_battles/drika/folti_search.xml</Level>
+        <Level title="Folti's Garden" thumbnail="Images/drika/thumbnails/foltisgarden.jpg">overhaul_battles/drika/folti_s_garden.xml</Level>
+        <Level title="The Steppes" thumbnail="Images/drika/thumbnails/steppes.jpg">overhaul_battles/drika/the_steppes.xml</Level>
+        <Level title="High Monastery" thumbnail="Images/drika/thumbnails/highmonastery.jpg">overhaul_battles/drika/high_monastery.xml</Level>
+        <Level title="Nighttime Steppes" thumbnail="Images/drika/thumbnails/steppesnight.jpg">overhaul_battles/drika/nighttime_steppes.xml</Level>
+        <Level title="Temple of Prayer" thumbnail="Images/drika/thumbnails/temple.jpg">overhaul_battles/drika/temple_of_prayer.xml</Level>
+        <Level title="Cicada Cliff" thumbnail="Images/drika/thumbnails/cicadacliff.jpg">overhaul_battles/drika/cicada_cliff.xml</Level>
+        <Level title="Folti's Cliff" thumbnail="Images/drika/thumbnails/folticliff.jpg">overhaul_battles/drika/folti_s_cliff.xml</Level>
+        <Level title="Village" thumbnail="Textures/LugaruMenu/smallest_Village.jpg">overhaul_battles/lugaru/village.xml</Level>
+        <Level title="Village 2" thumbnail="Textures/LugaruMenu/smallest_Village_2.jpg">overhaul_battles/lugaru/village_2.xml</Level>
+        <Level title="Wanderer" thumbnail="Textures/LugaruMenu/smallest_Wanderer.jpg">overhaul_battles/lugaru/wanderer.xml</Level>
+        <Level title="Village 3" thumbnail="Textures/LugaruMenu/smallest_Village_3.jpg">overhaul_battles/lugaru/village_3.xml</Level>
+        <Level title="Clearing" thumbnail="Textures/LugaruMenu/smallest_Clearing.jpg">overhaul_battles/lugaru/clearing.xml</Level>
+        <Level title="Raider Patrol" thumbnail="Textures/LugaruMenu/smallest_Raider_patrol.jpg">overhaul_battles/lugaru/raider_patrol.xml</Level>
+        <Level title="Raider Camp" thumbnail="Textures/LugaruMenu/smallest_Raider_camp.jpg">overhaul_battles/lugaru/raider_camp.xml</Level>
+        <Level title="Raider Sentries" thumbnail="Textures/LugaruMenu/smallest_Raider_sentries.jpg">overhaul_battles/lugaru/raider_sentries.xml</Level>
+        <Level title="Raider Base" thumbnail="Textures/LugaruMenu/smallest_Raider_base.jpg">overhaul_battles/lugaru/raider_base.xml</Level>
+        <Level title="Raider Base 2" thumbnail="Textures/LugaruMenu/smallest_Raider_base_2.jpg">overhaul_battles/lugaru/raider_base_2.xml</Level>
+        <Level title="Rocky Hall" thumbnail="Textures/LugaruMenu/smallest_Rocky_hall.jpg">overhaul_battles/lugaru/rocky_hall.xml</Level>
+        <Level title="Heading North" thumbnail="Textures/LugaruMenu/smallest_Heading_north.jpg">overhaul_battles/lugaru/heading_north.xml</Level>
+        <Level title="Heading North 2" thumbnail="Textures/LugaruMenu/smallest_Heading_north_2.jpg">overhaul_battles/lugaru/heading_north_2.xml</Level>
+        <Level title="Willow's Camp" thumbnail="Textures/LugaruMenu/smallest_Jack's_camp.jpg">overhaul_battles/lugaru/willow_s_camp.xml</Level>
+        <Level title="Willow's Duel" thumbnail="Textures/LugaruMenu/smallest_Jack's_camp_2.jpg">overhaul_battles/lugaru/willow_s_duel.xml</Level>
+        <Level title="Rocky Hall 2" thumbnail="Textures/LugaruMenu/smallest_Rocky_hall_2.jpg">overhaul_battles/lugaru/rocky_hall_2.xml</Level>
+        <Level title="Rocky Hall 3" thumbnail="Textures/LugaruMenu/smallest_Rocky_hall_3.jpg">overhaul_battles/lugaru/rocky_hall_3.xml</Level>
+        <Level title="To Alpha Wolf" thumbnail="Textures/LugaruMenu/smallest_To_alpha_wolf.jpg">overhaul_battles/lugaru/to_alpha_wolf.xml</Level>
+        <Level title="To Alpha Wolf 2" thumbnail="Textures/LugaruMenu/smallest_To_alpha_wolf_2.jpg">overhaul_battles/lugaru/to_alpha_wolf_2.xml</Level>
+        <Level title="Wolf Den" thumbnail="Textures/LugaruMenu/smallest_Wolf_den.jpg">overhaul_battles/lugaru/wolf_den.xml</Level>
+        <Level title="Wolf Den 2" thumbnail="Textures/LugaruMenu/smallest_Wolf_den_2.jpg">overhaul_battles/lugaru/wolf_den_2.xml</Level>
+        <Level title="Rocky Hall 4" thumbnail="Textures/LugaruMenu/smallest_Rocky_hall_4.jpg">overhaul_battles/lugaru/rocky_hall_4.xml</Level>
+        <Level title="White Flags" thumbnail="Textures/Thumbnails/og_story/smallest_01_slaver_camp_landing.jpg">overhaul_battles/overgrowth/white_flags.xml</Level>
+        <Level title="Slaver Path" thumbnail="Textures/Thumbnails/og_story/smallest_02_slaver_camp.jpg">overhaul_battles/overgrowth/slaver_path.xml</Level>
+        <Level title="Night Raid" thumbnail="Textures/Thumbnails/og_story/smallest_04_main_slaver_camp.jpg">overhaul_battles/overgrowth/night_raid.xml</Level>
+        <Level title="Slaver Tower" thumbnail="Textures/Thumbnails/og_story/smallest_05_watchtower_build_site.jpg">overhaul_battles/overgrowth/slaver_tower.xml</Level>
+        <Level title="Slate Farm" thumbnail="Textures/Thumbnails/og_story/smallest_06_occupied_farm.jpg">overhaul_battles/overgrowth/slate_farm.xml</Level>
+        <Level title="Windcutter Beach" thumbnail="Textures/Thumbnails/og_story/smallest_07_beach_boat_assault.jpg">overhaul_battles/overgrowth/windcutter_beach.xml</Level>
+        <Level title="Ice Cliffs" thumbnail="Textures/Thumbnails/og_story/smallest_08_ice_cliff_landing.jpg">overhaul_battles/overgrowth/ice_cliffs.xml</Level>
+        <Level title="Dog Fort" thumbnail="Textures/Thumbnails/og_story/smallest_09_dog_for_rescue.jpg">overhaul_battles/overgrowth/dog_fort.xml</Level>
+        <Level title="Dog Patrols" thumbnail="Textures/Thumbnails/og_story/smallest_10_storm_troopers.jpg">overhaul_battles/overgrowth/dog_patrols.xml</Level>
+        <Level title="Rebel Base" thumbnail="Textures/Thumbnails/og_story/smallest_11_rebel_base.jpg">overhaul_battles/overgrowth/rebel_base.xml</Level>
+        <Level title="Canyon Ambush" thumbnail="Textures/Thumbnails/og_story/smallest_12_canyon_ambush.jpg">overhaul_battles/overgrowth/canyon_ambush.xml</Level>
+        <Level title="Catchers" thumbnail="Textures/Thumbnails/og_story/smallest_13_rat_slavers.jpg">overhaul_battles/overgrowth/catchers.xml</Level>
+        <Level title="Thick Fog" thumbnail="Textures/Thumbnails/og_story/smallest_13b_rat_slavers.jpg">overhaul_battles/overgrowth/thick_fog.xml</Level>
+        <Level title="Tree Climb" thumbnail="Textures/Thumbnails/og_story/smallest_14_the_rats_cache.jpg">overhaul_battles/overgrowth/tree_climb.xml</Level>
+        <Level title="Shallow Swamp" thumbnail="Textures/Thumbnails/og_story/smallest_15_bayou.jpg">overhaul_battles/overgrowth/shallow_swamp.xml</Level>
+        <Level title="Rat Base" thumbnail="Textures/Thumbnails/og_story/smallest_17_rat_hq.jpg">overhaul_battles/overgrowth/rat_base.xml</Level>
+        <Level title="Pit Duel" thumbnail="Textures/Thumbnails/og_story/smallest_18_rude_awakening.jpg">overhaul_battles/overgrowth/pit_duel.xml</Level>
+        <Level title="Magma Barracks" thumbnail="Textures/Thumbnails/og_story/smallest_19_magma_barracks.jpg">overhaul_battles/overgrowth/magma_barracks.xml</Level>
+        <Level title="Magma Arena" thumbnail="Textures/Thumbnails/og_story/smallest_19b_magma_arena.jpg">overhaul_battles/overgrowth/magma_arena.xml</Level>
+        <Level title="Volcano Climb" thumbnail="Textures/Thumbnails/og_story/smallest_20_volcano_mine.jpg">overhaul_battles/overgrowth/volcano_climb.xml</Level>
+        <Level title="Waterfall Barracks" thumbnail="Textures/Thumbnails/og_story/smallest_21_waterfall_barracks.jpg">overhaul_battles/overgrowth/waterfall_barracks.xml</Level>
+        <Level title="Waterfall Arena" thumbnail="Textures/Thumbnails/og_story/smallest_22_waterfall_arena.jpg">overhaul_battles/overgrowth/waterfall_arena.xml</Level>
+        <Level title="Midnight Plan" thumbnail="Textures/Thumbnails/og_story/smallest_22b_Waterfall_Barracks_return.jpg">overhaul_battles/overgrowth/midnight_plan.xml</Level>
+        <Level title="Cave Assassin" thumbnail="Textures/Thumbnails/og_story/smallest_22b_cave.jpg">overhaul_battles/overgrowth/cave_assassin.xml</Level>
+        <Level title="Rock Barracks" thumbnail="Textures/Thumbnails/og_story/smallest_23a_barracks.jpg">overhaul_battles/overgrowth/rock_barracks.xml</Level>
+        <Level title="Rock Arena" thumbnail="Textures/Thumbnails/og_story/smallest_23_cave_arena.jpg">overhaul_battles/overgrowth/rock_arena.xml</Level>
+        <Level title="Midnight Duel" thumbnail="Textures/Thumbnails/og_story/smallest_24_forced_fight.jpg">overhaul_battles/overgrowth/midnight_duel.xml</Level>
+        <Level title="Cat City" thumbnail="Textures/Thumbnails/og_story/smallest_25_garden_duel.jpg">overhaul_battles/overgrowth/cat_city.xml</Level>
+        <Level title="Sky Island" thumbnail="Textures/Thumbnails/og_story/smallest_27_sky_ark.jpg">overhaul_battles/overgrowth/sky_island.xml</Level>
+        <Level title="Tutorial" thumbnail="Textures/ui/t2/tutorial.jpg">overhaul_battles/therium/tutorial.xml</Level>
+        <Level title="Empry" thumbnail="Textures/ui/t2/empry.jpg">overhaul_battles/therium/empry.xml</Level>
+        <Level title="Prologue" thumbnail="Textures/ui/t2/prologue.jpg">overhaul_battles/therium/prologue.xml</Level>
+        <Level title="Begin" thumbnail="Textures/ui/t2/begin.jpg">overhaul_battles/therium/begin.xml</Level>
+        <Level title="S1-A1" thumbnail="Textures/ui/t2/s1/a.jpg">overhaul_battles/therium/s1_a1.xml</Level>
+        <Level title="S1-A2" thumbnail="Textures/ui/t2/s1/a2.jpg">overhaul_battles/therium/s1_a2.xml</Level>
+        <Level title="S1-A3" thumbnail="Textures/ui/t2/s1/a3.jpg">overhaul_battles/therium/s1_a3.xml</Level>
+        <Level title="S1-A4" thumbnail="Textures/ui/t2/s1/a4.jpg">overhaul_battles/therium/s1_a4.xml</Level>
+        <Level title="S1-A5" thumbnail="Textures/ui/t2/s1/a5.jpg">overhaul_battles/therium/s1_a5.xml</Level>
+        <Level title="S1-B1" thumbnail="Textures/ui/t2/s1/b.jpg">overhaul_battles/therium/s1_b1.xml</Level>
+        <Level title="S1-B2" thumbnail="Textures/ui/t2/s1/b2.jpg">overhaul_battles/therium/s1_b2.xml</Level>
+        <Level title="S1-B3" thumbnail="Textures/ui/t2/s1/b3.jpg">overhaul_battles/therium/s1_b3.xml</Level>
+        <Level title="S1-B4" thumbnail="Textures/ui/t2/s1/b4.jpg">overhaul_battles/therium/s1_b4.xml</Level>
+        <Level title="S1-B5" thumbnail="Textures/ui/t2/s1/b5.jpg">overhaul_battles/therium/s1_b5.xml</Level>
+        <Level title="Hub" thumbnail="Textures/ui/t2/hub.jpg">overhaul_battles/therium/hub.xml</Level>
+        <Level title="A-S2" thumbnail="Textures/ui/t2/a-s2.jpg">overhaul_battles/therium/a_s2.xml</Level>
+        <Level title="S2-A1" thumbnail="Textures/ui/t2/s2/a.jpg">overhaul_battles/therium/s2_a1.xml</Level>
+        <Level title="S2-A1-2" thumbnail="Textures/ui/t2/s2/a.jpg">overhaul_battles/therium/s2_a1_2.xml</Level>
+        <Level title="S2-A1-2-NL" thumbnail="Textures/ui/t2/s2/a.jpg">overhaul_battles/therium/s2_a1_2_nl.xml</Level>
+        <Level title="S2-A2" thumbnail="Textures/ui/t2/s2/a2.jpg">overhaul_battles/therium/s2_a2.xml</Level>
+        <Level title="S2-A3" thumbnail="Textures/ui/t2/s2/a3.jpg">overhaul_battles/therium/s2_a3.xml</Level>
+        <Level title="S2-A4" thumbnail="Textures/ui/t2/s2/a4.jpg">overhaul_battles/therium/s2_a4.xml</Level>
+        <Level title="S2-A5" thumbnail="Textures/ui/t2/s2/a5.jpg">overhaul_battles/therium/s2_a5.xml</Level>
+        <Level title="S2-A6" thumbnail="Textures/ui/t2/s2/a6.jpg">overhaul_battles/therium/s2_a6.xml</Level>
+        <Level title="B-S2" thumbnail="Textures/ui/t2/b-s2.jpg">overhaul_battles/therium/b_s2.xml</Level>
+        <Level title="S2-B1" thumbnail="Textures/ui/t2/s2/b.jpg">overhaul_battles/therium/s2_b1.xml</Level>
+        <Level title="S2-B2" thumbnail="Textures/ui/t2/s2/b2.jpg">overhaul_battles/therium/s2_b2.xml</Level>
+        <Level title="S2-B3" thumbnail="Textures/ui/t2/s2/b3.jpg">overhaul_battles/therium/s2_b3.xml</Level>
+        <Level title="S2-B4" thumbnail="Textures/ui/t2/s2/b4.jpg">overhaul_battles/therium/s2_b4.xml</Level>
+        <Level title="S2-B5" thumbnail="Textures/ui/t2/s2/b5.jpg">overhaul_battles/therium/s2_b5.xml</Level>
+        <Level title="E-A1" thumbnail="Textures/ui/t2/e/a.jpg">overhaul_battles/therium/e_a1.xml</Level>
+        <Level title="E-A1-2" thumbnail="Textures/ui/t2/e/a-2.jpg">overhaul_battles/therium/e_a1_2.xml</Level>
+        <Level title="E-A2" thumbnail="Textures/ui/t2/e/a2.jpg">overhaul_battles/therium/e_a2.xml</Level>
+        <Level title="E-A3" thumbnail="Textures/ui/t2/e/a3.jpg">overhaul_battles/therium/e_a3.xml</Level>
+        <Level title="E-A3-F" thumbnail="Textures/ui/t2/e/a3-f.jpg">overhaul_battles/therium/e_a3_f.xml</Level>
+        <Level title="E-A4-F" thumbnail="Textures/ui/t2/e/a4-a.jpg">overhaul_battles/therium/e_a4_f.xml</Level>
+        <Level title="E-A4-A" thumbnail="Textures/ui/t2/e/a4-a.jpg">overhaul_battles/therium/e_a4_a.xml</Level>
+        <Level title="E-A4-A2" thumbnail="Textures/ui/t2/e/a4-a2.jpg">overhaul_battles/therium/e_a4_a2.xml</Level>
+        <Level title="E-A4-B" thumbnail="Textures/ui/t2/e/a4-b.jpg">overhaul_battles/therium/e_a4_b.xml</Level>
+        <Level title="E-B1" thumbnail="Textures/ui/t2/e/b.jpg">overhaul_battles/therium/e_b1.xml</Level>
+        <Level title="E-B2" thumbnail="Textures/ui/t2/e/b2.jpg">overhaul_battles/therium/e_b2.xml</Level>
+        <Level title="E-B4-F" thumbnail="Textures/ui/t2/e/b3.jpg">overhaul_battles/therium/e_b4_f.xml</Level>
+        <Level title="E-B3" thumbnail="Textures/ui/t2/e/b3.jpg">overhaul_battles/therium/e_b3.xml</Level>
+        <Level title="E-B4-A" thumbnail="Textures/ui/t2/e/b4.jpg">overhaul_battles/therium/e_b4_a.xml</Level>
+        <Level title="E-B4-B" thumbnail="Textures/ui/t2/e/b4-b.jpg">overhaul_battles/therium/e_b4_b.xml</Level>
+        <Level title="E-B4-B2" thumbnail="Textures/ui/t2/e/b4-b2.jpg">overhaul_battles/therium/e_b4_b2.xml</Level>
+        <Level title="E-B5" thumbnail="Textures/ui/t2/e/b5.jpg">overhaul_battles/therium/e_b5.xml</Level>
+    </Campaign>
+</Mod>

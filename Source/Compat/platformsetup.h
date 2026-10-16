@@ -24,6 +24,8 @@
 
 #include <Compat/compat.h>
 
+#include <string>
+
 #if !PLATFORM_UNIX
 #define _WIN32 1
 #endif
@@ -36,4 +38,5 @@
 #endif
 
 void SetUpEnvironment(char* program_path, const char* overloaded_write_dir, const char* overloaded_working_dir);
+extern std::string g_game_data_dir;  // Overgrowth Online: --game-data <the Overgrowth install>
 void DisposeEnvironment();

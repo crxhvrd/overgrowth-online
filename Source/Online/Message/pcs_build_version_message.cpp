@@ -23,10 +23,11 @@
 #include "pcs_build_version_message.h"
 
 #include <Online/online.h>
+#include <Utility/binn_util.h>
 
 namespace OnlineMessages {
-PCSBuildVersionMessage::PCSBuildVersionMessage(const int32_t build_id) : OnlineMessageBase(OnlineMessageCategory::TRANSIENT),
-                                                                         build_id(build_id) {
+PCSBuildVersionMessage::PCSBuildVersionMessage(const int32_t build_id, const std::string& oo_version)
+    : OnlineMessageBase(OnlineMessageCategory::TRANSIENT), build_id(build_id), oo_version(oo_version) {
 }
 
 binn* PCSBuildVersionMessage::Serialize(void* object) {
@@ -34,6 +35,7 @@ binn* PCSBuildVersionMessage::Serialize(void* object) {
     binn* l = binn_object();
 
     binn_object_set_int32(l, "build_id", t->build_id);
+    binn_object_set_std_string(l, "oo_version", t->oo_version);
 
     return l;
 }
@@ -42,6 +44,7 @@ void PCSBuildVersionMessage::Deserialize(void* object, binn* l) {
     PCSBuildVersionMessage* t = static_cast<PCSBuildVersionMessage*>(object);
 
     binn_object_get_int32(l, "build_id", &t->build_id);
+    binn_object_get_std_string(l, "oo_version", &t->oo_version);  // (absent from older clients: stays "")
 }
 
 void PCSBuildVersionMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {

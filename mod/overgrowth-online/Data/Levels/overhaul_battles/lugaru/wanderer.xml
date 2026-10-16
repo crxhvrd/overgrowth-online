@@ -1,0 +1,585 @@
+<?xml version="2.0" ?>
+<Type>saved</Type>
+    <Name>Wanderer (battle)</Name>
+    <Description />
+    <Shader>post</Shader>
+    <LoadingScreen>
+        <Image>Data/LevelLoading/LugaruStory/Wanderer.xml_loading.jpg</Image>
+    </LoadingScreen>
+    <Terrain>
+        <Heightmap>Data/Prototypes/Lugaru/Village/Village_Height.png</Heightmap>
+        <ShaderExtra />
+        <DetailMap />
+        <ColorMap>Data/Prototypes/Lugaru/Village/Village_Color.tga</ColorMap>
+        <WeightMap>Data/Prototypes/Lugaru/Village/Village_Weights.png</WeightMap>
+        <DetailMaps>
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/grass.tga" materialpath="Data/Materials/dirt.xml" normalpath="Data/Textures/Terrain/DetailTextures/grass_normal.png" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/dead_grass.tga" materialpath="Data/Materials/grass.xml" normalpath="Data/Textures/Terrain/DetailTextures/dead_grass_normal.tga" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/dead_leaves_c.tga" materialpath="Data/Materials/dirt.xml" normalpath="Data/Textures/Terrain/DetailTextures/dead_leaves_n.tga" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/dirt_rubble.tga" materialpath="Data/Materials/dirtyrock.xml" normalpath="Data/Textures/Terrain/DetailTextures/dirt_rubble_normal.tga" />
+        </DetailMaps>
+        <DetailObjects>
+            <DetailObject density="7" jitter_degrees="10" max_embed="0.4" max_scale="2" min_embed="0.2" min_scale="0.7" normal_conform="1" obj_path="Data/Objects/Plants/Groundcover/Grass/WildGrass.xml" overbright="0" tint_weight="1" view_distance="30" weight_path="Data/Prototypes/Lugaru/Village/Village_GrassWeights.tga" />
+            <DetailObject density="5" jitter_degrees="10" max_embed="0.4" max_scale="3" min_embed="0" min_scale="2" normal_conform="0.9" obj_path="Data/Objects/Plants/Groundcover/Grass/fall_tall_grass.xml" overbright="0.2" tint_weight="1" view_distance="50" weight_path="Data/Prototypes/Lugaru/Village/Village_FallGrassWeights.tga" />
+        </DetailObjects>
+    </Terrain>
+    <OutOfDate NavMesh="true" NavMeshParamHash="-1674835251" />
+    <AmbientSounds>
+        <Ambient path="Data/Sounds/ambient/amb_grassfield_loop" />
+    </AmbientSounds>
+    <Script>level.as</Script>
+    <LevelScriptParameters>
+    </LevelScriptParameters>
+    <NavMeshParameters agent_height="1.7" agent_max_climb="1.5" agent_max_slope="60" agent_radius="0.4" cell_height="0.2" cell_size="0.3" />
+    <Sky>
+        <DomeTexture>Data/Textures/skies/blue3.tga</DomeTexture>
+        <SunAngularRad>0.169207</SunAngularRad>
+        <SunColorAngle>45.5921</SunColorAngle>
+        <RayToSun r0="0.645355" r1="0.75922" r2="0.0842743" />
+    </Sky>
+    <ActorObjects>
+        <Group id="3" q0="0" q1="-0.557206" q2="0" q3="0.830374" s0="5.02825" s1="11.1907" s2="6.02732" t0="-26.0844" t1="8.13139" t2="114.778" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="107" overbright="0" q0="0" q1="-0.557205" q2="0" q3="0.830375" s0="0.973994" s1="0.862392" s2="0.973994" t0="-26.1254" t1="7.77134" t2="114.58" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="162" overbright="0" q0="0" q1="-0.557205" q2="0" q3="0.830375" s0="0.973994" s1="0.862392" s2="0.973994" t0="-26.0843" t1="5.61389" t2="114.789" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="163" overbright="0" q0="0" q1="-0.557205" q2="0" q3="0.830375" s0="0.973994" s1="0.862392" s2="0.973994" t0="-26.0569" t1="7.27642" t2="114.663" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="164" overbright="0" q0="0" q1="-0.557205" q2="0" q3="0.830375" s0="0.973994" s1="0.862392" s2="0.973994" t0="-26.0755" t1="8.71057" t2="114.654" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="165" overbright="0" q0="0" q1="-0.557205" q2="0" q3="0.830375" s0="0.973994" s1="0.862392" s2="0.973994" t0="-26.2851" t1="11.3722" t2="114.676" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="8" q0="0" q1="-0.986127" q2="0" q3="0.165992" s0="5.37107" s1="13.5005" s2="6.43826" t0="46.6545" t1="21.0836" t2="98.9487" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="102" overbright="0" q0="0" q1="-0.986127" q2="0" q3="0.165992" s0="1.0404" s1="1.0404" s2="1.0404" t0="46.868" t1="20.6492" t2="98.9166" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="166" overbright="0" q0="0" q1="-0.986127" q2="0" q3="0.165992" s0="1.0404" s1="1.0404" s2="1.0404" t0="46.6434" t1="18.0465" t2="98.9482" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="167" overbright="0" q0="0" q1="-0.986127" q2="0" q3="0.165992" s0="1.0404" s1="1.0404" s2="1.0404" t0="46.7761" t1="20.0521" t2="98.9848" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="168" overbright="0" q0="0" q1="-0.986127" q2="0" q3="0.165992" s0="1.0404" s1="1.0404" s2="1.0404" t0="46.787" t1="21.7823" t2="98.9656" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="169" overbright="0" q0="0" q1="-0.986127" q2="0" q3="0.165992" s0="1.0404" s1="1.0404" s2="1.0404" t0="46.7751" t1="24.9933" t2="98.7407" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject color_b="0.301961" color_g="0.380392" color_r="0.380392" id="9" overbright="0" q0="0" q1="0" q2="-0.707107" q3="0.707107" s0="1" s1="1" s2="1" t0="31.974" t1="15.2674" t2="134.631" type_file="Data/Objects/Environment/rocks/BlockyStone1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.301961" color_g="0.380392" color_r="0.380392" id="10" overbright="0" q0="-0.422965" q1="0.560346" q2="-0.394325" q3="0.592976" s0="1" s1="1" s2="1" t0="60.7362" t1="17.017" t2="119.643" type_file="Data/Objects/Environment/rocks/BlockyStone1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.301961" color_g="0.380392" color_r="0.380392" id="11" overbright="0" q0="-0.675055" q1="-0.718379" q2="-0.120216" q3="0.11739" s0="0.680086" s1="0.680086" s2="0.680086" t0="32.2484" t1="17.8674" t2="137.415" type_file="Data/Objects/Environment/rocks/BlockyStone1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.301961" color_g="0.380392" color_r="0.380392" id="12" overbright="0" q0="0.670641" q1="0.566788" q2="0.358465" q3="0.317009" s0="0.665519" s1="0.825781" s2="0.680086" t0="5.44312" t1="8.51625" t2="105.637" type_file="Data/Objects/Environment/rocks/BlockyStone1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.301961" color_g="0.380392" color_r="0.380392" id="13" overbright="0" q0="-0.674498" q1="-0.684074" q2="0.163686" q3="0.224281" s0="0.930846" s1="0.825782" s2="0.882686" t0="2.94293" t1="10.3912" t2="107.084" type_file="Data/Objects/Environment/rocks/BlockyStone1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.301961" color_g="0.380392" color_r="0.380392" id="14" overbright="0" q0="-0.485302" q1="-0.0350852" q2="0.87327" q3="0.0255066" s0="0.835409" s1="0.88713" s2="0.783319" t0="3.98442" t1="12.6937" t2="105.454" type_file="Data/Objects/Environment/rocks/BlockyStone1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.301961" color_g="0.380392" color_r="0.380392" id="15" overbright="0" q0="0.0318097" q1="0.119032" q2="0.0602613" q3="0.990549" s0="2.10119" s1="1.75887" s2="1.78911" t0="57.5234" t1="34.5255" t2="39.0299" type_file="Data/Objects/Environment/rocks/BlockyStone1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.301961" color_g="0.380392" color_r="0.380392" id="16" overbright="0" q0="0.0502344" q1="-0.22127" q2="0.0460411" q3="0.972829" s0="1.75898" s1="1.47242" s2="1.49773" t0="52.7923" t1="31.0288" t2="41.2657" type_file="Data/Objects/Environment/rocks/BlockyStone1.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.301961" color_g="0.380392" color_r="0.380392" id="17" overbright="0" q0="0.691651" q1="0.279937" q2="-0.167602" q3="0.644332" s0="1.75898" s1="1.65206" s2="1.65736" t0="51.9443" t1="33.6036" t2="34.3945" type_file="Data/Objects/Environment/rocks/BlockyStone1.xml">
+            <parameters />
+        </EnvObject>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="18" overbright="0" q0="-0.152986" q1="0.296812" q2="-0.537803" q3="0.774123" s0="3.66271" s1="2.93211" s2="3.44374" t0="6.98442" t1="10.8793" t2="104.625" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="19" overbright="0" q0="0.284524" q1="0.765659" q2="-0.481335" q3="0.318008" s0="2.47558" s1="2.83372" s2="2.32759" t0="7.05538" t1="9.37786" t2="105.379" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="20" overbright="0" q0="0.413939" q1="0.730473" q2="-0.39579" q3="0.37204" s0="1.7222" s1="1.97134" s2="1.61924" t0="5.98576" t1="10.1935" t2="105.206" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="21" overbright="0" q0="-0.0897998" q1="0.86867" q2="-0.476509" q3="0.101428" s0="1.7222" s1="1.97134" s2="1.61924" t0="3.77522" t1="9.30361" t2="102.277" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="22" overbright="0" q0="-0.130304" q1="0.856782" q2="-0.467061" q3="0.175498" s0="1.96379" s1="1.97134" s2="2.61949" t0="3.03431" t1="10.6936" t2="103.203" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="23" overbright="0" q0="0.399741" q1="-0.335932" q2="0.131218" q3="0.842697" s0="2.30136" s1="2.30136" s2="2.30136" t0="2.36106" t1="12.6108" t2="107.646" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="24" overbright="0" q0="0.094022" q1="-0.0566593" q2="-0.351362" q3="0.929782" s0="2.30136" s1="2.30136" s2="2.30136" t0="7.02801" t1="10.0665" t2="108.483" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="25" overbright="0" q0="-0.033139" q1="0.249443" q2="-0.287307" q3="0.924194" s0="2.91691" s1="2.30136" s2="4.08403" t0="6.86822" t1="8.1261" t2="104.72" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="26" overbright="0" q0="0.0333881" q1="0.624428" q2="-0.340124" q3="0.702347" s0="2.40034" s1="1.92155" s2="2.25684" t0="5.63753" t1="8.45296" t2="103.113" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="27" overbright="0" q0="0.302534" q1="-0.664883" q2="0.567088" q3="0.380546" s0="1.96379" s1="1.97134" s2="2.61949" t0="2.08887" t1="12.4063" t2="104.756" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="28" overbright="0" q0="0.369639" q1="-0.645408" q2="0.474938" q3="0.470372" s0="1.57245" s1="1.57849" s2="2.09748" t0="1.66485" t1="12.6476" t2="105.561" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="29" overbright="0" q0="0.240514" q1="-0.699915" q2="0.147633" q3="0.656107" s0="2.00645" s1="2.0622" s2="2.09748" t0="-0.379971" t1="11.7888" t2="107.849" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="30" overbright="0" q0="0.191918" q1="-0.663639" q2="0.0628287" q3="0.72028" s0="2.52943" s1="2.59971" s2="2.64419" t0="1.42086" t1="10.9746" t2="109.086" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="31" overbright="0" q0="-0.0874242" q1="0.160325" q2="-0.631028" q3="0.753961" s0="3.26356" s1="1.92155" s2="2.928" t0="5.56861" t1="13.6664" t2="104.871" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.227451" color_g="0.266667" color_r="0.266667" id="32" overbright="0" q0="0.529638" q1="-0.828931" q2="-0.0664671" q3="0.16715" s0="6.87669" s1="4.04893" s2="6.16963" t0="48.0274" t1="29.4702" t2="39.2947" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.227451" color_g="0.266667" color_r="0.266667" id="33" overbright="0" q0="0.474301" q1="-0.852256" q2="-0.0823258" q3="0.204746" s0="6.87669" s1="4.04893" s2="6.16963" t0="51.8851" t1="35.7827" t2="40.0873" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.227451" color_g="0.266667" color_r="0.266667" id="34" overbright="0" q0="-0.0929691" q1="0.875982" q2="0.0414994" q3="0.471476" s0="4.07978" s1="4.83934" s2="4.08902" t0="54.2163" t1="38.4207" t2="34.4871" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.227451" color_g="0.266667" color_r="0.266667" id="35" overbright="0" q0="-0.0735388" q1="0.889734" q2="0.165701" q3="0.418937" s0="4.07978" s1="4.83934" s2="4.08902" t0="56.0443" t1="38.0752" t2="33.3114" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.227451" color_g="0.266667" color_r="0.266667" id="36" overbright="0" q0="0.00398262" q1="0.743728" q2="-0.302416" q3="0.596152" s0="4.07978" s1="4.83934" s2="4.08902" t0="59.7409" t1="41.1011" t2="35.2455" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.227451" color_g="0.266667" color_r="0.266667" id="37" overbright="0" q0="-0.164862" q1="0.808394" q2="0.290946" q3="0.484428" s0="5.07759" s1="4.15242" s2="4.11439" t0="53.8864" t1="37.8406" t2="40.7064" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="38" overbright="0" q0="-0.271892" q1="0.750119" q2="-0.174356" q3="0.577058" s0="3.59244" s1="4.91451" s2="3.22305" t0="59.8983" t1="18.3239" t2="115.2" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="39" overbright="0" q0="-0.176111" q1="0.579073" q2="-0.278878" q3="0.745578" s0="3.10744" s1="2.61764" s2="2.86815" t0="34.5945" t1="17.4247" t2="134.821" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.305882" color_g="0.364706" color_r="0.368627" id="40" overbright="0" q0="-0.0711211" q1="0.848011" q2="-0.297053" q3="0.433103" s0="3.10744" s1="2.61764" s2="2.86815" t0="34.4981" t1="18.4075" t2="136.099" type_file="Data/Objects/Decals/WhiteRocksAndDirt.xml">
+            <parameters />
+        </Decal>
+        <Group id="41" q0="0" q1="-0.685435" q2="0" q3="0.728134" s0="5.86753" s1="14.7484" s2="7.03336" t0="46.2039" t1="22.5776" t2="83.3138" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="42" overbright="0" q0="0" q1="-0.685435" q2="0" q3="0.728134" s0="1.13657" s1="1.13657" s2="1.13657" t0="46.233" t1="22.1031" t2="83.0797" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="43" overbright="0" q0="0" q1="-0.685435" q2="0" q3="0.728134" s0="1.13657" s1="1.13657" s2="1.13657" t0="46.2001" t1="19.2597" t2="83.3254" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="44" overbright="0" q0="0" q1="-0.685435" q2="0" q3="0.728134" s0="1.13657" s1="1.13657" s2="1.13657" t0="46.2777" t1="21.4508" t2="83.1966" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="45" overbright="0" q0="0" q1="-0.685435" q2="0" q3="0.728134" s0="1.13657" s1="1.13657" s2="1.13657" t0="46.2607" t1="23.3409" t2="83.1794" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="46" overbright="0" q0="0" q1="-0.685435" q2="0" q3="0.728134" s0="1.13657" s1="1.13657" s2="1.13657" t0="46.0206" t1="26.8487" t2="83.1256" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="47" q0="0" q1="0.232606" q2="0" q3="0.972571" s0="6.4432" s1="16.4179" s2="7.72342" t0="45.3368" t1="23.3646" t2="69.0106" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="48" overbright="0" q0="0" q1="0.232606" q2="0" q3="0.972571" s0="1.24808" s1="1.26522" s2="1.24808" t0="45.0883" t1="22.8364" t2="69.0836" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="49" overbright="0" q0="0" q1="0.232606" q2="0" q3="0.972571" s0="1.24808" s1="1.26522" s2="1.24808" t0="45.3502" t1="19.6712" t2="69.0094" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="50" overbright="0" q0="0" q1="0.232606" q2="0" q3="0.972571" s0="1.24808" s1="1.26522" s2="1.24808" t0="45.1865" t1="22.1103" t2="68.9875" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="51" overbright="0" q0="0" q1="0.232606" q2="0" q3="0.972571" s0="1.24808" s1="1.26522" s2="1.24808" t0="45.1766" t1="24.2143" t2="69.0122" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="52" overbright="0" q0="0" q1="0.232606" q2="0" q3="0.972571" s0="1.24808" s1="1.26522" s2="1.24808" t0="45.2273" t1="28.1192" t2="69.2775" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="53" q0="0" q1="0.168205" q2="0" q3="0.985752" s0="5.1625" s1="12.9763" s2="6.18825" t0="67.0714" t1="20.4514" t2="97.1818" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="54" overbright="0" q0="0" q1="0.168205" q2="0" q3="0.985752" s0="1" s1="1" s2="1" t0="66.8664" t1="20.0339" t2="97.2136" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="55" overbright="0" q0="0" q1="0.168205" q2="0" q3="0.985752" s0="1" s1="1" s2="1" t0="67.0822" t1="17.5322" t2="97.1822" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="56" overbright="0" q0="0" q1="0.168205" q2="0" q3="0.985752" s0="1" s1="1" s2="1" t0="66.9545" t1="19.46" t2="97.1476" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="57" overbright="0" q0="0" q1="0.168205" q2="0" q3="0.985752" s0="1" s1="1" s2="1" t0="66.944" t1="21.123" t2="97.1661" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="58" overbright="0" q0="0" q1="0.168205" q2="0" q3="0.985752" s0="1" s1="1" s2="1" t0="66.9564" t1="24.2093" t2="97.3822" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="59" q0="0" q1="0.847122" q2="0" q3="0.531398" s0="4.91877" s1="12.0422" s2="5.8961" t0="53.3874" t1="28.4201" t2="57.7199" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="60" overbright="0" q0="0" q1="0.847122" q2="0" q3="0.531398" s0="0.952789" s1="0.928015" s2="0.952789" t0="53.4394" t1="28.0327" t2="57.9107" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="61" overbright="0" q0="0" q1="0.847122" q2="0" q3="0.531398" s0="0.952789" s1="0.928015" s2="0.952789" t0="53.3867" t1="25.7111" t2="57.7097" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="62" overbright="0" q0="0" q1="0.847122" q2="0" q3="0.531398" s0="0.952789" s1="0.928015" s2="0.952789" t0="53.3675" t1="27.5001" t2="57.8343" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="64" overbright="0" q0="0" q1="0.847122" q2="0" q3="0.531398" s0="0.952789" s1="0.928015" s2="0.952789" t0="53.3862" t1="29.0434" t2="57.8422" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="65" overbright="0" q0="0" q1="0.847122" q2="0" q3="0.531398" s0="0.952789" s1="0.928015" s2="0.952789" t0="53.5895" t1="31.9075" t2="57.8074" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="63" q0="0" q1="0.960968" q2="0" q3="0.276659" s0="5.61277" s1="14.023" s2="6.72799" t0="3.73595" t1="10.1652" t2="134.113" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="77" overbright="0" q0="0" q1="0.960967" q2="0" q3="0.276663" s0="1.08722" s1="1.08066" s2="1.08722" t0="3.90183" t1="9.714" t2="134.266" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="150" overbright="0" q0="0" q1="0.960967" q2="0" q3="0.276663" s0="1.08722" s1="1.08066" s2="1.08722" t0="3.72906" t1="7.0105" t2="134.104" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="151" overbright="0" q0="0" q1="0.960967" q2="0" q3="0.276663" s0="1.08722" s1="1.08066" s2="1.08722" t0="3.78608" t1="9.09381" t2="134.236" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="152" overbright="0" q0="0" q1="0.960967" q2="0" q3="0.276663" s0="1.08722" s1="1.08066" s2="1.08722" t0="3.8089" t1="10.8909" t2="134.232" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="153" overbright="0" q0="0" q1="0.960967" q2="0" q3="0.276663" s0="1.08722" s1="1.08066" s2="1.08722" t0="3.98439" t1="14.2262" t2="134.076" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="66" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="5.53963" s1="11.2309" s2="5.25818" t0="27.8794" t1="18.6027" t2="65.178" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="67" overbright="0" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="1.49351" s1="1.36889" s2="1.49351" t0="27.9919" t1="18.13" t2="65.1087" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="68" overbright="0" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="1.49351" s1="1.36889" s2="1.49351" t0="27.8318" t1="21.1466" t2="65.0635" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="69" overbright="0" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="1.49351" s1="1.36889" s2="1.49351" t0="27.8637" t1="17.9525" t2="65.1376" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="70" overbright="0" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="1.49351" s1="1.36889" s2="1.49351" t0="27.8738" t1="15.9062" t2="65.1801" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small3.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="71" q0="0" q1="-0.48764" q2="0" q3="0.873045" s0="4.74095" s1="11.6113" s2="5.68294" t0="14.1229" t1="12.1565" t2="106.899" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="2" overbright="0" q0="0" q1="-0.487639" q2="0" q3="0.873045" s0="0.918344" s1="0.894806" s2="0.918344" t0="14.0543" t1="11.7829" t2="106.721" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="158" overbright="0" q0="0" q1="-0.487639" q2="0" q3="0.873045" s0="0.918344" s1="0.894806" s2="0.918344" t0="14.1245" t1="9.54434" t2="106.909" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="159" overbright="0" q0="0" q1="-0.487639" q2="0" q3="0.873045" s0="0.918344" s1="0.894806" s2="0.918344" t0="14.1307" t1="11.2694" t2="106.787" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="160" overbright="0" q0="0" q1="-0.487639" q2="0" q3="0.873045" s0="0.918344" s1="0.894806" s2="0.918344" t0="14.112" t1="12.7574" t2="106.782" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="161" overbright="0" q0="0" q1="-0.487639" q2="0" q3="0.873045" s0="0.918344" s1="0.894806" s2="0.918344" t0="13.9205" t1="15.5191" t2="106.835" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="86" q0="0" q1="-0.239379" q2="0" q3="0.970926" s0="4.1256" s1="9.84354" s2="3.91599" t0="21.403" t1="12.3498" t2="97.5202" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="93" overbright="0" q0="0" q1="-0.239379" q2="0" q3="0.970926" s0="1.11228" s1="1.19979" s2="1.11228" t0="21.3738" t1="11.9355" t2="97.6142" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="176" overbright="0" q0="0" q1="-0.239379" q2="0" q3="0.970926" s0="1.11228" s1="1.19979" s2="1.11228" t0="21.4858" t1="14.5795" t2="97.5611" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="177" overbright="0" q0="0" q1="-0.239379" q2="0" q3="0.970926" s0="1.11228" s1="1.19979" s2="1.11228" t0="21.4316" t1="11.7799" t2="97.5352" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="178" overbright="0" q0="0" q1="-0.239379" q2="0" q3="0.970926" s0="1.11228" s1="1.19979" s2="1.11228" t0="21.4051" t1="9.98643" t2="97.5163" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small3.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="90" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="6.17295" s1="6.17295" s2="6.17295" t0="30.9192" t1="9.51683" t2="107.972" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="92" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="6.17295" s1="6.17295" s2="6.17295" t0="14.3061" t1="7.36727" t2="106.852" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Group id="94" q0="0" q1="-0.896725" q2="0" q3="0.442588" s0="5.96366" s1="12.1141" s2="5.66066" t0="29.1312" t1="26.1959" t2="146.682" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="95" overbright="0" q0="0" q1="-0.896725" q2="0" q3="0.442588" s0="1.60783" s1="1.47654" s2="1.60783" t0="29.0045" t1="25.6861" t2="146.617" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="117" overbright="0" q0="0" q1="-0.896725" q2="0" q3="0.442588" s0="1.60783" s1="1.47654" s2="1.60783" t0="29.0525" t1="28.94" t2="146.79" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="118" overbright="0" q0="0" q1="-0.896725" q2="0" q3="0.442588" s0="1.60783" s1="1.47654" s2="1.60783" t0="29.1028" t1="25.4946" t2="146.719" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="119" overbright="0" q0="0" q1="-0.896725" q2="0" q3="0.442588" s0="1.60783" s1="1.47654" s2="1.60783" t0="29.1363" t1="23.2875" t2="146.686" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small3.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="96" q0="0" q1="-0.999985" q2="0" q3="0.00548094" s0="6.58192" s1="16.4444" s2="7.88971" t0="1.22601" t1="14.4933" t2="120.99" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="97" overbright="0" q0="0" q1="-0.999983" q2="0" q3="0.00582878" s0="1.27495" s1="1.26726" s2="1.27495" t0="1.48662" t1="13.9643" t2="121.035" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="154" overbright="0" q0="0" q1="-0.999983" q2="0" q3="0.00582878" s0="1.27495" s1="1.26726" s2="1.27495" t0="1.21321" t1="10.7939" t2="120.985" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="155" overbright="0" q0="0" q1="-0.999983" q2="0" q3="0.00582878" s0="1.27495" s1="1.26726" s2="1.27495" t0="1.35323" t1="13.237" t2="121.079" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="156" overbright="0" q0="0" q1="-0.999983" q2="0" q3="0.00582878" s0="1.27495" s1="1.26726" s2="1.27495" t0="1.37342" t1="15.3444" t2="121.061" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="157" overbright="0" q0="0" q1="-0.999983" q2="0" q3="0.00582878" s0="1.27495" s1="1.26726" s2="1.27495" t0="1.447" t1="19.2556" t2="120.795" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="98" q0="0" q1="0.983395" q2="0" q3="0.181478" s0="5.61277" s1="13.4973" s2="6.72799" t0="6.62575" t1="10.3097" t2="148.679" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="99" overbright="0" q0="0" q1="0.983394" q2="0" q3="0.181483" s0="1.08722" s1="1.04015" s2="1.08722" t0="6.81819" t1="9.87541" t2="148.797" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="146" overbright="0" q0="0" q1="0.983394" q2="0" q3="0.181483" s0="1.08722" s1="1.04015" s2="1.08722" t0="6.61715" t1="7.27326" t2="148.671" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="147" overbright="0" q0="0" q1="0.983394" q2="0" q3="0.181483" s0="1.08722" s1="1.04015" s2="1.08722" t0="6.69876" t1="9.27847" t2="148.789" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="148" overbright="0" q0="0" q1="0.983394" q2="0" q3="0.181483" s0="1.08722" s1="1.04015" s2="1.08722" t0="6.72043" t1="11.0082" t2="148.781" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="149" overbright="0" q0="0" q1="0.983394" q2="0" q3="0.181483" s0="1.08722" s1="1.04015" s2="1.08722" t0="6.86208" t1="14.2184" t2="148.594" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="100" q0="0" q1="0.697671" q2="0" q3="0.716418" s0="3.70913" s1="7.80687" s2="3.52068" t0="6.6421" t1="13.8453" t2="112.994" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="101" overbright="0" q0="0" q1="0.697671" q2="0" q3="0.716418" s0="1" s1="0.951549" s2="1" t0="6.7295" t1="13.5167" t2="112.98" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="125" overbright="0" q0="0" q1="0.697671" q2="0" q3="0.716418" s0="1" s1="0.951549" s2="1" t0="6.64232" t1="15.6136" t2="112.911" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="126" overbright="0" q0="0" q1="0.697671" q2="0" q3="0.716418" s0="1" s1="0.951549" s2="1" t0="6.64287" t1="13.3933" t2="112.965" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="127" overbright="0" q0="0" q1="0.697671" q2="0" q3="0.716418" s0="1" s1="0.951549" s2="1" t0="6.6381" t1="11.9709" t2="112.994" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small3.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="103" q0="0" q1="-0.0112558" q2="0" q3="0.999937" s0="5.9402" s1="12.2884" s2="7.12048" t0="37.6973" t1="25.0113" t2="140.154" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="105" overbright="0" q0="0" q1="-0.0112558" q2="0" q3="0.999937" s0="1.15065" s1="0.94699" s2="1.15065" t0="37.4636" t1="24.616" t2="140.105" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="110" overbright="0" q0="0" q1="-0.0112558" q2="0" q3="0.999937" s0="1.15065" s1="0.94699" s2="1.15065" t0="37.7087" t1="22.2469" t2="140.159" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="131" overbright="0" q0="0" q1="-0.0112558" q2="0" q3="0.999937" s0="1.15065" s1="0.94699" s2="1.15065" t0="37.5853" t1="24.0725" t2="140.07" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="132" overbright="0" q0="0" q1="-0.0112558" q2="0" q3="0.999937" s0="1.15065" s1="0.94699" s2="1.15065" t0="37.5665" t1="25.6473" t2="140.086" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="133" overbright="0" q0="0" q1="-0.0112558" q2="0" q3="0.999937" s0="1.15065" s1="0.94699" s2="1.15065" t0="37.4921" t1="28.57" t2="140.323" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <EnvObject color_b="0.243137" color_g="0.305882" color_r="0.266667" id="106" overbright="0" q0="0.0704327" q1="-0.412371" q2="-0.0629692" q3="0.906104" s0="0.781839" s1="0.69789" s2="0.843213" t0="-2.20328" t1="-1.76041" t2="163.518" type_file="Data/Objects/Plants/Trees/temperate/green_bush.xml">
+            <parameters />
+        </EnvObject>
+        <Group id="108" q0="0" q1="-0.63775" q2="0" q3="0.770243" s0="4.62101" s1="10.2469" s2="4.38623" t0="-14.9231" t1="3.48076" t2="148.613" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="109" overbright="0" q0="0" q1="-0.63775" q2="0" q3="0.770243" s0="1.24585" s1="1.24896" s2="1.24585" t0="-15.0259" t1="3.0495" t2="148.653" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="128" overbright="0" q0="0" q1="-0.63775" q2="0" q3="0.770243" s0="1.24585" s1="1.24896" s2="1.24585" t0="-14.9014" t1="5.80183" t2="148.714" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="174" overbright="0" q0="0" q1="-0.63775" q2="0" q3="0.770243" s0="1.24585" s1="1.24896" s2="1.24585" t0="-14.9163" t1="2.88751" t2="148.648" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="175" overbright="0" q0="0" q1="-0.63775" q2="0" q3="0.770243" s0="1.24585" s1="1.24896" s2="1.24585" t0="-14.9182" t1="1.02056" t2="148.612" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small3.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="111" q0="0" q1="0.877286" q2="0" q3="0.479968" s0="5.70141" s1="13.643" s2="6.83424" t0="30.8339" t1="14.1706" t2="107.679" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="112" overbright="0" q0="0" q1="0.877286" q2="0" q3="0.479968" s0="1.10439" s1="1.05138" s2="1.10439" t0="30.92" t1="13.7316" t2="107.891" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="170" overbright="0" q0="0" q1="0.877286" q2="0" q3="0.479968" s0="1.10439" s1="1.05138" s2="1.10439" t0="30.8316" t1="11.1014" t2="107.667" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="171" overbright="0" q0="0" q1="0.877286" q2="0" q3="0.479968" s0="1.10439" s1="1.05138" s2="1.10439" t0="30.8268" t1="13.1283" t2="107.813" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="172" overbright="0" q0="0" q1="0.877286" q2="0" q3="0.479968" s0="1.10439" s1="1.05138" s2="1.10439" t0="30.8494" t1="14.8767" t2="107.82" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="173" overbright="0" q0="0" q1="0.877286" q2="0" q3="0.479968" s0="1.10439" s1="1.05138" s2="1.10439" t0="31.0785" t1="18.1216" t2="107.752" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="113" q0="0" q1="-0.792098" q2="0" q3="0.610394" s0="5.67338" s1="12.0909" s2="5.38513" t0="75.0414" t1="18.3444" t2="90.5174" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="114" overbright="0" q0="0" q1="-0.792098" q2="0" q3="0.610394" s0="1.52957" s1="1.47371" s2="1.52957" t0="74.9065" t1="17.8355" t2="90.5072" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="179" overbright="0" q0="0" q1="-0.792098" q2="0" q3="0.610394" s0="1.52957" s1="1.47371" s2="1.52957" t0="75.012" t1="21.0831" t2="90.641" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="180" overbright="0" q0="0" q1="-0.792098" q2="0" q3="0.610394" s0="1.52957" s1="1.47371" s2="1.52957" t0="75.0301" t1="17.6444" t2="90.5603" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="181" overbright="0" q0="0" q1="-0.792098" q2="0" q3="0.610394" s0="1.52957" s1="1.47371" s2="1.52957" t0="75.0474" t1="15.4415" t2="90.519" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small3.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="115" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="3.39272" s1="7.65522" s2="3.22035" t0="48.3039" t1="21.9755" t2="64.6844" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="116" overbright="0" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="0.914694" s1="0.933065" s2="0.914694" t0="48.3728" t1="21.6533" t2="64.6419" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Small.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="123" overbright="0" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="0.914694" s1="0.933065" s2="0.914694" t0="48.2747" t1="23.7095" t2="64.6142" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="124" overbright="0" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="0.914694" s1="0.933065" s2="0.914694" t0="48.2943" t1="21.5323" t2="64.6596" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="182" overbright="0" q0="0" q1="0.825075" q2="0" q3="0.565023" s0="0.914694" s1="0.933065" s2="0.914694" t0="48.3005" t1="20.1376" t2="64.6857" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Small3.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="121" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="6.17295" s1="6.17295" s2="6.17295" t0="6.85737" t1="10.6658" t2="113.03" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="129" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="6.17295" s1="6.17295" s2="6.17295" t0="1.70458" t1="8.3985" t2="120.985" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Group id="134" q0="0" q1="0.468555" q2="0" q3="0.883434" s0="3.67706" s1="9.24255" s2="4.40767" t0="57.6622" t1="20.7792" t2="103.805" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="135" overbright="0" q0="0" q1="0.468555" q2="0" q3="0.883434" s0="0.712264" s1="0.712264" s2="0.712264" t0="57.5583" t1="20.4818" t2="103.91" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="136" overbright="0" q0="0" q1="0.468555" q2="0" q3="0.883434" s0="0.712264" s1="0.712264" s2="0.712264" t0="57.6685" t1="18.6999" t2="103.8" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="137" overbright="0" q0="0" q1="0.468555" q2="0" q3="0.883434" s0="0.712264" s1="0.712264" s2="0.712264" t0="57.5808" t1="20.073" t2="103.835" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="138" overbright="0" q0="0" q1="0.468555" q2="0" q3="0.883434" s0="0.712264" s1="0.712264" s2="0.712264" t0="57.5826" t1="21.2575" t2="103.85" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="139" overbright="0" q0="0" q1="0.468555" q2="0" q3="0.883434" s0="0.712264" s1="0.712264" s2="0.712264" t0="57.6813" t1="23.4558" t2="103.968" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Group id="140" q0="0" q1="-0.978382" q2="0" q3="0.206806" s0="4.66627" s1="11.729" s2="5.59343" t0="19.1138" t1="17.985" t2="153.747" version="1">
+            <parameters />
+            <EnvObject color_b="1" color_g="1" color_r="1" id="141" overbright="0" q0="0" q1="-0.978381" q2="0" q3="0.206811" s0="0.903879" s1="0.903879" s2="0.903878" t0="19.2963" t1="17.6077" t2="153.704" type_file="Data/Prototypes/Lugaru/CypressTreeTrunk_Large.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="142" overbright="0" q0="0" q1="-0.978381" q2="0" q3="0.206811" s0="0.903879" s1="0.903879" s2="0.903878" t0="19.1041" t1="15.3464" t2="153.747" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large1.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="143" overbright="0" q0="0" q1="-0.978381" q2="0" q3="0.206811" s0="0.903879" s1="0.903879" s2="0.903878" t0="19.2216" t1="17.0889" t2="153.77" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large2.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="144" overbright="0" q0="0" q1="-0.978381" q2="0" q3="0.206811" s0="0.903879" s1="0.903879" s2="0.903878" t0="19.2297" t1="18.5921" t2="153.752" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large3.xml">
+                <parameters />
+            </EnvObject>
+            <EnvObject color_b="1" color_g="1" color_r="1" id="145" overbright="0" q0="0" q1="-0.978381" q2="0" q3="0.206811" s0="0.903879" s1="0.903879" s2="0.903878" t0="19.2032" t1="21.3817" t2="153.558" type_file="Data/Prototypes/Lugaru/CypressTreeLeaves_Large4.xml">
+                <parameters />
+            </EnvObject>
+        </Group>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="183" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="6.17295" s1="6.17295" s2="6.17295" t0="37.4866" t1="19.7735" t2="139.751" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <ReflectionCaptureObject gicoeff00="0.104614" gicoeff01="0.16803" gicoeff02="0.274933" gicoeff03="0.0665588" gicoeff04="0.112366" gicoeff05="0.207397" gicoeff06="0.099884" gicoeff07="0.190338" gicoeff08="0.423279" gicoeff09="0.0724792" gicoeff10="0.0955505" gicoeff11="0.0817566" gicoeff12="0.0816193" gicoeff13="0.13768" gicoeff14="0.245514" gicoeff15="0.0826416" gicoeff16="0.131897" gicoeff17="0.217438" id="185" q0="0" q1="0" q2="0" q3="1" s0="0.48742" s1="0.48742" s2="0.48742" t0="33.6974" t1="13.4594" t2="114.565">
+            <parameters>
+                <parameter name="Global" type="string" val="1" />
+            </parameters>
+        </ReflectionCaptureObject>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="186" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="6.17295" s1="6.17295" s2="6.17295" t0="29.3295" t1="21.1491" t2="146.617" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="188" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="6.17295" s1="6.17295" s2="6.17295" t0="46.6202" t1="15.7868" t2="99.079" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="190" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="6.17295" s1="6.17295" s2="6.17295" t0="57.4466" t1="17.4812" t2="104" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="192" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="3.94872" s1="3.94872" s2="3.94872" t0="36.0432" t1="9.76056" t2="111.038" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <Decal color_b="0.215684" color_g="0.215684" color_r="0.215686" id="194" overbright="0" q0="0" q1="0" q2="0" q3="1" s0="6.17295" s1="6.17295" s2="6.17295" t0="21.5011" t1="8.15138" t2="97.6687" type_file="Data/Objects/Decals/env_blob_shadow.xml">
+            <parameters />
+        </Decal>
+        <EnvObject color_b="0.243137" color_g="0.305882" color_r="0.266667" id="447" overbright="0" q0="0.130188" q1="-0.290944" q2="-0.0641399" q3="0.945668" s0="0.385691" s1="0.385691" s2="0.385691" t0="11.6088" t1="-3.44652" t2="171.521" type_file="Data/Objects/Plants/Trees/temperate/green_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.243137" color_g="0.305882" color_r="0.266667" id="448" overbright="0" q0="0.0848914" q1="-0.0767768" q2="0.172725" q3="0.978297" s0="0.781839" s1="0.500498" s2="0.843213" t0="-3.24411" t1="-2.84514" t2="165.298" type_file="Data/Objects/Plants/Trees/temperate/green_bush.xml">
+            <parameters />
+        </EnvObject>
+        <ActorObject id="449" is_player="1" name="Turner" q0="0.0141045" q1="-0.662792" q2="0.0185681" q3="0.74844" s0="1" s1="1" s2="1" t0="33.2171" t1="9.8878" t2="108.4170" type_file="Data/Objects/IGF_Characters/pale_turner_actor.xml">
+            <parameters>
+                <parameter name="Aggression" type="string" val="0.5" />
+                <parameter name="Attack Damage" type="string" val="1" />
+                <parameter name="Attack Knockback" type="string" val="1" />
+                <parameter name="Attack Speed" type="string" val="1" />
+                <parameter name="Block Follow-up" type="string" val="0.5" />
+                <parameter name="Block Skill" type="string" val="0.5" />
+                <parameter name="Character Scale" type="string" val="1" />
+                <parameter name="Damage Resistance" type="string" val="1" />
+                <parameter name="Ear Size" type="string" val="1" />
+                <parameter name="Fat" type="string" val="0.5" />
+                <parameter name="Focus FOV distance" type="string" val="10" />
+                <parameter name="Focus FOV horizontal" type="string" val="0.63" />
+                <parameter name="Focus FOV vertical" type="string" val="0.63" />
+                <parameter name="Ground Aggression" type="string" val="0.5" />
+                <parameter name="Knockout Shield" type="string" val="4" />
+                <parameter name="Left handed" type="string" val="0" />
+                <parameter name="Lives" type="string" val="1" />
+                <parameter name="Movement Speed" type="string" val="1" />
+                <parameter name="Muscle" type="string" val="0.5" />
+                <parameter name="Peripheral FOV distance" type="string" val="4" />
+                <parameter name="Peripheral FOV horizontal" type="string" val="1.4100000000000001" />
+                <parameter name="Peripheral FOV vertical" type="string" val="1.4100000000000001" />
+                <parameter name="Static" type="string" val="0" />
+                <parameter name="Teams" type="string" val="Turner, Jack, Clover, Skipper, Sarah, April" />
+            </parameters>
+            <Connections>
+                <Connection id="-1" />
+            </Connections>
+            <ItemConnections />
+            <Palette>
+                <Color blue="0.211765" channel="0" green="0.298039" label="Fur" red="0.360784" />
+                <Color blue="0.0627451" channel="1" green="0.0784314" label="Ropes" red="0.0901961" />
+                <Color blue="0.145098" channel="2" green="0.145098" label="Pants" red="0.145098" />
+                <Color blue="1" channel="3" green="1" label="Spots" red="1" />
+            </Palette>
+        </ActorObject>
+        <EnvObject color_b="0.243137" color_g="0.305882" color_r="0.266667" id="1816" overbright="0" q0="0.00898864" q1="-0.418246" q2="0.0710426" q3="0.905507" s0="0.781839" s1="0.69789" s2="0.843213" t0="36.206" t1="10.4149" t2="111.272" type_file="Data/Objects/Plants/Trees/temperate/green_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.243137" color_g="0.305882" color_r="0.266667" id="1817" overbright="0" q0="-0.0668076" q1="-0.510604" q2="0.231684" q3="0.825314" s0="0.385691" s1="0.385691" s2="0.385691" t0="48.519" t1="13.7154" t2="119.191" type_file="Data/Objects/Plants/Trees/temperate/green_bush.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject color_b="0.243137" color_g="0.305882" color_r="0.266667" id="1818" overbright="0" q0="0.0549472" q1="-0.879799" q2="-0.0151095" q3="0.471918" s0="0.60318" s1="0.495215" s2="0.874242" t0="30.2262" t1="9.31872" t2="108.209" type_file="Data/Objects/Plants/Trees/temperate/green_bush.xml">
+            <parameters />
+        </EnvObject>
+    </ActorObjects>

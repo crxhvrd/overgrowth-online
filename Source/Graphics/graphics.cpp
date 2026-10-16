@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: graphics.cpp
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -23,6 +24,8 @@
 //-----------------------------------------------------------------------------
 #include "graphics.h"
 
+#include <map>
+
 #include <Internal/filesystem.h>
 #include <Internal/integer.h>
 #include <Internal/config.h>
@@ -35,6 +38,7 @@
 #include <Graphics/textures.h>
 #include <Graphics/shaders.h>
 #include <Graphics/camera.h>
+#include <Graphics/frame_timers.h>
 #include <Graphics/models.h>
 #include <Graphics/flares.h>
 
@@ -460,8 +464,19 @@ void Graphics::TakeScreenshot() {
             index3 += 3;
             index4 += 4;
         }
-        std::string path = ImageExport::FindEmptySequentialFile("Screenshots/OvergrowthScreenshot", ".jpg");
-        ImageExport::SaveJPEG(path.c_str(), pixels, width, height);
+        std::string path = queued_screenshot_path;
+        queued_screenshot_path.clear();
+
+        if (path.empty()) {
+            path = ImageExport::FindEmptySequentialFile("Screenshots/OvergrowthScreenshot", ".jpg");
+        }
+
+        // Overgrowth Online: ".png": lossless (screenshot comparisons), upright and RGB
+        if (path.size() > 4 && path.compare(path.size() - 4, 4, ".png") == 0) {
+            ImageExport::SaveScreenshotPNG(path.c_str(), pixels, width, height);
+        } else {
+            ImageExport::SaveJPEG(path.c_str(), pixels, width, height);
+        }
     } else if (screenshot_mode == kTransparentGameplay) {
         std::string path = ImageExport::FindEmptySequentialFile("Screenshots/OvergrowthScreenshot", ".png");
         ImageExport::SavePNGTransparent(path.c_str(), pixels, width, height);
@@ -766,7 +781,7 @@ static void ApplyVsync(bool val) {
 }
 
 void Graphics::SetAnisotropy(float val) {
-    if (GLAD_GL_EXT_texture_filter_anisotropic) {
+    if (GLAD_GL_VERSION_4_6 || GLAD_GL_EXT_texture_filter_anisotropic) {
         static float max_anisotropy = -1.0f;
         if (max_anisotropy == -1.0f) {
             glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anisotropy);
@@ -830,7 +845,40 @@ const char* arb_debug_enum_string(GLenum val) {
     }
 }
 
+// Overgrowth Online: the GL's complaints, counted for the test bridge (gl_errors):
+// errors, undefined and deprecated behaviour; each message once with its count
+static int g_gl_debug_problem_count = 0;
+static bool g_gl_debug_alive = false;  // our test marker came back: the output works
+static std::map<std::string, int> g_gl_debug_problems;
+
+static void NoteGLDebugMessage(GLenum type, GLuint id, const GLchar* message) {
+    if (type != GL_DEBUG_TYPE_ERROR && type != GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR && type != GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR) {
+        return;
+    }
+    ++g_gl_debug_problem_count;
+    std::string key = std::to_string(id) + ": " + std::string(message ? message : "").substr(0, 200);
+    if (g_gl_debug_problems.size() < 64 || g_gl_debug_problems.count(key)) {
+        ++g_gl_debug_problems[key];
+    }
+}
+
+bool GLDebugOutputAlive() {
+    return g_gl_debug_alive;
+}
+
+int GLDebugProblemCount() {
+    return g_gl_debug_problem_count;
+}
+
+std::map<std::string, int> GLDebugProblems() {
+    return g_gl_debug_problems;
+}
+
 void GLAPIENTRY arb_debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+    if (source == GL_DEBUG_SOURCE_APPLICATION && type == GL_DEBUG_TYPE_MARKER && id == 0x4F4F) {
+        g_gl_debug_alive = true;  // (Overgrowth Online: the check below)
+        return;
+    }
     const int kBufSize = 1024;
     char buf[kBufSize];
     FormatString(buf, kBufSize, "%s\n%s\nID: %d\n%s\n%s",
@@ -862,6 +910,7 @@ void GLAPIENTRY arb_debug_callback(GLenum source, GLenum type, GLuint id, GLenum
     }
 
     LOGW << buf << std::endl;
+    NoteGLDebugMessage(type, id, message);
     if (g_opengl_callback_error_dialog) {
         DisplayError("GL debug error", buf);
     }
@@ -898,12 +947,20 @@ void Graphics::InitScreen() {
         SDL_GL_SetAttributeErrCheck(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttributeErrCheck(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttributeErrCheck(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-        SDL_GL_SetAttributeErrCheck(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        SDL_GL_SetAttributeErrCheck(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+        // Overgrowth Online: OpenGL 4.6 core (docs_gl46_plan.md; it was 3.2)
+        SDL_GL_SetAttributeErrCheck(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+        SDL_GL_SetAttributeErrCheck(SDL_GL_CONTEXT_MINOR_VERSION, 6);
         SDL_GL_SetAttributeErrCheck(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
+        // Overgrowth Online: "gl_debug" asks for a debug context in any build
+        // (the gl_errors tests; Release otherwise compiles the checks out)
 #ifndef NO_GL_ERROR_CHECKING
-        SDL_GL_SetAttributeErrCheck(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+        const bool gl_debug_context = true;
+#else
+        const bool gl_debug_context = config["gl_debug"].toNumber<bool>();
 #endif
+        if (gl_debug_context) {
+            SDL_GL_SetAttributeErrCheck(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+        }
         // MSAA is handled later with renderbuffers and fbo
         SDL_GL_SetAttributeErrCheck(SDL_GL_MULTISAMPLEBUFFERS, false);
         SDL_GL_SetAttributeErrCheck(SDL_GL_MULTISAMPLESAMPLES, 0);
@@ -911,7 +968,7 @@ void Graphics::InitScreen() {
         LOGI << "Attribute group 1 set" << std::endl;
 
         // Create window
-        const char* window_title = "Overgrowth";
+        const char* window_title = "Overgrowth Online";
         uint32_t window_flags = SDL_WINDOW_OPENGL;
 
         int target_monitor = config_.target_monitor();
@@ -1021,10 +1078,11 @@ void Graphics::InitScreen() {
         LOGI << "Set display mode" << std::endl;
 
         gl_context = SDL_GL_CreateContext(sdl_window_);
-        LOGI << "Created OpenGL Context" << std::endl;
-        if (!gl_context) {
-            FatalError("Error", "SDL_GL_CreateContext(): %s\n%s", SDL_GetError(), "It's likely your computer can't create an OpenGL 3.2 context. Do you have the latest drivers installed?");
+        if (gl_context == NULL) {
+            LOGE << "OpenGL 4.6 context: " << SDL_GetError() << std::endl;
+            FatalError("Error", "Overgrowth Online needs OpenGL 4.6, which this graphics driver doesn't offer. Update the graphics driver (every GPU since about 2012 has OpenGL 4.6), or hold Shift when starting Overgrowth for the normal game.");
         }
+        LOGI << "Created OpenGL Context" << std::endl;
         SDL_GL_GetDrawableSize(sdl_window_, &window_dims[0], &window_dims[1]);
         // Check what GL context we actually received
         int data[5];
@@ -1063,20 +1121,18 @@ void Graphics::InitScreen() {
 
             LOGI << "OpenGL Self Reported version string: " << glGetString(GL_VERSION) << std::endl;
             LOGI << "OpenGL Self Reported version values: " << gl_major << "." << gl_minor << std::endl;
+            LOGI << "OpenGL renderer: " << glGetString(GL_RENDERER) << ", vendor: " << glGetString(GL_VENDOR)
+                 << ", GLSL " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
         } else if (sdl_gl_major >= 2) {
             LOGI << "OpenGL Self Reported version: " << glGetString(GL_VERSION) << std::endl;
         } else {
             LOGI << "OpenGL has no self reporting routine for 1.x contexts." << std::endl;
         }
 
-        if (!GLAD_GL_VERSION_3_2) {
-            LOGE << "GLEW claims it doesn't have an OpenGL 3.2 context" << std::endl;
-        }
-
-        if (GLAD_GL_VERSION_3_2 || (sdl_gl_major == 3 && sdl_gl_minor >= 2) || sdl_gl_major > 3) {
+        if (GLAD_GL_VERSION_4_6) {
             LOGI << "Context seems acceptable for running the application, continuing." << std::endl;
         } else {
-            FatalError("Error", "OpenGL-3.2-compatible graphics drivers not found");
+            FatalError("Error", "Overgrowth Online needs OpenGL 4.6, which this graphics driver doesn't offer. Update the graphics driver (every GPU since about 2012 has OpenGL 4.6), or hold Shift when starting Overgrowth for the normal game.");
         }
 
         DetectAndSetOpenGLFeatureRestrictions();
@@ -1087,11 +1143,20 @@ void Graphics::InitScreen() {
             FatalError("Error", "No support for S3TC DXT5 textures detected. This means either your GPU is too old to run the game, or your drivers are out-of-date");
         }
 
-        bool g_opengl_callback_error_dialog = config["opengl_callback_error_dialog"].toNumber<bool>();
+        // (this was a local of the same name: the setting never reached the callback)
+        const bool gl_debug = config["gl_debug"].toNumber<bool>();
+        g_opengl_callback_error_dialog = config["opengl_callback_error_dialog"].toNumber<bool>() && !gl_debug;
 
-        if (config["opengl_callback_errors"].toNumber<bool>()) {
+        if (config["opengl_callback_errors"].toNumber<bool>() || gl_debug) {
             LOGI << "Activating OpenGL callback errors, [opengl_callback_errors]" << std::endl;
-            if (GLAD_GL_ARB_debug_output) {
+            if (GLAD_GL_KHR_debug) {
+                // Overgrowth Online: KHR_debug, with debug output on (it never was)
+                glDebugMessageCallback(&arb_debug_callback, NULL);
+                glEnable(GL_DEBUG_OUTPUT);
+                glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+                // A marker of ours, to know the output reaches the callback at all
+                glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, 0x4F4F, GL_DEBUG_SEVERITY_HIGH, -1, "Overgrowth Online: GL debug output check");
+            } else if (GLAD_GL_ARB_debug_output) {
                 glDebugMessageCallbackARB(&arb_debug_callback, NULL);
                 glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
             } else if (GLAD_GL_AMD_debug_output) {
@@ -1105,6 +1170,8 @@ void Graphics::InitScreen() {
             LOGI << "Deactivating OpenGL callback errors, [opengl_callback_errors]" << std::endl;
         }
 
+        FrameTimers::Init();  // Overgrowth Online: "frame_timers", "gl_debug_groups"
+
         while (glGetError() != GL_NO_ERROR) {
             // Throw away GL errors from SDL/GLEW init
         }
@@ -1114,7 +1181,7 @@ void Graphics::InitScreen() {
         } else {
             FatalError("Error", "No support for Framebuffer Objects detected");
         }
-        features_.SetFrameBufferFSAAEnabled(GLAD_GL_EXT_framebuffer_multisample != 0);
+        features_.SetFrameBufferFSAAEnabled(GLAD_GL_VERSION_3_0 || GLAD_GL_EXT_framebuffer_multisample != 0);
         CHECK_GL_ERROR();
         // Determine what instanced array features are supported
         if (GLAD_GL_VERSION_3_3 || GLAD_GL_ARB_instanced_arrays) {
@@ -1186,7 +1253,7 @@ void Graphics::InitScreen() {
         DecalTextures::Instance()->Init();
         PROFILER_LEAVE(g_profiler_ctx);
 
-        if (GLAD_GL_ARB_tessellation_shader) {
+        if (GLAD_GL_VERSION_4_0 || GLAD_GL_ARB_tessellation_shader) {
             glPatchParameteri(GL_PATCH_VERTICES, 3);
         }
     }
@@ -1335,13 +1402,18 @@ void Graphics::InitScreen() {
     if (!glGenVertexArrays) {
         FatalError("Error", "No support detected for vertex array objects");
     }
-    // Needed for GL 3.2 core
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    // Needed for a core context. Overgrowth Online: one per context; a new one
+    // has every attribute off, so the cache starts over with it
+    if (vao_ == 0 || vao_context_ != gl_context) {
+        glGenVertexArrays(1, &vao_);
+        vao_context_ = gl_context;
+        active_vertex_attrib_arrays = 0;
+        wanted_vertex_attrib_arrays = 0;
+    }
+    glBindVertexArray(vao_);
     CHECK_GL_ERROR();
 
-    if (GLAD_GL_ARB_texture_cube_map_array) {
+    if (GLAD_GL_VERSION_4_0 || GLAD_GL_ARB_texture_cube_map_array) {
         LOGI << "GLAD_ARB_texture_cube_map_array is available" << std::endl;
     } else {
         LOGI << "GLAD_ARB_texture_cube_map_array is NOT available" << std::endl;
@@ -1401,57 +1473,6 @@ void Graphics::BlitColorBuffer() {
     CHECK_GL_ERROR();
 }
 
-void Graphics::SetClientActiveTexture(int index) {
-    if (shadow_state_.client_active_textures_ != index) {
-        glClientActiveTexture(GL_TEXTURE0 + index);
-        shadow_state_.client_active_textures_ = index;
-    }
-}
-
-GLenum GLEnumTransformer(uint32_t e) {
-    switch (e) {
-        case CS_VERTEX_ARRAY:
-            return GL_VERTEX_ARRAY;
-        case CS_NORMAL_ARRAY:
-            return GL_NORMAL_ARRAY;
-        case CS_COLOR_ARRAY:
-            return GL_COLOR_ARRAY;
-        case CS_TEXTURE_COORD_ARRAY0:
-            return GL_TEXTURE_COORD_ARRAY;
-        case CS_TEXTURE_COORD_ARRAY1:
-            return GL_TEXTURE_COORD_ARRAY;
-        case CS_TEXTURE_COORD_ARRAY2:
-            return GL_TEXTURE_COORD_ARRAY;
-        case CS_TEXTURE_COORD_ARRAY3:
-            return GL_TEXTURE_COORD_ARRAY;
-        case CS_TEXTURE_COORD_ARRAY4:
-            return GL_TEXTURE_COORD_ARRAY;
-        case CS_TEXTURE_COORD_ARRAY5:
-            return GL_TEXTURE_COORD_ARRAY;
-        case CS_TEXTURE_COORD_ARRAY6:
-            return GL_TEXTURE_COORD_ARRAY;
-        case CS_TEXTURE_COORD_ARRAY7:
-            return GL_TEXTURE_COORD_ARRAY;
-        default:
-            return 0;
-    }
-}
-
-void Graphics::SetClientStateEnabled(int type, bool enabled) {
-    LOG_ASSERT(type < CS_MAX_SHADOWED_CLIENT_STATES);
-    if (enabled != shadow_state_.client_states_[type]) {
-        if (type >= CS_TEXTURE_COORD_ARRAY0 && type <= CS_TEXTURE_COORD_ARRAY7) {
-            SetClientActiveTexture(type - CS_TEXTURE_COORD_ARRAY0);
-        }
-        if (enabled) {
-            glEnableClientState(GLEnumTransformer(type));
-        } else {
-            glDisableClientState(GLEnumTransformer(type));
-        }
-        shadow_state_.client_states_[type] = enabled;
-    }
-}
-
 void Graphics::SetFromConfig(const Config& config, bool dynamic) {
     if (dynamic && config_.full_screen() == FullscreenMode::kWindowed) {
         config_.SetScreenWidth(config["screenwidth"].toNumber<int>());
@@ -1496,20 +1517,6 @@ void Graphics::SetWindowGrab(bool val) {
     if (!val || SDL_GetKeyboardFocus() == sdl_window_) {
         SDL_SetWindowGrab(sdl_window_, val ? SDL_TRUE : SDL_FALSE);
     }
-}
-
-void Graphics::SetClientStates(int flags) {
-    SetClientStateEnabled(CS_VERTEX_ARRAY, (flags & F_VERTEX_ARRAY) != 0);
-    SetClientStateEnabled(CS_NORMAL_ARRAY, (flags & F_NORMAL_ARRAY) != 0);
-    SetClientStateEnabled(CS_COLOR_ARRAY, (flags & F_COLOR_ARRAY) != 0);
-    SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY0, (flags & F_TEXTURE_COORD_ARRAY0) != 0);
-    SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY1, (flags & F_TEXTURE_COORD_ARRAY1) != 0);
-    SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY2, (flags & F_TEXTURE_COORD_ARRAY2) != 0);
-    SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY3, (flags & F_TEXTURE_COORD_ARRAY3) != 0);
-    SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY4, (flags & F_TEXTURE_COORD_ARRAY4) != 0);
-    SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY5, (flags & F_TEXTURE_COORD_ARRAY5) != 0);
-    SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY6, (flags & F_TEXTURE_COORD_ARRAY6) != 0);
-    SetClientStateEnabled(CS_TEXTURE_COORD_ARRAY7, (flags & F_TEXTURE_COORD_ARRAY7) != 0);
 }
 
 void Graphics::SetLineWidth(int val) {
@@ -1752,7 +1759,7 @@ void Graphics::SetDetailObjectShadows(bool val) {
 }
 
 void Graphics::SetSeamlessCubemaps(bool val) {
-    if (GL_VERSION_3_2 || GLAD_GL_ARB_seamless_cube_map || GLAD_GL_ARB_seamless_cubemap_per_texture) {
+    if (GLAD_GL_VERSION_3_2 || GLAD_GL_ARB_seamless_cube_map || GLAD_GL_ARB_seamless_cubemap_per_texture) {
         if (val) {
             glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
         } else {
@@ -1884,7 +1891,7 @@ void Graphics::SetUpShadowTextures() {
         framebufferDepthTexture2D(static_shadow_depth_ref);
 
         textures->bindTexture(static_shadow_depth_ref);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
         CHECK_FBO_ERROR();
     }
@@ -1914,7 +1921,7 @@ void Graphics::SetUpShadowTextures() {
         framebufferDepthTexture2D(cascade_shadow_depth_ref);
 
         textures->bindTexture(cascade_shadow_depth_ref);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
     }
 

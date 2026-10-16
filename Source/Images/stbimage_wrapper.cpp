@@ -25,4 +25,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+// Overgrowth Online: our paths are UTF-8; stb's plain fopen failed under a
+// non-Latin folder (OneDrive\Документы: "can't fopen" __weights.png in Stucco
+// Courtyard; SavePNG works around it with short paths, loading didn't)
+#define STBI_WINDOWS_UTF8
 #include "stbimage_wrapper.h"

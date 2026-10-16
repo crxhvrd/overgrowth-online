@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: online_message_handler.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //         Author: Max Danielsson
 //    Description: A manager for online messages, handling all the types,
 //                 their serialization and allocation
@@ -111,6 +112,30 @@ class OnlineMessageHandlerTemplate {
     void FreeUnreferencedMessages() {
         while (StepFreeUnreferencedMessage()) {
         }
+    }
+
+    // One pass that frees every message no one references any more. The
+    // network thread used to free one per pass (StepFreeUnreferencedMessage,
+    // a full scan each), which only kept up while that thread spun flat out.
+    int FreeUnreferencedMessagesOnePass() {
+        int freed = 0;
+        message_lock.lock();
+
+        for (auto it = messages.begin(); it != messages.end();) {
+            if (get<0>(it->second) <= 0) {
+                destruct_functions[get<1>(it->second)](get<2>(it->second));
+                block_allocator_lock.lock();
+                block_allocator.Free(get<2>(it->second));
+                block_allocator_lock.unlock();
+                it = messages.erase(it);
+                ++freed;
+            } else {
+                ++it;
+            }
+        }
+
+        message_lock.unlock();
+        return freed;
     }
 
     bool StepFreeUnreferencedMessage() {

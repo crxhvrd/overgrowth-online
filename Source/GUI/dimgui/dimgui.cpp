@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: dimgui.cpp
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -4113,29 +4114,28 @@ Mark Stockton\nMikko Tarmia\nDavid Lyhed Danielsson");
                     ImGui::PushID(avatar_ids[i]);
                     if (ImGui::TreeNode("MO #%s", id_prefix.c_str())) {
                         if (movobj != nullptr) {
-                            pending_bones = movobj->network_time_interpolator.full_interpolation;
+                            pending_bones = (float)movobj->net_buffer.Size();
 
-                            graphs[id_prefix + "_host_walltime_diff"].Push(movobj->last_walltime_diff);
-                            graphs[id_prefix + "_host_walltime_offset_shift"].Push(movobj->network_time_interpolator.host_walltime_offset_shift_vel);
+                            graphs[id_prefix + "_host_walltime_diff"].Push((float)movobj->net_buffer.DelayMs());
+                            graphs[id_prefix + "_host_walltime_offset_shift"].Push((float)movobj->net_buffer.IntervalMs());
 
                             graphs[id_prefix + "_root_bone_x"].Push(rigged->GetDisplayBonePosition(0).x());
                             graphs[id_prefix + "_root_bone_y"].Push(rigged->GetDisplayBonePosition(0).y());
                             graphs[id_prefix + "_root_bone_z"].Push(rigged->GetDisplayBonePosition(0).z());
 
                             graphs[id_prefix + "_rigged_interpolation_time"].Push(0);
-                            graphs[id_prefix + "_mov_interpolation_step"].Push(movobj->network_time_interpolator.interpolation_step);
+                            graphs[id_prefix + "_mov_interpolation_step"].Push(movobj->net_buffer.Extrapolating() ? 1.0f : 0.0f);
 
                             graphs[id_prefix + "_player_velocity"].Push(length(movobj->velocity));
                             graphs[id_prefix + "_delta_between_frames"].Push(0);
 
-                            graphs[id_prefix + "_pending_bones_history"].Push(movobj->network_time_interpolator.full_interpolation);
+                            graphs[id_prefix + "_pending_bones_history"].Push((float)movobj->net_buffer.Size());
 
                             ImGui::Checkbox("Update Camera Pos", &rigged->update_camera_pos);
-                            ImGui::Checkbox("Disable Linear Interpolation", &movobj->disable_network_bone_interpolation);
                         }
 
-                        graphs[id_prefix + "_host_walltime_diff"].Draw("Host Walltime Diff");
-                        graphs[id_prefix + "_host_walltime_offset_shift"].Draw("Host Walltime Offset Shift");
+                        graphs[id_prefix + "_host_walltime_diff"].Draw("Playback Delay (ms)");
+                        graphs[id_prefix + "_host_walltime_offset_shift"].Draw("Snapshot Interval (ms)");
                         graphs[id_prefix + "_rig_interpolation_step"].Draw("Rig Interpolation Step");
                         graphs[id_prefix + "_mov_interpolation_step"].Draw("MO Interpolation Step");
 

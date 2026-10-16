@@ -132,17 +132,6 @@ int Models::loadModel(const std::string& rel_path, char flags, const std::string
     return which_model;
 }
 
-// Select which model to draw
-void Models::drawModel(int which_model) {
-    _ASSERT(which_model != -1);
-    GetModel(which_model).Draw();
-}
-
-void Models::drawModelAltTexCoords(int which_model) {
-    _ASSERT(which_model != -1);
-    GetModel(which_model).DrawAltTexCoords();
-}
-
 // Return the radius of a model
 float Models::Radius(int which_model) {
     return GetModel(which_model).bounding_sphere_radius;

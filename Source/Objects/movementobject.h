@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: movementobject.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -35,6 +36,7 @@
 
 #include <Online/time_interpolator.h>
 #include <Online/online_datastructures.h>
+#include <Online/char_snapshot.h>
 
 #include <Asset/Asset/material.h>
 #include <Asset/Asset/actorfile.h>
@@ -165,11 +167,37 @@ class MovementObject : public Object {
     float reset_time;
 
     list<OnlineMessageRef> incoming_material_sound_events;
-    list<OnlineMessageRef> incoming_movement_object_frames;
     list<OnlineMessageRef> incoming_cut_lines;
-    bool disable_network_bone_interpolation = false;
-    TimeInterpolator network_time_interpolator;
-    float last_walltime_diff = 0.0f;
+
+    // Overgrowth Online ownership: another machine simulates this character
+    // (its player's, or the host for NPCs); we show the owner's stream
+    bool network_proxy = false;
+    CharSnapshot::Buffer net_buffer;
+    void ApplyNetworkPose(const CharSnapshot::Frame& pose);
+    void CaptureNetworkPose(CharSnapshot::Frame& out, bool with_morphs);
+    void CaptureNetworkVitals(CharSnapshot::Vitals& v);
+    void ApplyNetworkVitals(const CharSnapshot::Vitals& v);
+    // Overgrowth Online: become the character the owner switched to (no random colours)
+    void ApplyNetworkCharacter(const std::string& path);
+    std::string rig_character_path;  // the character file the current rig was built from
+    bool NetworkVitalsSupported();
+    void SetNetworkProxy(bool proxy);  // owned here or shown from the owner's stream
+    void ReconcileNetworkItems(const CharSnapshot::Vitals& v);
+    void NetworkDetachItem(int item_id) { ASDetachItem(item_id); }  // Overgrowth Online: the host settled a race
+    double net_drop_order_ms = -1e9;
+    bool net_playing_remote_event = false;  // a material sound from the owner's machine
+    void PlayNetworkMaterialEvent(const std::string& the_event, vec3 pos, float gain) {
+        net_playing_remote_event = true;
+        HandleMovementObjectMaterialEvent(the_event, pos, gain);
+        net_playing_remote_event = false;
+    }
+    uint32_t net_slots_src_ms = 0;  // owner time of the weapon slots last applied
+    // Overgrowth Online: a hit on this character asked by another machine (Online::ReceiveHitRequest)
+    int ResolveRemoteHit(const std::string& type, const std::string& attack_path, vec3 dir, vec3 pos, int attacker_id,
+                         float damage_mult, float knockback_mult) {
+        return ASWasHit(type, attack_path, dir, pos, attacker_id, damage_mult, knockback_mult);
+    }
+    int net_vitals_support = -1;  // -1 unchecked, 0 no (not a character script), 1 yes
 
     MovementObject();
     ~MovementObject() override;

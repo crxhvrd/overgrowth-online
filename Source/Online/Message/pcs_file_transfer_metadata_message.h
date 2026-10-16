@@ -29,9 +29,10 @@ class PCSFileTransferMetadataMessage : public OnlineMessageBase {
    private:
     std::string map_name;
     std::string campaign_id;
+    bool preload;  // Overgrowth Online: sent as the host starts its own load (Online::ChangeLevel)
 
    public:
-    PCSFileTransferMetadataMessage(const std::string& map_name, const std::string& campaign_id);
+    PCSFileTransferMetadataMessage(const std::string& map_name, const std::string& campaign_id, bool preload = false);
 
     static binn* Serialize(void* object);
     static void Deserialize(void* object, binn* source);

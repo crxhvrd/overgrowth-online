@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: pong.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -28,9 +29,11 @@ namespace OnlineMessages {
 class Pong : public OnlineMessageBase {
    public:
     uint32_t ping_id;
+    double ping_send_ms;  // t0, echoed
+    double reply_ms;      // t1, the responder's OnlineClockMs()
 
    public:
-    Pong(uint32_t ping_id);
+    Pong(uint32_t ping_id, double ping_send_ms = 0.0, double reply_ms = 0.0);
 
     static binn* Serialize(void* object);
     static void Deserialize(void* object, binn* source);

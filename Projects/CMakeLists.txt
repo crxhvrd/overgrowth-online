@@ -55,6 +55,7 @@ OPTION(OPEN_CONSOLE "Open a console on startup on windows" On)
 OPTION(FORCE_OPENGL_ERROR_CHECKING "Force OpenGL error checking in Release" Off)
 OPTION(DEPLOY "Set the codebase to compile for Deploy, this means compiling for final release to end-user, in practice, by setting the _DEPLOY define it activates a working directory change on start to force it to be the path of the binary. It also impacts some error messages. This is automatically turned on if BUILD_SERVER is On" Off)
 OPTION(ENABLE_STEAMWORKS "Build with Steamworks Support" Off)
+OPTION(ENABLE_GAMENETWORKINGSOCKETS "Build with Valve GameNetworkingSockets (UDP) as the network framework (Overhaul Online)" On)
 SET(AUX_DATA "" CACHE PATH "Auxiliary Data sourced path, used when using a Data folder from an additional path, like an already installed version of the game")
 
 #Assume we want steamworks support if we're building on the build server, until we start supporting more targets
@@ -63,8 +64,12 @@ IF(BUILD_SERVER)
 ENDIF()
 
 IF(ENABLE_STEAMWORKS)
+    # Overhaul Online: our framework (Network/GNS) on Steam's sockets
     ADD_DEFINITIONS(-DENABLE_STEAMWORKS=1)
-    ADD_DEFINITIONS(-DUSE_STEAM_NETWORK_FRAMEWORK)
+    ADD_DEFINITIONS(-DUSE_GNS_NETWORK_FRAMEWORK)
+    ADD_DEFINITIONS(-DOVERHAUL_STEAM_SOCKETS)
+ELSEIF(ENABLE_GAMENETWORKINGSOCKETS)
+    ADD_DEFINITIONS(-DUSE_GNS_NETWORK_FRAMEWORK)
 ELSE()
     ADD_DEFINITIONS(-DUSE_BASIC_NETWORK_FRAMEWORK)
 ENDIF()
@@ -180,7 +185,7 @@ MESSAGE(STATUS ${out})
 SET(ARCH_OUT "ix86")
 SET(OS_OUT "Unknown")
 
-SET(OVERGROWTH_OUTPUT_NAME "Overgrowth")
+SET(OVERGROWTH_OUTPUT_NAME "OvergrowthOnline" CACHE STRING "Name of the game executable (Overgrowth Online fork)")
 SET(OVERGROWTH_WORKER_OUTPUT_NAME "OvergrowthWorker")
 
 IF(APPLE)
@@ -428,6 +433,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DOG_DEBUG
 SET(SRCDIR "${CMAKE_SOURCE_DIR}/../Source")
 SET(LIBDIR "${CMAKE_SOURCE_DIR}/../Libraries")
 SET(PLIBDIR "${CMAKE_SOURCE_DIR}/../Proprietary/Libraries")
+SET(STEAMWORKS_SDK "${CMAKE_SOURCE_DIR}/../Proprietary/steamworks/sdk" CACHE PATH "The Steamworks SDK (the zip's sdk folder)")
 SET(DATADIR "${CMAKE_SOURCE_DIR}/../Data")
 
 FILE(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/Data)
@@ -505,7 +511,7 @@ IF(LINUX)
 
     IF(ENABLE_STEAMWORKS)
         LINK_DIRECTORIES( 
-            "${PLIBDIR}/steamworks_1.51/sdk/redistributable_bin/${LINUX_LIB_DIR}"
+            "${STEAMWORKS_SDK}/redistributable_bin/${LINUX_LIB_DIR}"
         )
     ENDIF()
 ENDIF()
@@ -548,7 +554,7 @@ IF(APPLE)
 
     IF(ENABLE_STEAMWORKS)
         LINK_DIRECTORIES(
-            ${PLIBDIR}/steamworks_1.51/sdk/redistributable_bin/osx
+            ${STEAMWORKS_SDK}/redistributable_bin/osx
         )
     ENDIF()
 
@@ -618,7 +624,7 @@ INCLUDE_DIRECTORIES(
 
 IF(ENABLE_STEAMWORKS)
     INCLUDE_DIRECTORIES(
-        ${PLIBDIR}/steamworks_1.51/sdk/public/steam
+        ${STEAMWORKS_SDK}/public/steam
     )
 ELSEIF(ENABLE_GAMENETWORKINGSOCKETS)
     INCLUDE_DIRECTORIES(
@@ -1195,11 +1201,13 @@ IF(BUILD_OVERGROWTH)
     #In the future, this should only be activated if we're building for the steam target
     target_add_grouped_source(Overgrowth Network/Steam)
     target_add_grouped_source(Overgrowth Network/Basic)
+    target_add_grouped_source(Overgrowth Network/GNS)
     target_add_grouped_source(Overgrowth Utility)
     target_add_grouped_source(Overgrowth Wrappers)
     target_add_grouped_source(Overgrowth Timing)
     target_add_grouped_source(Overgrowth Steam)
     target_add_grouped_source(Overgrowth Online)
+    target_add_grouped_source(Overgrowth Testing)
     target_add_grouped_source(Overgrowth Online/Message)
 
     # TODO: Make another target called "DeployRelease" that doesn't include UNIT_TESTS
@@ -1237,16 +1245,14 @@ IF(BUILD_OVERGROWTH)
 
         IF(ENABLE_STEAMWORKS)
                 if(64BIT_WINDOWS)
-                    CopyDLL("${PLIBDIR}/steamworks_1.51/sdk/redistributable_bin/win64/steam_api64.dll" "")
+                    CopyDLL("${STEAMWORKS_SDK}/redistributable_bin/win64/steam_api64.dll" "")
                 else()
-                    CopyDLL("${PLIBDIR}/steamworks_1.51/sdk/redistributable_bin/${WINDOWS_LIB_DIR}/steam_api.dll" "")
+                    CopyDLL("${STEAMWORKS_SDK}/redistributable_bin/${WINDOWS_LIB_DIR}/steam_api.dll" "")
                 endif()
             ELSEIF(ENABLE_GAMENETWORKINGSOCKETS)
                 CopyDLL("${LIBDIR}/GameNetworkingSockets-1.4.0/win64_bin/GameNetworkingSockets.dll" "")
                 CopyDLL("${LIBDIR}/protobuf/win64_bin/libprotobuf.dll" "")
-                CopyDLL("${LIBDIR}/protobuf/win64_bin/libprotoc.dll" "")
-                CopyDLL("${LIBDIR}/openssl/win64_bin/libssl-1_1-x64" "")
-                CopyDLL("${LIBDIR}/openssl/win64_bin/libcrypto-1_1-x64" "")
+                CopyDLL("${LIBDIR}/openssl/win64_bin/libcrypto-1_1-x64.dll" "")
         ENDIF()
 
         CopyDLL("${LIBDIR}/NvToolsExt/bin/Win32/nvToolsExt32_1.dll" "")
@@ -1379,9 +1385,9 @@ IF(BUILD_OVERGROWTH)
 
     IF(WIN32)
         IF(64BIT_WINDOWS)
-            SET(STEAM_LIB_PATH "${PLIBDIR}/steamworks_1.51/sdk/redistributable_bin/win64/steam_api64.lib")
+            SET(STEAM_LIB_PATH "${STEAMWORKS_SDK}/redistributable_bin/win64/steam_api64.lib")
         ELSE()
-            SET(STEAM_LIB_PATH "${PLIBDIR}/steamworks_1.51/sdk/redistributable_bin/${WINDOWS_LIB_DIR}/steam_api.lib")
+            SET(STEAM_LIB_PATH "${STEAMWORKS_SDK}/redistributable_bin/${WINDOWS_LIB_DIR}/steam_api.lib")
         ENDIF()
         TARGET_LINK_LIBRARIES(Overgrowth
             openal32
@@ -1403,10 +1409,6 @@ IF(BUILD_OVERGROWTH)
 	ELSEIF(ENABLE_GAMENETWORKINGSOCKETS)
 	    TARGET_LINK_LIBRARIES(Overgrowth
 		${LIBDIR}/GameNetworkingSockets-1.4.0/win64_lib/GameNetworkingSockets.lib
-		${LIBDIR}/protobuf/win64_lib/libprotobuf.lib
-		${LIBDIR}/protobuf/win64_lib/libprotoc.lib
-		${LIBDIR}/openssl/win64_lib/libssl.lib
-		${LIBDIR}/openssl/win64_lib/libcrypto.lib
             )
 	ENDIF()
     ENDIF()
@@ -1511,7 +1513,7 @@ IF(APPLE)
     CopyFileToBundle("${CMAKE_SOURCE_DIR}/steam_appid.txt" "MacOS/steam_appid.txt")
 
     IF(ENABLE_STEAMWORKS)
-        CopyFileToBundle("${PLIBDIR}/steamworks_1.51/sdk/redistributable_bin/osx/libsteam_api.dylib" "MacOS/libsteam_api.dylib")
+        CopyFileToBundle("${STEAMWORKS_SDK}/redistributable_bin/osx/libsteam_api.dylib" "MacOS/libsteam_api.dylib")
     ENDIF()
 
     #CopyFileToBundle("${PLIBDIR}/Telemetry2SDKMac_20P3/redist/libTelemetryMacX86.dylib" "MacOS/libTelemetryMacX86.dylib")

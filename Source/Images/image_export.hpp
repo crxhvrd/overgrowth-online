@@ -43,6 +43,9 @@ struct CubemapMipmaps {
 void SaveJPEG(const char *abs_path, unsigned char *data, unsigned long width, unsigned long height);
 void SavePNG(const char *file_path, unsigned char *data, unsigned long width, unsigned long height, unsigned short levels = 0);
 void SavePNGTransparent(const char *file_path, unsigned char *data, unsigned long width, unsigned long height, unsigned short levels = 0);
+// Overgrowth Online: a gameplay screenshot (packed BGR, rows bottom-up, as glReadPixels
+// gives it) as a lossless PNG, upright and RGB (screenshot comparisons)
+void SaveScreenshotPNG(const char *file_path, const unsigned char *bgr, unsigned long width, unsigned long height);
 void SavePNGofGrayscaleFloats(const char *file_path, std::vector<float> &data, unsigned long width, unsigned long height);
 std::string FindEmptySequentialFile(const char *filename, const char *suffix);
 void ScaleImageUp(const unsigned char *data, int levels, unsigned long *width, unsigned long *height, std::vector<unsigned char> *new_data);

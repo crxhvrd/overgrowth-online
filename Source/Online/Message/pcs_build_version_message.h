@@ -28,9 +28,10 @@ namespace OnlineMessages {
 class PCSBuildVersionMessage : public OnlineMessageBase {
    public:
     int32_t build_id;
+    std::string oo_version;  // Overgrowth Online: the package's version ("": an older client)
 
    public:
-    PCSBuildVersionMessage(int32_t build_id);
+    PCSBuildVersionMessage(int32_t build_id, const std::string& oo_version = "");
 
     static binn* Serialize(void* object);
     static void Deserialize(void* object, binn* l);

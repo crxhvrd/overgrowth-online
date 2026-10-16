@@ -22,8 +22,15 @@
 //
 //-----------------------------------------------------------------------------
 
+// Our own character: online every player's is "controlled", ours is not "remote"
 int GetPlayerCharacterID() {
     int num = GetNumCharacters();
+    for(int i=0; i<num; ++i){
+        MovementObject@ char = ReadCharacter(i);
+        if(char.controlled && !char.remote){
+            return i;
+        }
+    }
     for(int i=0; i<num; ++i){
         MovementObject@ char = ReadCharacter(i);
         if(char.controlled){
@@ -31,6 +38,22 @@ int GetPlayerCharacterID() {
         }
     }
     return -1;
+}
+
+// Every player's character is down (co-op: the level stops only then)
+bool AllPlayersDown() {
+    int num = GetNumCharacters();
+    bool any = false;
+    for(int i=0; i<num; ++i){
+        MovementObject@ char = ReadCharacter(i);
+        if(char.controlled){
+            any = true;
+            if(char.GetIntVar("knocked_out") == _awake){
+                return false;
+            }
+        }
+    }
+    return any;
 }
 
 array<int> GetControlledCharacterIDs() {

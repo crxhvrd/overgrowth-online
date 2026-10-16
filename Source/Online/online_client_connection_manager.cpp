@@ -84,6 +84,7 @@ void ClientConnectionManager::ResetConnections() {
 void ClientConnectionManager::ApplyPackage(const PeerID peer_id, PCSBuildVersionMessage* build_version) {
     connection_states[peer_id].actor.received_version = true;
     connection_states[peer_id].actor.build_id = build_version->build_id;
+    connection_states[peer_id].actor.oo_version = build_version->oo_version;
 }
 
 void ClientConnectionManager::ApplyPackage(const PeerID peer_id, PCSLoadingCompletedMessage* loading_completed) {

@@ -148,7 +148,7 @@ class Situation {
         for(uint i=0; i<known_chars.size(); ++i){
             if (ObjectExists(known_chars[i].id)) {
                 vec3 char_pos = ReadCharacterID(known_chars[i].id).position;
-                known_chars[i].interest = 1.0f/ distance(this_mo.position, char_pos);
+                known_chars[i].interest = 1.0f / max(0.01f, distance(this_mo.position, char_pos));  // (two characters on one spot)
                 known_chars[i].interest = max(0.0f,min(1.0f,known_chars[i].interest));
             }
         }

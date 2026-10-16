@@ -39,6 +39,7 @@ class Steamworks {
 
     int poll_counter;
     const static int poll_freq;
+    int launch_lobby_frames = 0;  // Overgrowth Online: menu frames before joining the start lobby
 
     friend class SteamworksUGCItem;
     SteamworksUGC* ugc;

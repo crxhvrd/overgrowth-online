@@ -119,7 +119,7 @@ string skull_faded = "Textures/ui/menus/main/no_difficulty.png";
 string skull_filled = "Textures/ui/menus/main/expert_difficulty.png";
 
 string play_icon = "Textures/ui/menus/main/icon-rabbit.png";
-string online_icon = "Textures/ui/menus/main/icon-online.png";
+string online_icon = "Textures/ui/menus/main/icon-steam.png";  // (icon-online.png is not in the 1.4 data)
 string forward_chevron = "Textures/ui/menus/main/icon-continue.png";
 string close_icon = "Textures/ui/menus/main/icon-x.png";
 //string lock_icon = "Textures/ui/menus/main/icon-lock.png";

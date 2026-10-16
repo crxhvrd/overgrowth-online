@@ -112,9 +112,6 @@ class Model {
     int lineCheck(const vec3 &p1, const vec3 &p2, vec3 *p, vec3 *normal = 0, bool backface = true) const;
     void LoadObj(const std::string &name, char flags = _MDL_CENTER, const std::string &alt_name = "", const PathFlags searchPaths = kAnyPath);
     void RemoveDoubledTriangles();
-    void Draw();
-    void DrawAltTexCoords();
-    void DrawToTextureCoords();
     void SmoothNormals();
     void SmoothTangents();
     void calcFaceNormals();
@@ -140,9 +137,6 @@ class Model {
 
     virtual ~Model();
 
-    void StartPreset();
-    void EndPreset();
-    void DrawPreset();
     void CopyFacesFromModel(const Model &source_model, const std::vector<int> &faces);
     void LoadObjMorph(const std::string &name, const std::string &base_name);
     void CopyVertCollapse(const Model &source_model);

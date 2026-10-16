@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: movementobject.cpp
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -194,9 +195,9 @@ void MovementObject::PreDrawFrame(float curr_game_time) {
         as_context->CallScriptFunction(as_funcs.pre_draw_frame, &args);
     }
 
-    // Update attached objects
+    // Update attached objects (Overgrowth Online: on clients too, RiggedObject places them)
 
-    if (!online->IsClient()) {
+    {
         int num_attached_env_objects = rigged_object_->children.size();
         for (int i = 0; i < num_attached_env_objects; ++i) {
             AttachedEnvObject& attached_env_object = rigged_object_->children[i];
@@ -448,9 +449,271 @@ void MovementObject::PreDrawCamera(float curr_game_time) {
 
 // Interpolate the network data.
 void MovementObject::ClientBeforeDraw() {
-    Online* online = Online::Instance();
-    if (online->IsClient()) {
+    if (network_proxy) {
         rigged_object_->ClientBeforeDraw();
+    }
+}
+
+// Overgrowth Online: show a pose from the owner's stream. The physics bones and
+// the collision sphere follow it too: scripts here (AI sight, hits) look at them.
+void MovementObject::ApplyNetworkPose(const CharSnapshot::Frame& pose) {
+    position = pose.position;
+    velocity = pose.velocity;
+    if (length_squared(pose.facing) > 1e-6f) {
+        facing = normalize(pose.facing);
+    }
+
+    std::vector<PhysicsBone>& bones = rigged_object_->skeleton_.physics_bones;
+    if (pose.bones.size() == bones.size()) {
+        rigged_object_->network_display_bone_matrices.resize(bones.size());
+
+        for (size_t i = 0; i < bones.size(); ++i) {
+            const CharSnapshot::Bone& b = pose.bones[i];
+            rigged_object_->network_display_bone_matrices[i] = rigged_object_->NetworkBoneMatrix((int)i, b.rotation, b.translation, b.scale);
+            if (i < rigged_object_->display_bone_transforms.size()) {  // gear hangs from these (backpacks)
+                rigged_object_->display_bone_transforms[i] = rigged_object_->NetworkAttachMatrix((int)i, b.rotation, b.translation);
+            }
+            BulletObject* b_o = bones[i].bullet_object;
+
+            if (b_o) {
+                mat4 world = Mat4FromQuaternion(b.rotation);
+                world.SetTranslationPart(b.translation + world.GetRotatedvec3(b_o->com_offset));
+                b_o->SetTransform(world);
+                b_o->UpdateTransform();
+            }
+        }
+
+        rigged_object_->UpdateCollisionObjects();
+        rigged_object_->NetworkUpdateAttachedItems();  // held and stuck weapons follow the streamed bones
+    }
+
+    char_sphere->SetPosition(position);
+    char_sphere->body->setInterpolationWorldTransform(char_sphere->body->getWorldTransform());
+    char_sphere->UpdateTransform();
+}
+
+// Overgrowth Online: from now on run here (false) or show the owner's stream
+// (true). Running it again, its script brings the body in line with the game
+// state that was streamed into it (OnNetworkResume: a ragdoll stays a ragdoll).
+void MovementObject::SetNetworkProxy(bool proxy) {
+    if (proxy == network_proxy) {
+        return;
+    }
+
+    network_proxy = proxy;
+    rigged_object_->network_proxy = proxy;
+    net_buffer.Clear();
+
+    if (!proxy) {
+        if (HasFunction("void OnNetworkResume()")) {
+            Execute("OnNetworkResume();");
+        } else if (NetworkVitalsSupported() && HasFunction("void Ragdoll(int type)")) {
+            // aschar.as (1.4 and later): a ragdoll stays a ragdoll
+            as_context->Execute(
+                "if(state == _ragdoll_state || knocked_out != _awake) { state = _movement_state; "
+                "Ragdoll(knocked_out != _awake ? _RGDL_LIMP : _RGDL_FALL); }");
+        }
+    }
+}
+
+void MovementObject::ApplyNetworkCharacter(const std::string& path) {
+    if (path == rig_character_path) {
+        return;
+    }
+    LOGI << "Overgrowth Online: character " << GetID() << " is now " << path << std::endl;
+    if (HasFunction("void CheckSpecies()") && HasFunction("void CacheSkeletonInfo()") && HasFunction("void ResetLayers()")) {
+        // aschar.as SwitchCharacter without dropping weapons (the stream says
+        // what it holds) or random colours (the owner's come with its palette)
+        as_context->Execute("this_mo.char_path = \"" + path + "\"; character_getter.Load(this_mo.char_path); CheckSpecies(); "
+                            "this_mo.RecreateRiggedObject(this_mo.char_path); ResetLayers(); CacheSkeletonInfo();");
+    } else {
+        RecreateRiggedObject(path);
+    }
+}
+
+// Overgrowth Online: the script variables that carry a character's game state
+bool MovementObject::NetworkVitalsSupported() {
+    if (net_vitals_support == -1) {
+        static const char* kVars[] = {"knocked_out", "state", "on_ground", "startled", "active_blocking", "ko_shield",
+                                      "temp_health", "permanent_health", "blood_health", "block_health",
+                                      "duck_amount", "target_id", "tethered", "tether_id", "block_stunned",
+                                      "block_stunned_by_id", "weapon_slots", "primary_weapon_slot", "attacked_by_id"};
+        net_vitals_support = 1;
+        for (const char* v : kVars) {
+            if (!ASHasVar(v)) {
+                net_vitals_support = 0;
+                break;
+            }
+        }
+    }
+    return net_vitals_support == 1;
+}
+
+void MovementObject::CaptureNetworkVitals(CharSnapshot::Vitals& v) {
+    v.valid = NetworkVitalsSupported();
+    if (!v.valid) {
+        return;
+    }
+
+    Online* online = Online::Instance();
+    v.knocked_out = (uint8_t)ASGetIntVar("knocked_out");
+    v.state = (uint8_t)ASGetIntVar("state");
+    v.flags = (ASGetBoolVar("on_ground") ? CharSnapshot::kVitalOnGround : 0) |
+              (ASGetBoolVar("startled") ? CharSnapshot::kVitalStartled : 0) |
+              (ASGetBoolVar("active_blocking") ? CharSnapshot::kVitalBlocking : 0);
+    v.ko_shield = (uint8_t)std::max(0, std::min(255, ASGetIntVar("ko_shield")));
+    v.temp_health = ASGetFloatVar("temp_health");
+    v.permanent_health = ASGetFloatVar("permanent_health");
+    v.blood_health = ASGetFloatVar("blood_health");
+    v.block_health = ASGetFloatVar("block_health");
+    v.duck_amount = ASGetFloatVar("duck_amount");
+    int target = ASGetIntVar("target_id");
+    v.target_id = target == -1 ? -1 : online->GetOriginalID(target);
+    v.tethered = (uint8_t)ASGetIntVar("tethered");
+    int tether = ASGetIntVar("tether_id");
+    v.tether_id = tether == -1 ? -1 : online->GetOriginalID(tether);
+    v.block_stunned = ASGetFloatVar("block_stunned");
+    int stunner = ASGetIntVar("block_stunned_by_id");
+    v.block_stunned_by = stunner == -1 ? -1 : online->GetOriginalID(stunner);
+    int attacker = ASGetIntVar("attacked_by_id");
+    v.attacked_by = attacker == -1 ? -1 : online->GetOriginalID(attacker);
+    v.primary_slot = (uint8_t)ASGetIntVar("primary_weapon_slot");
+    for (int i = 0; i < 6; ++i) {
+        int item = ASGetArrayIntVar("weapon_slots", i);
+        v.slots[i] = item == -1 ? -1 : online->GetOriginalID(item);
+    }
+}
+
+// On a proxy: its own script stands still (aschar.as Update), so these are
+// what everyone here reads. A knockout raises the same level messages the
+// owner's script raised there (the HUD and level scripts listen for them).
+void MovementObject::ApplyNetworkVitals(const CharSnapshot::Vitals& v) {
+    if (!v.valid || !NetworkVitalsSupported()) {
+        return;
+    }
+
+    Online* online = Online::Instance();
+    int old_ko = ASGetIntVar("knocked_out");
+    // A hit shows here as a drop in health: when, for scripts that ask (the finisher camera)
+    if ((v.temp_health < ASGetFloatVar("temp_health") - 0.001f || v.blood_health < ASGetFloatVar("blood_health") - 0.001f) &&
+        ASHasVar("last_damaged_time") && ASHasVar("time")) {
+        ASSetFloatVar("last_damaged_time", ASGetFloatVar("time"));
+    }
+    ASSetIntVar("knocked_out", v.knocked_out);
+    ASSetIntVar("state", v.state);
+    ASSetBoolVar("on_ground", (v.flags & CharSnapshot::kVitalOnGround) != 0);
+    ASSetBoolVar("startled", (v.flags & CharSnapshot::kVitalStartled) != 0);
+    ASSetBoolVar("active_blocking", (v.flags & CharSnapshot::kVitalBlocking) != 0);
+    ASSetIntVar("ko_shield", v.ko_shield);
+    ASSetFloatVar("temp_health", v.temp_health);
+    ASSetFloatVar("permanent_health", v.permanent_health);
+    ASSetFloatVar("blood_health", v.blood_health);
+    ASSetFloatVar("block_health", v.block_health);
+    ASSetFloatVar("duck_amount", v.duck_amount);
+    ASSetIntVar("target_id", v.target_id == -1 ? -1 : online->GetObjectID(v.target_id));
+    ASSetIntVar("tethered", v.tethered);
+    ASSetIntVar("tether_id", v.tether_id == -1 ? -1 : online->GetObjectID(v.tether_id));
+    ASSetFloatVar("block_stunned", v.block_stunned);
+    ASSetIntVar("block_stunned_by_id", v.block_stunned_by == -1 ? -1 : online->GetObjectID(v.block_stunned_by));
+    ASSetIntVar("attacked_by_id", v.attacked_by == -1 ? -1 : online->GetObjectID(v.attacked_by));
+    // (weapon slots are applied on arrival, Online::ReceiveSnapshots: drops and
+    // throws must not wait for the playback delay)
+
+    const int kAwake = 0, kUnconscious = 1, kDead = 2;  // aschar.as
+    if (old_ko == kAwake && v.knocked_out != kAwake && scenegraph_ != nullptr && scenegraph_->level != nullptr) {
+        bool died = v.knocked_out == kDead || (v.knocked_out == kUnconscious && v.blood_health <= 0.0f);
+        scenegraph_->level->Message((died ? "character_died " : "character_knocked_out ") + std::to_string(GetID()));
+    }
+}
+
+// Overgrowth Online: a proxy holds what its owner says it holds. Slots 0-3 are
+// the hands and the sheaths (aschar.as weapon_slots); anything attached here
+// that the owner no longer lists is let go. The host settles races: an item
+// already in someone else's hand there is not taken, its claimant's machine
+// is told to drop it.
+void MovementObject::ReconcileNetworkItems(const CharSnapshot::Vitals& v) {
+    Online* online = Online::Instance();
+    int slots[6];
+
+    for (int i = 0; i < 6; ++i) {
+        slots[i] = v.slots[i] == -1 ? -1 : online->GetObjectID(v.slots[i]);
+        ASSetArrayIntVar("weapon_slots", i, slots[i]);
+    }
+    ASSetIntVar("primary_weapon_slot", v.primary_slot);
+
+    // Let go of what it no longer has (stuck weapons are another list)
+    std::vector<int> attached;
+    for (const AttachedItem& a : rigged_object_->attached_items.items) {
+        attached.push_back(a.item->GetID());
+    }
+    for (int id : attached) {
+        if (std::find(slots, slots + 6, id) == slots + 6) {
+            ASDetachItem(id);
+        }
+    }
+
+    // Take up what it has: hands (grip) and sheaths
+    for (int i = 0; i < 4; ++i) {
+        Object* o = slots[i] == -1 ? nullptr : scenegraph_->GetObjectFromID(slots[i]);
+        if (o == nullptr || o->GetType() != _item_object) {
+            continue;
+        }
+
+        ItemObject* item = static_cast<ItemObject*>(o);
+        bool grip = i < 2;
+        bool mirrored = (i == 0) || (i == 3);  // held left; sheathed right (aschar.as HandleEditorAttachment)
+        int holder = item->HeldByWhom();
+
+        if (holder == GetID() && item->state() == (grip ? ItemObject::kWielded : ItemObject::kSheathed)) {
+            continue;
+        }
+
+        if (holder == -1 && OnlineClockMs() - item->net_released_ms < 500.0) {
+            continue;  // just thrown or dropped: an older record still lists it
+        }
+
+        if (holder != -1 && holder != GetID()) {
+            // Someone here already holds it: the host's word decides
+            if (online->IsHosting() && OnlineClockMs() - net_drop_order_ms > 1000.0) {
+                net_drop_order_ms = OnlineClockMs();
+                online->SendItemDrop(GetID(), item->GetID());
+            }
+            continue;
+        }
+
+        AttachItemToSlot(item->GetID(), grip ? _at_grip : _at_sheathe, mirrored);
+    }
+}
+
+// Overgrowth Online: the pose we stream for a character we simulate
+void MovementObject::CaptureNetworkPose(CharSnapshot::Frame& out, bool with_morphs) {
+    out.id = Online::Instance()->GetOriginalID(GetID());
+    out.position = position;
+    out.velocity = velocity;
+    out.facing = GetFacing();
+
+    const std::vector<PhysicsBone>& physics = rigged_object_->skeleton_.physics_bones;
+    out.bones.resize(physics.size());
+    for (size_t i = 0; i < physics.size(); ++i) {
+        const BulletObject* b_o = physics[i].bullet_object;
+        CharSnapshot::Bone& bone = out.bones[i];
+        bone.present = b_o != nullptr;
+        bone.scale = physics[i].display_scale;
+        if (b_o != nullptr) {
+            bone.rotation = QuaternionFromMat4(b_o->transform.GetRotationPart());
+            bone.translation = b_o->transform.GetTranslationPart();
+        }
+    }
+
+    CaptureNetworkVitals(out.vitals);
+
+    const std::vector<MorphTarget>& morphs = rigged_object_->morph_targets;
+    out.has_morphs = with_morphs && !morphs.empty();
+    out.morphs.resize(out.has_morphs ? std::min(morphs.size(), (size_t)CharSnapshot::kMaxMorphs) : 0);
+    for (size_t i = 0; i < out.morphs.size(); ++i) {
+        out.morphs[i].index = (uint8_t)i;
+        out.morphs[i].disp_weight = morphs[i].disp_weight;
+        out.morphs[i].mod_weight = morphs[i].mod_weight;
     }
 }
 
@@ -613,7 +876,7 @@ void MovementObject::PlaySoundGroupVoice(std::string path, float delay) {
         return;
     }
 
-    if (online->IsHosting()) {
+    if (online->ShouldShareSound()) {
         online->Send<OnlineMessages::AudioPlaySoundGroupVoiceMessage>(path, GetID(), delay);
     }
     // CharacterRef c_ref = Characters::Instance()->ReturnRef(character_path);
@@ -873,6 +1136,21 @@ void MovementObject::Update(float timestep) {
     ThreadedSound* si = Engine::Instance()->GetSound();
     Online* online = Online::Instance();
 
+    // Overgrowth Online: who simulates this character? Its player's machine, or
+    // the host (NPCs, free avatars). Everyone else shows the owner's stream.
+    SetNetworkProxy(online->IsActive() && !online->IsLocalAvatar(GetID()));
+
+    // Overgrowth Online: sounds our characters' scripts play are shared
+    struct OwnedScope {
+        bool on;
+        explicit OwnedScope(bool on) : on(on) {
+            if (on) ++Online::Instance()->owned_script_depth;
+        }
+        ~OwnedScope() {
+            if (on) --Online::Instance()->owned_script_depth;
+        }
+    } owned_scope(online->IsActive() && !network_proxy);
+
     while (message_queue.empty() == false) {
         ReceiveMessage(message_queue.front());
         message_queue.pop();
@@ -936,7 +1214,18 @@ void MovementObject::Update(float timestep) {
     if (update_script_counter <= 0) {
         ASArglist args;
         args.Add(update_script_period);
-        {
+        // Overgrowth Online: scripts that frame "the players" (the shared camera of
+        // local two-player) skip the characters another machine runs
+        if (ASHasVar("online_remote") && ASGetBoolVar("online_remote") != network_proxy) {
+            ASSetBoolVar("online_remote", network_proxy);
+        }
+        if (network_proxy) {
+            // Overgrowth Online: its owner runs it; the engine keeps its game
+            // state here (ApplyNetworkVitals), only the script's clock moves
+            if (ASHasVar("time")) {
+                ASSetFloatVar("time", ASGetFloatVar("time") + timestep * update_script_period);
+            }
+        } else {
             PROFILER_ZONE(g_profiler_ctx, "Angelscript Update()");
 
             as_context->CallScriptFunction(as_funcs.update, &args);
@@ -946,51 +1235,17 @@ void MovementObject::Update(float timestep) {
         update_script_counter += update_script_period;
     }
 
-    // Get data from host, if we are a client and won't generate it locally.
-    if (online->IsClient()) {
-        list<OnlineMessageRef>& frames = incoming_movement_object_frames;
-
-        while (frames.size() > 1) {
-            network_time_interpolator.timestamps.Clear();
-            for (const OnlineMessageRef& frame : frames) {
-                // TODO: Optimized this multiple GetData() call into a single grouped GetDatas() to reduce lock count to one
-                MovementObjectUpdate* frame_data = static_cast<MovementObjectUpdate*>(frame.GetData());
-                network_time_interpolator.timestamps.PushValue(frame_data->timestamp);
-            }
-            int interpolator_code = network_time_interpolator.Update();
-
-            if (interpolator_code == 1) {
-                continue;
-            } else if (interpolator_code == 2) {
-                last_walltime_diff = network_time_interpolator.timestamps.from_begin(1) - network_time_interpolator.timestamps.from_begin(0);
-                frames.pop_front();
-                continue;
-            } else if (interpolator_code == 3) {
-                break;
-            }
-
-            MovementObjectUpdate* current_frame = static_cast<MovementObjectUpdate*>(frames.begin()->GetData());
-            MovementObjectUpdate* next_frame = static_cast<MovementObjectUpdate*>(std::next(frames.begin())->GetData());
-
-            float interpolation_step = network_time_interpolator.interpolation_step;
-
-            if (disable_network_bone_interpolation) {
-                interpolation_step = 0.0f;
-            }
-
-            position = lerp(current_frame->position, next_frame->position, interpolation_step);
-            velocity = lerp(current_frame->velocity, next_frame->velocity, interpolation_step);
-            facing = lerp(current_frame->facing, next_frame->facing, interpolation_step);
-
-            size_t bone_count = rigged_object_->skeleton_.physics_bones.size();
-            rigged_object_->network_display_bone_matrices.resize(bone_count);
-            for (size_t i = 0; i < bone_count; i++) {
-                rigged_object_->network_display_bone_matrices[i] = RiggedObject::InterpolateBetweenTwoBones(current_frame->rigged_body_frame.bones[i], next_frame->rigged_body_frame.bones[i], interpolation_step);
-            }
-
-            break;
+    // Overgrowth Online: show the owner's stream (another player's character,
+    // or on clients the host's NPCs)
+    if (network_proxy) {
+        CharSnapshot::Frame pose;
+        if (net_buffer.Sample(OnlineClockMs(), pose)) {
+            ApplyNetworkPose(pose);
+            ApplyNetworkVitals(pose.vitals);
         }
+    }
 
+    if (online->IsClient()) {
         for (auto& it : angelscript_update) {
             as_context->CallMPCallBack(it.first, it.second);
         }
@@ -1029,10 +1284,14 @@ void MovementObject::Update(float timestep) {
             incoming_material_sound_events.pop_front();
         }
 
+    }
+
+    // Overgrowth Online: only the owner simulates a character; everyone else
+    // shows its stream (above) and keeps its blood running
+    if (network_proxy) {
         if (game_timer.game_time < rigged_object_->blood_surface.sleep_time) {
             rigged_object_->blood_surface.Update(Engine::Instance()->GetSceneGraph(), timestep);
         }
-
     } else {
         ActiveCameras::Set(0);
 
@@ -1226,7 +1485,7 @@ void MovementObject::SetCharAnimation(const std::string& path, float fade_speed,
 }
 
 void MovementObject::ASSetCharAnimation(std::string path, float fade_speed, char flags) {
-    if (Online::Instance()->IsClient())
+    if (network_proxy)  // Overgrowth Online: its owner animates it
         return;
 
     SetCharAnimation(path, fade_speed, flags);
@@ -1288,7 +1547,9 @@ void MovementObject::HandleMovementObjectMaterialEvent(std::string the_event, ve
         return;
     }
 
-    if (online->IsHosting()) {
+    // Overgrowth Online: the machine running the character shares its footsteps
+    // and the like (not when playing one that came from there)
+    if (online->IsActive() && !network_proxy && !net_playing_remote_event) {
         online->Send<OnlineMessages::MaterialSoundEvent>(GetID(), the_event, event_pos, gain);
     }
 
@@ -1375,6 +1636,19 @@ static void asMaterialParticle(MovementObject* mo, const std::string& type, cons
 }
 
 int MovementObject::ASWasHit(std::string type, std::string attack_path, vec3 dir, vec3 pos, int attacker_id, float attack_damage_mult, float attack_knockback_mult) {
+    // Overgrowth Online: another machine runs this character and a script of a
+    // character ours is hitting it: its owner decides (a grab takes it over)
+    Online* online = Online::Instance();
+    if (network_proxy && online->IsActive() && online->owned_script_depth > 0) {
+        if (type == "grabbed") {
+            if (!online->TakeOver(GetID(), 5.0f)) {
+                return 0;  // _miss
+            }
+        } else {
+            return online->NetworkWasHit(this, type, attack_path, dir, pos, attacker_id, attack_damage_mult, attack_knockback_mult);
+        }
+    }
+
     ASArglist args;
     args.AddObject(&type);
     args.AddObject(&attack_path);
@@ -1398,8 +1672,19 @@ void MovementObject::ASWasBlocked() {
 void MovementObject::CreateRiggedObject() {
     OGPalette old_palette = palette;
     // for(int i=0; i<100; ++i){
+    // Overgrowth Online: the machine that runs it tells the others it became
+    // another character (aschar.as SwitchCharacter sets char_path first, so
+    // compare with the rig's)
+    Online* online = Online::Instance();
+    if (!network_proxy && !rig_character_path.empty() && rig_character_path != character_path &&
+        (online->IsHosting() || online->IsLocalAvatar(GetID()))) {
+        online->SendAvatarCharacter(GetID(), character_path);
+    }
+    rig_character_path = character_path;
+
     rigged_object_.reset(new RiggedObject());
     rigged_object_->char_id = GetID();
+    rigged_object_->network_proxy = network_proxy;  // Overgrowth Online: a recreated rig (new scale) stays a proxy
     palette.clear();
     rigged_object_->SetCharacterScriptGetter(character_script_getter);
     if (GetScriptParams()->HasParam("Character Scale")) {
@@ -1433,6 +1718,7 @@ void MovementObject::CreateRiggedObject() {
 }
 
 void MovementObject::RecreateRiggedObject(std::string _char_path) {
+    // Overgrowth Online: the machine that runs it tells the others it changed character
     character_path = _char_path;
     CreateRiggedObject();
     update_script_period = (current_control_script_path == scenegraph_->level->GetPCScript(this)) ? 1 : 4;
@@ -1559,6 +1845,7 @@ void DefineMovementObjectTypePublic(ASContext* as_context) {
     as_context->RegisterObjectProperty("MovementObject", "string char_path", asOFFSET(MovementObject, character_path));
     as_context->RegisterObjectProperty("MovementObject", "bool controlled", asOFFSET(MovementObject, controlled));
     as_context->RegisterObjectProperty("MovementObject", "bool remote", asOFFSET(MovementObject, remote));
+    as_context->RegisterObjectProperty("MovementObject", "bool network_proxy", asOFFSET(MovementObject, network_proxy));  // Overgrowth Online
     as_context->RegisterObjectProperty("MovementObject", "bool is_player", asOFFSET(MovementObject, is_player));
     as_context->RegisterObjectProperty("MovementObject", "bool static_char", asOFFSET(MovementObject, static_char));
     as_context->RegisterObjectProperty("MovementObject", "int controller_id", asOFFSET(MovementObject, controller_id));
@@ -4608,6 +4895,12 @@ void MovementObject::HitByItem(int id, const vec3& point, const std::string& mat
 }
 
 void MovementObject::Execute(std::string string) {
+    // Overgrowth Online: a choke or drag grabs a character another machine runs:
+    // it plays out here, so take the character for it first
+    Online* online = Online::Instance();
+    if (network_proxy && online->IsActive() && online->owned_script_depth > 0 && string.find("SetTethered(") != std::string::npos) {
+        online->TakeOver(GetID(), 60.0f);
+    }
     as_context->Execute(string);
 }
 

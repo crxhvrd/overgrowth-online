@@ -24,6 +24,7 @@
 #include "steamworks_matchmaking.h"
 
 #include <Online/online.h>
+#include <Main/engine.h>
 #include <Internal/config.h>
 #include <Logging/logdata.h>
 #include <Steam/steamworks_util.h>
@@ -33,6 +34,7 @@
 #endif
 
 #include <algorithm>
+#include <chrono>
 
 static const char *LEVEL_PATH = "levelpath";
 
@@ -100,17 +102,138 @@ SteamworksMatchmaking::~SteamworksMatchmaking() {
     }
 }
 
-HSteamListenSocket SteamworksMatchmaking::ActivateGameOverlayInviteDialog() {
-    LOGI << "SteamworksMatchmaking::ActivateGameOverlayInviteDialog()" << std::endl;
+void SteamworksMatchmaking::InviteFriends() {
+    OpenToFriends(true);
+}
 
-    SteamMatchmaking()->CreateLobby(k_ELobbyTypePrivate, 10);
+void SteamworksMatchmaking::OpenToFriends(bool overlay) {
+    if (!lobbies.empty()) {
+        if (overlay) {
+            OpenInviteDialog();
+        }
+    } else if (creating) {
+        overlay_on_enter = overlay_on_enter || overlay;
+    } else {
+        // Friends only: an invite works, and so does "Join Game" in the friends list
+        LOGI << "Steam: creating our lobby" << std::endl;
+        creating = true;
+        overlay_on_enter = overlay;
+        SteamMatchmaking()->CreateLobby(k_ELobbyTypeFriendsOnly, 8);
+    }
+}
 
-    ISteamNetworkingSockets *isns = SteamNetworkingSockets();
-    assert(isns);
+void SteamworksMatchmaking::SetHostPresence(const std::string &game, int players, const std::string &mods) {
+    ISteamFriends *friends = SteamFriends();
+    std::string count = std::to_string(players);
 
-    HSteamListenSocket listen = isns->CreateListenSocketP2P(0, 0, nullptr);
+    if (friends == nullptr || lobbies.empty()) {
+        return;
+    }
+    if (game != presence_game) {
+        presence_game = game;
+        friends->SetRichPresence("oh_game", game.c_str());
+    }
+    if (count != presence_players) {
+        presence_players = count;
+        friends->SetRichPresence("oh_players", count.c_str());
+    }
+    if (mods != presence_mods) {
+        presence_mods = mods;
+        friends->SetRichPresence("oh_mods", mods.c_str());
+    }
+}
 
-    return listen;
+// (a field of a FriendGames line: no tabs or line breaks)
+static std::string FriendField(const char *text) {
+    std::string field = text != nullptr ? text : "";
+    for (char &c : field) {
+        if (c == '\t' || c == '\n' || c == '\r') {
+            c = ' ';
+        }
+    }
+    return field;
+}
+
+std::string SteamworksMatchmaking::FriendGames(const std::string &mods) {
+    ISteamFriends *friends = SteamFriends();
+    std::string rows;
+
+    if (friends == nullptr || SteamUtils() == nullptr) {
+        return rows;
+    }
+
+    // Steam keeps our friends' presence; ask for it afresh now and then
+    uint64_t now = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::steady_clock::now().time_since_epoch())
+                       .count();
+    bool request = now - last_presence_request_ms > 5000;
+    if (request) {
+        last_presence_request_ms = now;
+    }
+
+    const AppId_t app = SteamUtils()->GetAppID();
+    const int count = friends->GetFriendCount(k_EFriendFlagImmediate);
+
+    for (int i = 0; i < count; ++i) {
+        CSteamID id = friends->GetFriendByIndex(i, k_EFriendFlagImmediate);
+        FriendGameInfo_t game;
+
+        if (!friends->GetFriendGamePlayed(id, &game) || game.m_gameID.AppID() != app) {
+            continue;
+        }
+        if (request) {
+            friends->RequestFriendRichPresence(id);
+        }
+
+        std::string connect = FriendField(friends->GetFriendRichPresence(id, "connect"));
+        std::string status = FriendField(friends->GetFriendRichPresence(id, "status"));
+        std::string their_mods = FriendField(friends->GetFriendRichPresence(id, "oh_mods"));
+        std::string state = connect.find("+connect_lobby ") != std::string::npos ? "host"
+                            : status.find(" Online") != std::string::npos ? "playing"  // (Overgrowth Online; Overgrowth Online before)
+                                                                                  : "game";
+        std::string match = their_mods.empty() ? "" : their_mods == mods ? "same" : "other";
+
+        rows += std::to_string(id.ConvertToUint64()) + "\t" + FriendField(GetSteamNickname(id).c_str()) + "\t" + state + "\t" +
+                FriendField(friends->GetFriendRichPresence(id, "oh_game")) + "\t" +
+                FriendField(friends->GetFriendRichPresence(id, "oh_players")) + "\t" + match + "\n";
+    }
+
+    return rows;
+}
+
+bool SteamworksMatchmaking::JoinFriend(const std::string &steam_id) {
+    ISteamFriends *friends = SteamFriends();
+    const std::string key = "+connect_lobby ";
+
+    if (friends == nullptr) {
+        return false;
+    }
+
+    CSteamID id((uint64)strtoull(steam_id.c_str(), nullptr, 10));
+    std::string connect = FriendField(friends->GetFriendRichPresence(id, "connect"));
+    size_t at = connect.find(key);
+
+    LOGI << "Steam: joining friend " << steam_id << " (" << connect << ")" << std::endl;
+    if (at == std::string::npos) {
+        return false;
+    }
+    JoinLobby(connect.substr(at + key.size()));
+    return true;
+}
+
+void SteamworksMatchmaking::LeaveAll() {
+    for (const CSteamID &lobby : lobbies) {
+        SteamMatchmaking()->LeaveLobby(lobby);
+    }
+    lobbies.clear();
+    creating = false;
+    overlay_on_enter = false;
+    presence_game.clear();
+    presence_players.clear();
+    presence_mods.clear();
+    if (SteamFriends() != nullptr) {
+        SteamFriends()->ClearRichPresence();
+    }
 }
 
 void SteamworksMatchmaking::OpenInviteDialog() {
@@ -128,8 +251,8 @@ void SteamworksMatchmaking::JoinLobby(const std::string &lobbyIDStr) {
     LOGI << "SteamworksMatchmaking::JoinLobby " << lobbyIDStr << std::endl;
 
     char *end = NULL;
-    // We presume uint64 to be the same as the unsigned long returned by strtoul
-    uint64 l = strtoul(lobbyIDStr.c_str(), &end, 10);
+    // (a lobby id is 64 bits: strtoul is 32 bits on Windows)
+    uint64 l = strtoull(lobbyIDStr.c_str(), &end, 10);
 
     CSteamID lobbyID(l);
 
@@ -146,12 +269,34 @@ void SteamworksMatchmaking::LeaveLobby(CSteamID lobbyID) {
     }
 }
 
+void SteamworksMatchmaking::OnLobbyCreated(LobbyCreated_t *data) {
+    assert(data);
+
+    if (data->m_eResult != k_EResultOK) {
+        // (the host tries again in a moment: Online::OpenToFriends)
+        LOGE << "Steam: couldn't create our lobby (result " << (int)data->m_eResult << ")" << std::endl;
+        creating = false;
+        overlay_on_enter = false;
+    }
+}
+
 void SteamworksMatchmaking::OnLobbyEnter(LobbyEnter_t *data) {
     Online *online = Online::Instance();
 
     assert(data);
 
-    LOGI << "OnLobbyEnter " << data->m_ulSteamIDLobby << std::endl;
+    LOGI << "OnLobbyEnter " << data->m_ulSteamIDLobby << " response " << data->m_EChatRoomEnterResponse << std::endl;
+
+    creating = false;
+
+    if (data->m_EChatRoomEnterResponse != k_EChatRoomEnterResponseSuccess) {
+        // A friend's game that closed, filled up or isn't open to us
+        if (!online->IsActive()) {
+            Engine::Instance()->QueueErrorMessage("Couldn't join", "That game has ended or is full.");
+        }
+        overlay_on_enter = false;
+        return;
+    }
 
     lobbies.insert(data->m_ulSteamIDLobby);
 
@@ -160,35 +305,30 @@ void SteamworksMatchmaking::OnLobbyEnter(LobbyEnter_t *data) {
         // set lobby metadata
         SteamMatchmaking()->SetLobbyData(data->m_ulSteamIDLobby, LEVEL_PATH, "");
 
-        // activate overlay
-        SteamFriends()->ActivateGameOverlayInviteDialog(data->m_ulSteamIDLobby);
+        // "Join Game" in the friends list starts (or reaches) the game with this
+        std::string connect = "+connect_lobby " + std::to_string(data->m_ulSteamIDLobby);
+        SteamFriends()->SetRichPresence("connect", connect.c_str());
+        SteamFriends()->SetRichPresence("status", "Hosting Overgrowth Online");
+
+        // activate overlay (asked for: Invite friends)
+        if (overlay_on_enter) {
+            SteamFriends()->ActivateGameOverlayInviteDialog(data->m_ulSteamIDLobby);
+        }
+        overlay_on_enter = false;
+    } else if (online->IsActive()) {
+        LOGI << "Steam: already in a session, not joining that lobby" << std::endl;
+        LeaveLobby(data->m_ulSteamIDLobby);
     } else {
         // we are client
         // get lobby metadata
 
-        // Start multiplayer with host
+        // Overgrowth Online: connect to the lobby's owner through Steam (P2P);
+        // the session is that connection, the lobby is done
         CSteamID lobbyHost = SteamMatchmaking()->GetLobbyOwner(data->m_ulSteamIDLobby);
-        ISteamNetworkingSockets *isns = SteamNetworkingSockets();
-        assert(isns);
-
-        SteamNetworkingIdentity id;
-        id.SetSteamID(lobbyHost);
-
-        HSteamNetConnection connection = isns->ConnectP2P(id, 0, 0, nullptr);
-        std::vector<char> temp(1024, 0);
-        int ret = isns->GetDetailedConnectionStatus(connection, &temp[0], temp.size());
-        if (ret >= 0) {
-            LOGI << "connection status: " << &temp[0] << std::endl;
-        } else {
-            LOGE << "GetDetailedConnectionStatus failed" << std::endl;
-        }
-        steamPendingConnections.insert(connection);
-
-        // Leave lobby - maybe not?
+        LOGI << "Steam: joining the session of " << lobbyHost.ConvertToUint64() << std::endl;
         LeaveLobby(data->m_ulSteamIDLobby);
-
-        if (!online->IsActive())
-            online->StartMultiplayer(MultiplayerMode::Client);
+        online->ConnectP2P(lobbyHost.ConvertToUint64());
+        SteamFriends()->SetRichPresence("status", "Playing Overgrowth Online");
     }
 }
 
@@ -229,30 +369,16 @@ void SteamworksMatchmaking::OnLobbyChatUpdate(LobbyChatUpdate_t *data) {
     }
 }
 
-void SteamworksMatchmaking::OnConnectionChange(SteamNetConnectionStatusChangedCallback_t *data) {
-    ISteamNetworkingSockets *isns = SteamNetworkingSockets();
-
+// "Join Game" in the friends list while we run: "+connect_lobby <id>"
+void SteamworksMatchmaking::OnRichPresenceJoinRequested(GameRichPresenceJoinRequested_t *data) {
     assert(data);
-    LOGI << "SteamworksMatchmaking::OnConnectionChange " << data->m_hConn << " old:" << StatusToString(data->m_eOldState) << "  new: " << StatusToString(data->m_info.m_eState) << std::endl;
+    std::string connect = data->m_rgchConnect;
+    const std::string key = "+connect_lobby ";
+    size_t at = connect.find(key);
 
-    /*/
-    switch (data->m_info.m_eState) {
-            case k_ESteamNetworkingConnectionState_Connecting: {
-                    //EResult result = isns->AcceptConnection(data->m_hConn);
-                    break;
-            }
-
-            default: {
-
-            }
-    }
-    */
-
-    auto it = steamPendingConnections.find(data->m_hConn);
-    if (it != steamPendingConnections.end()) {
-        // This is a Steam connection
-        LOGI << "Steam connection" << std::endl;
-        steamPendingConnections.erase(it);
+    LOGI << "OnRichPresenceJoinRequested " << connect << std::endl;
+    if (at != std::string::npos) {
+        JoinLobby(connect.substr(at + key.size()));
     }
 }
 

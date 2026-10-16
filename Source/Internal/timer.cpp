@@ -82,6 +82,9 @@ float Timer::GetInterpWeightX(int num, int progress) {
 }
 
 float Timer::GetRenderTime() {
+    if (render_time_frozen) {
+        return frozen_render_time;
+    }
     return game_time + timestep_error * timestep;
 }
 

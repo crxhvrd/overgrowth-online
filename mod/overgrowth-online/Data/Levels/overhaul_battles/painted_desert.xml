@@ -1,0 +1,262 @@
+<?xml version="2.0" ?>
+<Type>saved</Type>
+    <Name>Painted Desert (battle)</Name>
+    <Description />
+    <Shader>post</Shader>
+    <Terrain>
+        <Heightmap>Data/Textures/Terrain/painted_desert/painted_desert_hm.png</Heightmap>
+        <DetailMap />
+        <ColorMap>Data/Textures/Terrain/painted_desert/painted_desert_c.tga</ColorMap>
+        <DetailMaps>
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/pebbles.tga" normalpath="Data/Textures/Terrain/DetailTextures/pebbles_normal.tga" materialpath="Data/Materials/gravel.xml" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/dead_grass.tga" normalpath="Data/Textures/Terrain/DetailTextures/dead_grass_normal.tga" materialpath="Data/Materials/drygrass.xml" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/sandwaves.tga" normalpath="Data/Textures/Terrain/DetailTextures/sandwaves_normal.tga" materialpath="Data/Materials/sand.xml" />
+            <DetailMap colorpath="Data/Textures/Terrain/DetailTextures/red_dirt.tga" normalpath="Data/Textures/Terrain/DetailTextures/red_dirt_normal.tga" materialpath="Data/Materials/dirt.xml" />
+        </DetailMaps>
+        <DetailObjects />
+    </Terrain>
+    <OutOfDate Shadow="false" AO="false" NavMesh="true" />
+    <SpawnPoints>
+        <SpawnPoint t0="0" t1="200" t2="0" s0="1" s1="1" s2="1" r0="1" r1="0" r2="0" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0" r9="0" r10="1" r11="0" r12="0" r13="0" r14="0" r15="1" />
+    </SpawnPoints>
+    <AmbientSounds />
+    <Objectives>destroy_all</Objectives>
+    <Achievements>flawless, no_injuries, no_kills</Achievements>
+    <Script>level.as</Script>
+    <Sky>
+        <DomeTexture>Data/Textures/skies/orange_clouds.tga</DomeTexture>
+        <SunAngularRad>0.0585539</SunAngularRad>
+        <SunColorAngle>131.297</SunColorAngle>
+        <RayToSun r0="-0.308723" r1="0.272646" r2="0.911238" />
+        <ExtraAO>0</ExtraAO>
+    </Sky>
+    <ActorObjects>
+        <ActorObject t0="-105.9370" t1="81.3573" t2="71.3860" s0="1" s1="1" s2="1" r0="0.101555" r1="0" r2="0.99483" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.99483" r9="0" r10="0.101555" r11="0" r12="0" r13="0" r14="0" r15="1" id="87" type_file="Data/Objects/IGF_Characters/IGF_TurnerActor.xml" is_player="1">
+            <parameters>
+                <parameter name="Aggression" type="string" val="0.5" />
+                <parameter name="Attack Damage" type="string" val="1.0" />
+                <parameter name="Attack Knockback" type="string" val="1.0" />
+                <parameter name="Attack Speed" type="string" val="1.0" />
+                <parameter name="Block Follow-up" type="string" val="0.5" />
+                <parameter name="Block Skill" type="string" val="0.5" />
+                <parameter name="Damage Resistance" type="string" val="1.0" />
+                <parameter name="Left handed" type="int" val="0" />
+                <parameter name="Lives" type="int" val="1" />
+                <parameter name="Movement Speed" type="string" val="1.0" />
+                <parameter name="Teams" type="string" val="turner" />
+            </parameters>
+            <Connections>
+                <Connection id="-1" />
+            </Connections>
+            <ItemConnections />
+            <Palette>
+                <Color label="Cloth" channel="0" red="1" green="1" blue="1" />
+                <Color label="Rope" channel="1" red="1" green="1" blue="1" />
+                <Color label="Fur" channel="2" red="1" green="1" blue="1" />
+            </Palette>
+        </ActorObject>
+        <EnvObject t0="-126.966" t1="23.6725" t2="69.7482" s0="1.08756" s1="1.07957" s2="1.30401" r0="-0.986181" r1="0" r2="-0.165679" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.165679" r9="0" r10="-0.986181" r11="0" r12="0" r13="0" r14="0" r15="1" id="2" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="152.543" t1="-5.68189" t2="44.5302" s0="1.83312" s1="1.42638" s2="1.65012" r0="-0.26448" r1="9.7e-005" r2="-0.964391" r3="0" r4="0.000827" r5="1" r6="-0.000126" r7="0" r8="0.964391" r9="-0.000831" r10="-0.26448" r11="0" r12="0" r13="0" r14="0" r15="1" id="3" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-126.33" t1="-29.2456" t2="227.148" s0="1.1127" s1="1.1127" s2="1.1127" r0="-0.459537" r1="0" r2="0.88816" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.88816" r9="0" r10="-0.459537" r11="0" r12="0" r13="0" r14="0" r15="1" id="4" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-271.043" t1="-67.677" t2="208.814" s0="1.02249" s1="1.02249" s2="1.02249" r0="0.926693" r1="0" r2="-0.375822" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.375822" r9="0" r10="0.926693" r11="0" r12="0" r13="0" r14="0" r15="1" id="5" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-103.632" t1="-13.0459" t2="132.818" s0="1.1127" s1="1.1127" s2="1.1127" r0="0.980766" r1="0" r2="-0.19519" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.19519" r9="0" r10="0.980766" r11="0" r12="0" r13="0" r14="0" r15="1" id="6" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-118.773" t1="-18.9475" t2="138.808" s0="1.1127" s1="1.1127" s2="1.1127" r0="-0.884072" r1="0" r2="-0.467354" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.467354" r9="0" r10="-0.884072" r11="0" r12="0" r13="0" r14="0" r15="1" id="7" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-120.539" t1="-22.8897" t2="209.188" s0="1.02429" s1="1.02429" s2="1.02429" r0="-0.884072" r1="0" r2="-0.467354" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.467354" r9="0" r10="-0.884072" r11="0" r12="0" r13="0" r14="0" r15="1" id="8" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-381.32" t1="-40.4608" t2="151.561" s0="1.34641" s1="1.02429" s2="1.58862" r0="-0.884072" r1="0" r2="-0.467354" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.467354" r9="0" r10="-0.884072" r11="0" r12="0" r13="0" r14="0" r15="1" id="9" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-213.08" t1="-25.3484" t2="168.138" s0="1.34641" s1="1.02429" s2="1.58862" r0="0.233948" r1="-0.361937" r2="-0.902372" r3="0" r4="0.090833" r5="0.932203" r6="-0.350354" r7="0" r8="0.967999" r9="0" r10="0.250963" r11="0" r12="0" r13="0" r14="0" r15="1" id="10" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-335.363" t1="-40.4606" t2="170.534" s0="1.34641" s1="1.02429" s2="1.58862" r0="0.174086" r1="0" r2="0.984732" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.984732" r9="0" r10="0.174086" r11="0" r12="0" r13="0" r14="0" r15="1" id="11" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-121.232" t1="-7.28853" t2="147.452" s0="0.907095" s1="0.900432" s2="1.08763" r0="0.174086" r1="0" r2="0.984732" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.984732" r9="0" r10="0.174086" r11="0" r12="0" r13="0" r14="0" r15="1" id="12" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-152.259" t1="-15.1519" t2="194.498" s0="0.907095" s1="0.900432" s2="1.08763" r0="0.174086" r1="0" r2="0.984732" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.984732" r9="0" r10="0.174086" r11="0" r12="0" r13="0" r14="0" r15="1" id="13" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-66.964" t1="-15.1518" t2="127.129" s0="0.907095" s1="0.900432" s2="1.08763" r0="0.174086" r1="0" r2="0.984732" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.984732" r9="0" r10="0.174086" r11="0" r12="0" r13="0" r14="0" r15="1" id="14" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-81.5951" t1="27.001" t2="98.7607" s0="0.907095" s1="0.900432" s2="1.08763" r0="0.174086" r1="0" r2="0.984732" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.984732" r9="0" r10="0.174086" r11="0" r12="0" r13="0" r14="0" r15="1" id="15" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-84.762" t1="20.8965" t2="46.273" s0="1.51317" s1="1.15587" s2="1.89133" r0="-0.12418" r1="0" r2="0.992261" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.992261" r9="0" r10="-0.12418" r11="0" r12="0" r13="0" r14="0" r15="1" id="16" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-87.4767" t1="42.6919" t2="78.1391" s0="1.16443" s1="1.15587" s2="1.39618" r0="-0.952338" r1="0" r2="-0.30505" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.30505" r9="0" r10="-0.952338" r11="0" r12="0" r13="0" r14="0" r15="1" id="17" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-269.2" t1="1.87563" t2="117.228" s0="0.697691" s1="0.839402" s2="0.897863" r0="-0.896327" r1="0" r2="0.4434" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.4434" r9="0" r10="-0.896327" r11="0" r12="0" r13="0" r14="0" r15="1" id="18" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-111.936" t1="20.197" t2="97.0259" s0="1.16443" s1="1.15587" s2="1.39618" r0="0.409091" r1="0" r2="-0.912495" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.912495" r9="0" r10="0.409091" r11="0" r12="0" r13="0" r14="0" r15="1" id="19" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-83.7823" t1="23.5044" t2="92.1776" s0="1.08756" s1="1.07957" s2="1.30401" r0="-0.986181" r1="0" r2="-0.165679" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.165679" r9="0" r10="-0.986181" r11="0" r12="0" r13="0" r14="0" r15="1" id="20" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-127.278" t1="20.197" t2="85.2023" s0="1.16443" s1="1.15587" s2="1.39618" r0="-0.611242" r1="0" r2="0.791446" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.791446" r9="0" r10="-0.611242" r11="0" r12="0" r13="0" r14="0" r15="1" id="21" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-250.083" t1="20.154" t2="108.861" s0="0.960743" s1="1.15587" s2="1.23638" r0="-0.611242" r1="0" r2="0.791446" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.791446" r9="0" r10="-0.611242" r11="0" r12="0" r13="0" r14="0" r15="1" id="22" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-237.8" t1="18.2299" t2="104.423" s0="0.960743" s1="1.15587" s2="1.23638" r0="0.942774" r1="0" r2="0.333438" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.333438" r9="0" r10="0.942774" r11="0" r12="0" r13="0" r14="0" r15="1" id="23" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-224.92" t1="9.42973" t2="115.982" s0="0.853702" s1="1.0271" s2="1.09863" r0="0.035423" r1="0" r2="-0.999374" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.999374" r9="0" r10="0.035423" r11="0" r12="0" r13="0" r14="0" r15="1" id="24" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-233.148" t1="-23.5962" t2="183.741" s0="0.732655" s1="0.881467" s2="0.942855" r0="-0.880328" r1="0" r2="-0.474371" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.474371" r9="0" r10="-0.880328" r11="0" r12="0" r13="0" r14="0" r15="1" id="25" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-233.652" t1="9.42982" t2="124.652" s0="0.697691" s1="0.839402" s2="0.897863" r0="-0.896327" r1="0" r2="0.4434" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.4434" r9="0" r10="-0.896327" r11="0" r12="0" r13="0" r14="0" r15="1" id="26" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-244.194" t1="-27.114" t2="194.971" s0="0.878479" s1="1.05691" s2="1.13051" r0="0.245631" r1="0" r2="-0.969366" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.969366" r9="0" r10="0.245631" r11="0" r12="0" r13="0" r14="0" r15="1" id="28" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-164.891" t1="-7.28878" t2="182.381" s0="1.34641" s1="1.02429" s2="1.58862" r0="-0.968653" r1="0" r2="-0.248425" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.248425" r9="0" r10="-0.968653" r11="0" r12="0" r13="0" r14="0" r15="1" id="29" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-109.167" t1="-29.2458" t2="217.999" s0="1.42638" s1="1.42638" s2="1.42638" r0="0.819949" r1="0" r2="0.572436" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.572436" r9="0" r10="0.819949" r11="0" r12="0" r13="0" r14="0" r15="1" id="30" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="108.637" t1="2.43026" t2="-206.205" s0="0.575527" s1="0.35859" s2="0.500944" r0="-0.186357" r1="0" r2="-0.982482" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.982482" r9="0" r10="-0.186357" r11="0" r12="0" r13="0" r14="0" r15="1" id="31" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="201.089" t1="22.8629" t2="81.0525" s0="1.19098" s1="1.19098" s2="1.19098" r0="-0.706853" r1="0" r2="0.707361" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.707361" r9="0" r10="-0.706853" r11="0" r12="0" r13="0" r14="0" r15="1" id="32" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="166.13" t1="-10.695" t2="99.7311" s0="0.803392" s1="1.23757" s2="0.859346" r0="-0.62109" r1="0" r2="0.78374" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.78374" r9="0" r10="-0.62109" r11="0" r12="0" r13="0" r14="0" r15="1" id="33" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="220.65" t1="-33.9275" t2="143.987" s0="0.495268" s1="0.577058" s2="0.43382" r0="0.999197" r1="0" r2="0.040074" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.040074" r9="0" r10="0.999197" r11="0" r12="0" r13="0" r14="0" r15="1" id="34" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="149.288" t1="5.53577" t2="62.854" s0="0.536314" s1="0.536314" s2="0.536314" r0="0.841737" r1="0" r2="0.539887" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.539887" r9="0" r10="0.841737" r11="0" r12="0" r13="0" r14="0" r15="1" id="35" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="203.045" t1="5.5357" t2="62.3741" s0="1.8635" s1="1.42638" s2="2.23538" r0="0.280381" r1="0" r2="-0.959889" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.959889" r9="0" r10="0.280381" r11="0" r12="0" r13="0" r14="0" r15="1" id="36" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-69.7311" t1="20.197" t2="72.5776" s0="1.16443" s1="1.15587" s2="1.39618" r0="0.988375" r1="0" r2="-0.152048" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.152048" r9="0" r10="0.988375" r11="0" r12="0" r13="0" r14="0" r15="1" id="37" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-282.677" t1="-75.6746" t2="223.672" s0="0.443311" s1="0.525208" s2="0.526179" r0="-0.893001" r1="0.088092" r2="0.441352" r3="0" r4="0.030555" r5="0.990261" r6="-0.135829" r7="0" r8="-0.449019" r9="-0.10781" r10="-0.886995" r11="0" r12="0" r13="0" r14="0" r15="1" id="38" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-89.3959" t1="20.2778" t2="44.9934" s0="1.51317" s1="1.15587" s2="1.89133" r0="0.988375" r1="0" r2="-0.152048" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.152048" r9="0" r10="0.988375" r11="0" r12="0" r13="0" r14="0" r15="1" id="39" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="209.712" t1="5.53561" t2="73.0224" s0="1.42638" s1="1.42638" s2="1.42638" r0="0.986858" r1="0" r2="-0.161586" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.161586" r9="0" r10="0.986858" r11="0" r12="0" r13="0" r14="0" r15="1" id="40" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="123.793" t1="5.536" t2="17.7281" s0="0.766125" s1="0.766125" s2="0.766125" r0="-0.649392" r1="0" r2="-0.760453" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.760453" r9="0" r10="-0.649392" r11="0" r12="0" r13="0" r14="0" r15="1" id="41" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="142.107" t1="5.53596" t2="55.1621" s0="0.766125" s1="0.766125" s2="0.766125" r0="-0.950501" r1="0" r2="0.310721" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.310721" r9="0" r10="-0.950501" r11="0" r12="0" r13="0" r14="0" r15="1" id="42" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="38.224" t1="8.78522" t2="38.2572" s0="1.85944" s1="1.84578" s2="2.22952" r0="-0.820147" r1="0" r2="0.572157" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.572157" r9="0" r10="-0.820147" r11="0" r12="0" r13="0" r14="0" r15="1" id="43" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-28.1153" t1="2.87377" t2="67.3903" s0="0.438836" s1="0.435614" s2="0.526179" r0="0.358231" r1="0" r2="0.933635" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.933635" r9="0" r10="0.358231" r11="0" r12="0" r13="0" r14="0" r15="1" id="44" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-54.9907" t1="17.329" t2="82.2719" s0="0.438836" s1="0.435614" s2="0.526179" r0="0.358231" r1="0" r2="0.933635" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.933635" r9="0" r10="0.358231" r11="0" r12="0" r13="0" r14="0" r15="1" id="45" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-72.169" t1="13.3336" t2="111.969" s0="0.443311" s1="0.525208" s2="0.526179" r0="0.358231" r1="0" r2="0.933635" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.933635" r9="0" r10="0.358231" r11="0" r12="0" r13="0" r14="0" r15="1" id="46" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-106.102" t1="-10.5881" t2="146.303" s0="0.443311" s1="0.525208" s2="0.526179" r0="0.975621" r1="0" r2="0.219468" r3="0" r4="0.030555" r5="0.990261" r6="-0.135829" r7="0" r8="-0.21733" r9="0.139223" r10="0.96612" r11="0" r12="0" r13="0" r14="0" r15="1" id="47" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-264.954" t1="-77.129" t2="217.058" s0="0.443311" s1="0.525208" s2="0.526179" r0="0.975621" r1="0" r2="0.219468" r3="0" r4="0.030555" r5="0.990261" r6="-0.135829" r7="0" r8="-0.21733" r9="0.139223" r10="0.96612" r11="0" r12="0" r13="0" r14="0" r15="1" id="48" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-292.61" t1="-73.7245" t2="235.656" s0="0.443311" s1="0.525208" s2="0.526179" r0="0.366311" r1="0.115344" r2="0.923317" r3="0" r4="0.030555" r5="0.990261" r6="-0.135829" r7="0" r8="-0.929992" r9="0.077967" r10="0.359218" r11="0" r12="0" r13="0" r14="0" r15="1" id="49" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="177.884" t1="-5.68078" t2="91.1371" s0="1.42638" s1="1.42638" s2="1.42638" r0="0.894083" r1="0" r2="0.447902" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.447902" r9="0" r10="0.894083" r11="0" r12="0" r13="0" r14="0" r15="1" id="50" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="218.449" t1="-20.8559" t2="133.913" s0="0.856025" s1="0.856025" s2="0.856025" r0="0.101644" r1="0" r2="-0.994821" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.994821" r9="0" r10="0.101644" r11="0" r12="0" r13="0" r14="0" r15="1" id="51" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="222.865" t1="-25.3473" t2="139.972" s0="0.619055" s1="0.619055" s2="0.619055" r0="0.991541" r1="0" r2="-0.129792" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.129792" r9="0" r10="0.991541" r11="0" r12="0" r13="0" r14="0" r15="1" id="52" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="211.659" t1="-33.1108" t2="145.053" s0="0.482511" s1="0.482511" s2="0.482511" r0="-0.548988" r1="0" r2="0.83583" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.83583" r9="0" r10="-0.548988" r11="0" r12="0" r13="0" r14="0" r15="1" id="53" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="230.774" t1="-38.2676" t2="143.028" s0="0.43382" s1="0.43382" s2="0.43382" r0="0.723231" r1="0" r2="0.690606" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.690606" r9="0" r10="0.723231" r11="0" r12="0" r13="0" r14="0" r15="1" id="54" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="194.254" t1="1.69159" t2="52.011" s0="1.8635" s1="1.42638" s2="2.23538" r0="-0.9757" r1="0" r2="-0.219109" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.219109" r9="0" r10="-0.9757" r11="0" r12="0" r13="0" r14="0" r15="1" id="56" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="110.513" t1="1.69188" t2="-180.593" s0="0.575527" s1="0.35859" s2="0.500944" r0="-0.9757" r1="0" r2="-0.219109" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.219109" r9="0" r10="-0.9757" r11="0" r12="0" r13="0" r14="0" r15="1" id="57" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="62.8329" t1="19.316" t2="-216.142" s0="0.190123" s1="0.147938" s2="0.171142" r0="0.526804" r1="-0.041556" r2="-0.848971" r3="0" r4="0.117895" r5="0.992723" r6="0.024565" r7="0" r8="0.841772" r9="-0.11303" r10="0.527868" r11="0" r12="0" r13="0" r14="0" r15="1" id="58" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="96.1634" t1="14.9939" t2="-201.438" s0="0.339569" s1="0.264225" s2="0.305669" r0="-0.97135" r1="0.120427" r2="-0.204883" r3="0" r4="0.117895" r5="0.992723" r6="0.024565" r7="0" r8="0.20635" r9="-0.000294" r10="-0.978478" r11="0" r12="0" r13="0" r14="0" r15="1" id="59" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="193.276" t1="2.82835" t2="82.3938" s0="1.42638" s1="1.42638" s2="1.42638" r0="-0.706853" r1="0" r2="0.707361" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.707361" r9="0" r10="-0.706853" r11="0" r12="0" r13="0" r14="0" r15="1" id="55" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-14.708" t1="18.4438" t2="32.4393" s0="1.51815" s1="2.24493" s2="1.49399" r0="-0.986157" r1="0" r2="0.165815" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.165815" r9="0" r10="-0.986157" r11="0" r12="0" r13="0" r14="0" r15="1" id="1" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_bridge.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="100.092" t1="26.0716" t2="20.458" s0="1.59375" s1="1.59375" s2="1.59375" r0="0.681596" r1="-0.000819" r2="0.731728" r3="0" r4="0.021443" r5="0.999592" r6="-0.018855" r7="0" r8="-0.731414" r9="0.028542" r10="0.681336" r11="0" r12="0" r13="0" r14="0" r15="1" id="60" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_mesa.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-101.469" t1="32.3552" t2="74.1684" s0="1.59375" s1="1.59375" s2="1.59375" r0="0.999749" r1="-0.02156" r2="-0.006033" r3="0" r4="0.021443" r5="0.999592" r6="-0.018855" r7="0" r8="0.006437" r9="0.018721" r10="0.999804" r11="0" r12="0" r13="0" r14="0" r15="1" id="61" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_mesa.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="85.7676" t1="27.4642" t2="27.782" s0="1.59375" s1="1.59375" s2="1.59375" r0="0.999749" r1="-0.02156" r2="-0.006033" r3="0" r4="0.021443" r5="0.999592" r6="-0.018855" r7="0" r8="0.006437" r9="0.018721" r10="0.999804" r11="0" r12="0" r13="0" r14="0" r15="1" id="62" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_mesa.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="55.7956" t1="27.3613" t2="24.807" s0="1.59375" s1="1.59375" s2="1.59375" r0="0.681596" r1="-0.000819" r2="0.731728" r3="0" r4="0.021443" r5="0.999592" r6="-0.018855" r7="0" r8="-0.731414" r9="0.028542" r10="0.681336" r11="0" r12="0" r13="0" r14="0" r15="1" id="63" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_mesa.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="78.9984" t1="27.9539" t2="7.3989" s0="1.59375" s1="1.59375" s2="1.59375" r0="0.681596" r1="-0.000819" r2="0.731728" r3="0" r4="0.021443" r5="0.999592" r6="-0.018855" r7="0" r8="-0.731414" r9="0.028542" r10="0.681336" r11="0" r12="0" r13="0" r14="0" r15="1" id="64" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_mesa.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="-27.7694" t1="23.4349" t2="48.9893" s0="1.16443" s1="1.15587" s2="1.39618" r0="0.988375" r1="0" r2="-0.152048" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.152048" r9="0" r10="0.988375" r11="0" r12="0" r13="0" r14="0" r15="1" id="65" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="87.7119" t1="8.78573" t2="37.5595" s0="1.49811" s1="1.4871" s2="1.79628" r0="0.988375" r1="0" r2="-0.152048" r3="0" r4="0" r5="1" r6="0" r7="0" r8="0.152048" r9="0" r10="0.988375" r11="0" r12="0" r13="0" r14="0" r15="1" id="66" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="122.391" t1="8.78537" t2="24.6756" s0="1.49811" s1="1.4871" s2="1.79628" r0="0.943913" r1="0" r2="0.3302" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.3302" r9="0" r10="0.943913" r11="0" r12="0" r13="0" r14="0" r15="1" id="67" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="89.9577" t1="8.78502" t2="-5.69405" s0="1.49811" s1="1.4871" s2="1.79628" r0="0.936904" r1="0" r2="0.349592" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.349592" r9="0" r10="0.936904" r11="0" r12="0" r13="0" r14="0" r15="1" id="68" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+        <EnvObject t0="62.5309" t1="8.78519" t2="5.68741" s0="1.85944" s1="1.84578" s2="2.22952" r0="-0.820147" r1="0" r2="0.572157" r3="0" r4="0" r5="1" r6="0" r7="0" r8="-0.572157" r9="0" r10="-0.820147" r11="0" r12="0" r13="0" r14="0" r15="1" id="69" color_r="1" color_g="1" color_b="1" type_file="Data/Objects/Environment/Land/sandstone_spire.xml">
+            <parameters />
+        </EnvObject>
+    </ActorObjects>

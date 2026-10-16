@@ -1060,7 +1060,7 @@ void ImDrawList::_PathArcToFastEx(const ImVec2& center, float radius, int a_min_
 
     // Calculate arc auto segment step size
     if (a_step <= 0)
-        a_step = IM_DRAWLIST_ARCFAST_SAMPLE_MAX / _CalcCircleAutoSegmentCount(radius);
+        a_step = IM_DRAWLIST_ARCFAST_SAMPLE_MAX / ImMax(_CalcCircleAutoSegmentCount(radius), 1);  // (Overhaul Online: never / 0)
 
     // Make sure we never do steps larger than one quarter of the circle
     a_step = ImClamp(a_step, 1, IM_DRAWLIST_ARCFAST_TABLE_SIZE / 4);
@@ -1163,7 +1163,10 @@ void ImDrawList::_PathArcToN(const ImVec2& center, float radius, float a_min, fl
 // 0: East, 3: South, 6: West, 9: North, 12: East
 void ImDrawList::PathArcToFast(const ImVec2& center, float radius, int a_min_of_12, int a_max_of_12)
 {
-    if (radius <= 0.0f)
+    // Overhaul Online: < 0.5 (as ImGui 1.86): a radius just over 0 found no segment
+    // count (CircleSegmentCounts[0] == 0) and divided by zero (a crash, 2026-10-16);
+    // !(>= 0.5) also catches NaN
+    if (!(radius >= 0.5f))
     {
         _Path.push_back(center);
         return;
@@ -1354,7 +1357,7 @@ void ImDrawList::PathRect(const ImVec2& a, const ImVec2& b, float rounding, ImDr
     rounding = ImMin(rounding, ImFabs(b.x - a.x) * ( ((flags & ImDrawFlags_RoundCornersTop)  == ImDrawFlags_RoundCornersTop)  || ((flags & ImDrawFlags_RoundCornersBottom) == ImDrawFlags_RoundCornersBottom) ? 0.5f : 1.0f ) - 1.0f);
     rounding = ImMin(rounding, ImFabs(b.y - a.y) * ( ((flags & ImDrawFlags_RoundCornersLeft) == ImDrawFlags_RoundCornersLeft) || ((flags & ImDrawFlags_RoundCornersRight)  == ImDrawFlags_RoundCornersRight)  ? 0.5f : 1.0f ) - 1.0f);
 
-    if (rounding <= 0.0f || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)
+    if (!(rounding >= 0.5f) || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)  // (Overhaul Online: as 1.86)
     {
         PathLineTo(a);
         PathLineTo(ImVec2(b.x, a.y));
@@ -1400,7 +1403,7 @@ void ImDrawList::AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 c
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
-    if (rounding <= 0.0f || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)
+    if (!(rounding >= 0.5f) || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)  // (Overhaul Online: as 1.86)
     {
         PrimReserve(6, 4);
         PrimRect(p_min, p_max, col);
@@ -1640,7 +1643,7 @@ void ImDrawList::AddImageRounded(ImTextureID user_texture_id, const ImVec2& p_mi
         return;
 
     flags = FixRectCornerFlags(flags);
-    if (rounding <= 0.0f || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)
+    if (!(rounding >= 0.5f) || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)  // (Overhaul Online: as 1.86)
     {
         AddImage(user_texture_id, p_min, p_max, uv_min, uv_max, col);
         return;

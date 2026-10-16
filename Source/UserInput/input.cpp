@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: testmain.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -562,6 +563,36 @@ void PlayerInputKeyDown(KeyState* keyState) {
 }
 }  // namespace
 
+void Input::ApplyInjectedInput(PlayerInput& control) {
+    for (auto it = injected_keys_.begin(); it != injected_keys_.end();) {
+        KeyState& ks = control.key_down[it->first];
+
+        if (it->second.depth >= KeyState::kDepthThreshold) {
+            PlayerInputKeyDown(&ks);  // the keyboard's own semantics
+            ks.depth = it->second.depth;
+        } else if (it->second.depth > 0.0f) {
+            if (ks.count <= 0) {  // analog, like the joystick path
+                ks.count *= -1;
+                ++ks.count;
+            }
+            ks.depth = it->second.depth;
+        }
+
+        if (it->second.steps_left > 0 && --it->second.steps_left == 0) {
+            it = injected_keys_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    if (injected_look_[0] != 0.0f || injected_look_[1] != 0.0f) {
+        control.key_down["look_right"].depth += injected_look_[0];
+        control.key_down["look_down"].depth += injected_look_[1];
+        injected_look_[0] = 0.0f;
+        injected_look_[1] = 0.0f;
+    }
+}
+
 void Input::ProcessController(int controller_id, float timestep) {
     PlayerInput& control = player_inputs_[controller_id];
 
@@ -656,6 +687,8 @@ void Input::ProcessController(int controller_id, float timestep) {
             mouse_.delta_[0] = 0;
             mouse_.delta_[1] = 0;
         }
+
+        ApplyInjectedInput(control);
     }
     // Zero all negative keydown counts
     for (auto& iter : kd) {

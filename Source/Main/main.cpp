@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: main.cpp
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -21,6 +22,7 @@
 //
 //-----------------------------------------------------------------------------
 #ifndef __PS4__
+#include <Testing/test_bridge.h>
 #include <Internal/config.h>
 #include <Internal/crashreport.h>
 #include <Internal/error.h>
@@ -34,6 +36,7 @@
 #include <Logging/ramhandler.h>
 
 #include <Main/engine.h>
+#include <Online/online.h>
 #include <Main/altmain.h>
 
 #include <Threading/rand.h>
@@ -74,6 +77,7 @@ static bool clear_cache_dry_run = false;
 static bool level_load_stress = false;
 
 static std::string overloadedWriteDir;
+static int test_bridge_port = 0;
 static std::string overloadedWorkingDir;
 
 Allocation alloc;
@@ -203,6 +207,10 @@ int GameMain(int argc, char* argv[]) {
     Dialog::Initialize();
     PROFILER_LEAVE(&profiler_context);
 
+    if (test_bridge_port > 0) {
+        TestBridge::Instance()->Start(test_bridge_port);
+    }
+
     if (clear_cache) {
         ClearCache(false);
     }
@@ -215,6 +223,7 @@ int GameMain(int argc, char* argv[]) {
         STIMING_STARTFRAME();
 
         STIMING_START_COARSE(STUpdate);
+        TestBridge::Instance()->Pump(engine);
         engine->Update();
         STIMING_END_COARSE(STUpdate);
 
@@ -277,6 +286,8 @@ int GameMain(int argc, char* argv[]) {
     LOGI << "Final check if savefile needs to be written..." << std::endl;
     Engine::Instance()->save_file_.ExecuteQueuedWrite();
 
+    TestBridge::Instance()->Stop();
+
     LOGI << "Cleanly disposing of loaded assets..." << std::endl;
     engine->Dispose();
     // engine->~Engine();
@@ -316,6 +327,23 @@ int main(int argc, char* argv[]) {
         }
     };
 
+    // Overgrowth Online: Steam adds "+connect_lobby <lobby id>" for an accepted
+    // invite; kept for the Steam code and taken out (the parser would refuse it)
+    for (int i = 0; i < argc;) {
+        if (strcmp(argv[i], "+connect_lobby") == 0) {
+            int n = i + 1 < argc ? 2 : 1;
+            if (n == 2) {
+                g_launch_lobby = argv[i + 1];
+            }
+            for (int j = i; j + n < argc; ++j) {
+                argv[j] = argv[j + n];
+            }
+            argc -= n;
+        } else {
+            ++i;
+        }
+    }
+
     try {
         std::string full_version = std::string(GetBuildVersion()) + "_" + GetBuildIDString();
         // Set up command-line-parser
@@ -332,6 +360,12 @@ int main(int argc, char* argv[]) {
 
         TCLAP::ValueArg<std::string> workingDirArg("", "working-dir", "Force set the working dir for the application.", false, "", "string");
         cmd.add(workingDirArg);
+
+        TCLAP::ValueArg<std::string> gameDataArg("", "game-data", "The Overgrowth install whose Data to use (Overgrowth Online).", false, "", "string");
+        cmd.add(gameDataArg);
+
+        TCLAP::ValueArg<int> testBridgeArg("", "test-bridge", "Open the automated-test command port on 127.0.0.1:<port>.", false, 0, "port");
+        cmd.add(testBridgeArg);
 
         TCLAP::ValueArg<std::string> ogdaManifest("", "ogda-manifest", "Ogda generated manifest of game assets.", false, "", "string");
         cmd.add(ogdaManifest);
@@ -361,7 +395,9 @@ int main(int argc, char* argv[]) {
         std::string manifest = ogdaManifest.getValue();
 
         overloadedWriteDir = writeDirArg.getValue();
+        test_bridge_port = testBridgeArg.getValue();
         overloadedWorkingDir = workingDirArg.getValue();
+        g_game_data_dir = gameDataArg.getValue();
         debug_output = debugOutput.getValue();
         spam_output = spamOutput.getValue();
         clear_log = clearLog.getValue();

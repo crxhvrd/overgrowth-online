@@ -587,13 +587,14 @@ GLint Shaders::returnShaderVariable(const std::string &name, int which) {
 }
 
 GLint Shaders::returnShaderVariableIndex(const std::string &name, int program_id) {
+    const std::string key = "#index " + name;  // (not a location's key)
     Program::UniformAddressCacheMap::iterator iter =
-        programs[program_id].uniform_address_cache.find(name);
+        programs[program_id].uniform_address_cache.find(key);
     if (iter == programs[program_id].uniform_address_cache.end()) {
         GLuint index;
         const char *name_cstr = name.c_str();
         glGetUniformIndices(programs[program_id].gl_program, 1, &name_cstr, &index);
-        programs[program_id].uniform_address_cache[name] = index;
+        programs[program_id].uniform_address_cache[key] = index;
         return index;
     } else {
         return iter->second;
@@ -1234,12 +1235,13 @@ int Shaders::GetUBOBindIndex(int shader_id, const char *name) {
     LOG_ASSERT(shader_id >= 0 && shader_id < (int)programs.size());
     Program *program = &programs[shader_id];
     LOG_ASSERT(program->gl_program != UNLOADED_SHADER_ID);
+    const std::string key = std::string("#block ") + name;  // (not a location's key)
     Program::UniformAddressCacheMap::iterator iter =
-        program->uniform_address_cache.find(name);
+        program->uniform_address_cache.find(key);
     if (iter == program->uniform_address_cache.end()) {
         int programHandle = program->gl_program;
         GLuint blockIndex = glGetUniformBlockIndex(programHandle, name);
-        program->uniform_address_cache[name] = blockIndex;
+        program->uniform_address_cache[key] = blockIndex;
         return blockIndex;
     } else {
         return iter->second;

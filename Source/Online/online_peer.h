@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: online_peer.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -22,6 +23,7 @@
 //-----------------------------------------------------------------------------
 #pragma once
 
+#include <Online/clock_sync.h>
 #include <Online/online_datastructures.h>
 #include <Game/connection_closed_reason.h>
 #include <Network/net_framework.h>
@@ -46,4 +48,5 @@ struct Peer {
     // Host side flag to mark that we need to do an initial sync with this peer.
     bool should_send_state_messages = false;
     float current_ping_delta = 0.0f;
+    ClockSync clock;  // this peer's clock relative to ours (ping/pong)
 };

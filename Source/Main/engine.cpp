@@ -22,6 +22,7 @@
 //-----------------------------------------------------------------------------
 #include "engine.h"
 
+#include <Graphics/frame_timers.h>
 #include <Game/hardcoded_assets.h>
 #include <Game/level.h>
 #include <Game/savefile.h>
@@ -2104,6 +2105,12 @@ void Engine::Update() {
             if (Online::Instance()->IsClient()) {
                 waiting_for_input_ = !Online::Instance()->ForceMapStartOnLoad();
             }
+
+            // Overgrowth Online: "test_start_paused" (screenshot comparisons): the level
+            // stays as it loaded, no step of AI, physics or animation
+            if (!waiting_for_input_ && config["test_start_paused"].toNumber<bool>()) {
+                user_paused = true;
+            }
         }
     } else {
         if (scenegraph_->map_editor->state_ == MapEditor::kInGame) {
@@ -2926,6 +2933,14 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
 
     {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Apply viewpoint");
+        // Overgrowth Online: the test bridge's fixed view (screenshot comparisons):
+        // the camera locked there (the active camera may have changed since)
+        Camera* view_cam = ActiveCameras::Get();
+        if (view_override_) {
+            view_cam->LockView(view_override_pos_, view_override_target_, view_override_fov_);
+        } else if (view_cam->ViewLocked()) {
+            view_cam->UnlockView();
+        }
         ActiveCameras::Get()->applyViewpoint();
 
         std::vector<Camera>& virt_cam = ActiveCameras::Instance()->GetVirtualCameras();
@@ -4353,9 +4368,10 @@ void Engine::Draw() {
 
     ++draw_frame;
     num_detail_object_draw_calls = 0;
+    FrameTimers::BeginFrame();  // Overgrowth Online: before the frame's first zone
     PROFILER_GPU_ZONE(g_profiler_ctx, "Draw frame %d", draw_frame);
 
-    if (user_paused) {
+    if (user_paused && !view_override_) {  // (the test bridge's fixed view pauses without the text)
         const int kBufSize = 512;
         char buf[kBufSize];
         FormatString(buf, kBufSize, "Time is currently paused, press %s to unpause", config["bind[pause]"].str().c_str());
@@ -4370,6 +4386,7 @@ void Engine::Draw() {
     }
 
     DrawImGui(graphics, scenegraph_, &gui, GetAssetManager(), Engine::Instance(), cursor.visible);
+    FrameTimers::DrawOverlay();
 
     if (check_save_level_changes_dialog_is_showing || !scenegraph_) {
         // No level loaded, so draw menu instead
@@ -4776,7 +4793,7 @@ void Engine::Draw() {
             CHECK_GL_ERROR();
             graphics->setViewport(0, 0, graphics->window_dims[0], graphics->window_dims[1]);
             CHECK_GL_ERROR();
-            {
+            if (!view_override_ || view_override_gui_) {  // (the test bridge's fixed view: no dialogue boxes)
                 scenegraph_->level->Draw();
                 CHECK_GL_ERROR();
             }
@@ -6250,6 +6267,15 @@ void Engine::GetShaderNames(std::map<std::string, int>& preload_shaders) {
 void Engine::ScriptableUICallback(const std::string& level) {
     LOGW << "Got a callback to switch to: " << level << std::endl;
 
+    // Overgrowth Online: a mod asked for the next level to be hosted. Mods
+    // can't call Online_Host (their scripts must compile on stock 1.4), so
+    // they set "ohl_host_on_load" before loading a map (Large Battles)
+    if (config["ohl_host_on_load"].toNumber<bool>() && (hasEnding(level, ".xml") || hasBeginning(level, "load_campaign_level"))) {
+        config.GetRef("ohl_host_on_load") = false;
+        LOGI << "Hosting the next level online (ohl_host_on_load)" << std::endl;
+        Online::Instance()->StartHostingMultiplayer();
+    }
+
     if (config["global_time_scale_mult"].toNumber<float>() < 0.1f) {
         config.GetRef("global_time_scale_mult") = 0.1f;
     }
@@ -6547,6 +6573,14 @@ void DumpScenegraphState() {
     SceneGraph* s = Engine::Instance()->GetSceneGraph();
     if (s) {
         s->DumpState();
+    }
+}
+
+void Engine::FollowGameSpeed(float val) {
+    if (val >= 0.1f && val != current_global_scale_mult) {
+        game_timer.target_time_scale /= current_global_scale_mult;
+        current_global_scale_mult = val;
+        game_timer.target_time_scale *= val;
     }
 }
 

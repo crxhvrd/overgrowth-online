@@ -35,6 +35,7 @@
 #include <Internal/snprintf.h>
 #include <Internal/profiler.h>
 #include <Main/engine.h>
+#include <Online/online.h>
 
 #include <sstream>
 
@@ -92,6 +93,14 @@ void Steamworks::Update(bool updateUGC) {
         PROFILER_ZONE(g_profiler_ctx, "RunCallbacks");
         SteamAPI_RunCallbacks();
     }
+    // Overgrowth Online: Steam started us for an invite ("+connect_lobby <id>");
+    // join once the menu runs (updateUGC: not in a level)
+    if (updateUGC && matchmaking != nullptr && !g_launch_lobby.empty() && ++launch_lobby_frames > 30) {
+        LOGI << "Steam: joining the lobby we were started for, " << g_launch_lobby << std::endl;
+        matchmaking->JoinLobby(g_launch_lobby);
+        g_launch_lobby.clear();
+    }
+
     if (updateUGC) {
         if (GetUGC()) {
             PROFILER_ZONE(g_profiler_ctx, "UGC->Update");

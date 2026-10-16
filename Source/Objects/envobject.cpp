@@ -1317,7 +1317,9 @@ void EnvObject::Update(float timestep) {
 
     if (online->IsClient()) {
         list<OnlineMessageRef>& frames = incoming_online_env_update;
-        if (frames.size() > 0) {
+        if (parent != nullptr && parent->GetType() == _movement_object) {
+            frames.clear();  // Overgrowth Online: gear follows its character's bones here
+        } else if (frames.size() > 0) {
             EnvObjectUpdate* eou = static_cast<EnvObjectUpdate*>(frames.begin()->GetData());
             if (eou != nullptr) {
                 SetTransformationMatrix(eou->transform);

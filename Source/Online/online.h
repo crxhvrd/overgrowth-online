@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: online.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -60,7 +61,10 @@
 #include <Online/Message/attach_to_message.h>
 #include <Online/Message/camera_transform_message.h>
 #include <Online/Message/test_message.h>
-#include <Online/Message/movement_object_update.h>
+#include <Online/Message/character_snapshots.h>
+#include <Online/char_snapshot.h>
+#include <Objects/riggedobject.h>
+#include <Objects/movementobject.h>
 #include <Online/Message/morph_target_update.h>
 #include <Online/Message/item_update.h>
 #include <Online/Message/env_object_update.h>
@@ -77,6 +81,7 @@
 #include <Online/Message/editor_transform_change.h>
 #include <Online/Message/ping.h>
 #include <Online/Message/pong.h>
+#include <Online/Message/combat_messages.h>
 
 #include <Math/vec3.h>
 #include <Math/mat4.h>
@@ -101,6 +106,8 @@
 #include <list>
 #include <thread>
 #include <mutex>
+#include <atomic>
+#include <deque>
 
 class MovementObject;
 class SceneGraph;
@@ -153,7 +160,7 @@ typedef OnlineMessageHandlerTemplate<
     PlayerInputMessage,
     AttachToMessage,
     CameraTransformMessage,
-    MovementObjectUpdate,
+    CharacterSnapshots,
     PCSBuildVersionRequestMessage,
     PCSBuildVersionMessage,
     PCSLoadingCompletedMessage,
@@ -182,16 +189,111 @@ typedef OnlineMessageHandlerTemplate<
     SendLevelMessage,
     EditorTransformChange,
     Ping,
-    Pong>
+    Pong,
+    HitRequest,
+    HitResult,
+    OwnerOverride,
+    ItemLaunch,
+    ItemHit,
+    ItemDrop,
+    AvatarCharacter>
     OnlineMessageHandler;
 
 extern OnlineMessageHandler message_handler;
+
+// Overgrowth Online: the Steam lobby to join at start ("+connect_lobby <id>": an accepted invite)
+extern std::string g_launch_lobby;
 
 class Online {
    public:
     int compression_level;
 
+    // Test bridge: traffic counters and the network simulator. Latency and
+    // jitter are one-way and applied by the sender (both peers run it); loss
+    // drops unreliable messages only. Order per connection is kept.
+    std::atomic<uint64_t> net_bytes_out{0};
+    std::atomic<uint64_t> net_bytes_in{0};
+    std::atomic<uint64_t> net_msgs_out{0};
+    std::atomic<uint64_t> net_msgs_in{0};
+    std::atomic<uint64_t> net_sim_dropped{0};
+    std::atomic<int> net_sim_latency_ms{0};
+    std::atomic<int> net_sim_jitter_ms{0};
+    std::atomic<float> net_sim_loss{0.0f};
+
+    // The network thread queues connections to close; the main thread closes
+    // them (LateUpdate): closing deletes the player's character
+    std::mutex close_queue_lock;
+
+    // Character streaming (ownership): the newest packed record of every
+    // character we send: the ones we simulate (captured at 30 Hz) and, on the
+    // host, the players' characters it relays. Main thread only.
+    struct StreamRecord {
+        std::vector<uint8_t> bytes;
+        std::vector<uint8_t> lite;  // the same without vitals (our own captures)
+        uint32_t src_ms = 0;
+        uint64_t hash = 0;  // content without id and time: same hash = nothing moved
+        vec3 position;
+        PlayerID owner = 0;
+        int vitals_version = 0;    // changes when its vitals do
+        CommonObjectID target = -1;    // whom it fights (its target, who hit it last)
+        CommonObjectID attacker = -1;
+    };
+    struct StreamSent {
+        uint32_t src_ms = 0;
+        uint64_t hash = 0;
+        double sent_ms = -1e9;
+        int vitals_version = -1;
+        int vitals_repeats = 0;
+        double vitals_ms = -1e9;
+    };
+    struct StreamOwned {
+        int captures = 0;
+        vector<int> sent_morphs;  // the morph values last streamed (1/200 steps)
+        CharSnapshot::Frame last_sent;  // the pose last streamed (idle characters are not resent)
+        bool has_last = false;
+        CharSnapshot::Vitals last_vitals;
+        int vitals_version = 0;
+        bool idle = false;  // captures skipped since the last record
+    };
+    std::atomic<uint64_t> snapshot_idle_skips{0};
+    unordered_map<CommonObjectID, StreamRecord> stream_latest;
+    map<std::pair<PeerID, CommonObjectID>, StreamSent> stream_sent;
+    unordered_map<CommonObjectID, StreamOwned> stream_owned;
+    double stream_next_capture_ms = 0.0;
+    std::atomic<uint64_t> snapshot_records_out{0};
+    std::atomic<uint64_t> snapshot_records_in{0};
+    std::atomic<uint64_t> snapshot_bytes_out{0};
+    std::atomic<uint64_t> hits_requested{0};   // attacks on characters other machines run
+    std::atomic<uint64_t> hits_resolved{0};    // attacks on ours, decided here
+    std::atomic<uint64_t> hit_results{0};      // answers about our attacks
+    std::atomic<uint64_t> takeovers{0};        // characters we took for a throw, choke or drag
+
+    // Temporary ownership: characters handed to another machine for a throw,
+    // choke or drag (main thread only)
+    struct OwnerOverrideEntry {
+        PlayerID owner = 0;
+        double since_ms = 0.0;
+        double max_ms = 0.0;
+        double settled_ms = -1.0;  // ours: since when it is free and settled (-1 not)
+    };
+    unordered_map<CommonObjectID, OwnerOverrideEntry> owner_overrides;
+    unordered_map<CommonObjectID, double> handed_back_ms;  // ours, just given back: not taken again at once
+    std::atomic<uint64_t> snapshot_bones_captured{0};  // bones in captured records
+    std::atomic<uint64_t> snapshot_positions_sent{0};  // of those, positions the joints did not predict
+
+    // Test bridge: per tracked character, every step: our clock, the owner
+    // time shown (proxies; ours = our clock), position, mean physics bone
+    struct TrackSample {
+        double clock_ms;
+        double render_src_ms;
+        vec3 position;
+        vec3 bones;
+    };
+    unordered_map<ObjectID, vector<TrackSample>> track_samples;
+
     string level_name;
+    string preloaded_level;      // Overgrowth Online (client): the level the host told us as it started loading
+    bool preload_loaded = false;  // ... and we have finished loading it
     string campaign_id;
     bool host_started_level;
 
@@ -286,6 +388,11 @@ class Online {
     bool SetAvatarCameraAttachedMode(bool mode);
     bool IsAvatarCameraAttached() const;
     void SendLevelMessage(const string& msg);
+    // Overgrowth Online: level-script channel ("ohl" host -> clients, "ohr" client -> host)
+    string TranslateIDs(const string& msg, bool to_common) const;
+    bool SendLevelRequest(const string& msg);  // client: true if it went to the host
+    double last_role_message_ms = -1e9;
+    bool sent_role = false;
     void SendAvatarPaletteChange(const OGPalette& palette, ObjectID object_id);
     bool IsAvatarPossessed(ObjectID avatar_id);
     void PossessAvatar(PlayerID player_id, ObjectID object_id);
@@ -329,6 +436,87 @@ class Online {
     const vector<Peer> GetPeers();
     vector<Peer>::iterator GetPeerIt(NetConnectionID conn_id);
     bool IsLocalAvatar(const ObjectID avatar) const;
+    PlayerID GetAvatarOwner(const ObjectID avatar) const;  // whose machine simulates it
+    void StreamCharacters(SceneGraph* scenegraph);
+    void ReceiveSnapshots(PeerID from, const uint8_t* data, size_t size);
+
+    // Combat across machines (Phase 4)
+    void SendToOwnerOf(ObjectID id, const OnlineMessageRef& ref, bool peers_locked);
+    void RelayFromPeer(const OnlineMessageRef& ref, PeerID from);  // host, inside message handling: to every other client
+    void SendHitRequest(ObjectID target, const string& type, const string& attack_path, vec3 dir, vec3 pos,
+                        ObjectID attacker, float damage_mult, float knockback_mult, float max_range);
+    void ReceiveHitRequest(const OnlineMessageRef& ref, OnlineMessages::HitRequest* m, PeerID from);
+    void ReceiveHitResult(const OnlineMessageRef& ref, OnlineMessages::HitResult* m, PeerID from);
+    int NetworkWasHit(MovementObject* target, const string& type, const string& attack_path, vec3 dir, vec3 pos,
+                      ObjectID attacker, float damage_mult, float knockback_mult);
+    bool TakeOver(ObjectID id, float max_seconds);
+    void ReleaseTakeOver(ObjectID id);
+    void ReceiveOwnerOverride(CommonObjectID cid, PlayerID owner, bool active, float max_seconds, PeerID from);
+    void UpdateTakeOvers(SceneGraph* scenegraph);
+
+    // Thrown weapons: the host flies them; hits on characters run elsewhere go to their owners
+    vector<ObjectID> pending_item_launches;  // client, main thread: sent at the end of the step
+    std::atomic<uint64_t> item_launches{0};
+    std::atomic<uint64_t> item_hits{0};
+    void QueueItemLaunch(ObjectID item);
+    void SendPendingItemLaunches(SceneGraph* scenegraph);
+    void ReceiveItemLaunch(OnlineMessages::ItemLaunch* m, PeerID from);
+    void SendItemHit(ObjectID character, ObjectID item, const vec3& point, const string& material, int type, const vec3& velocity,
+                     const vec3& stick_start, const vec3& stick_end, const mat4& stick_transform);
+    void ReceiveItemHit(OnlineMessages::ItemHit* m);
+    void SendItemDrop(ObjectID character, ObjectID item);  // queued: called inside message handling
+    vector<std::pair<ObjectID, ObjectID> > pending_drop_orders;
+
+    // Co-op rules (story campaigns)
+    bool delivering_network_level_message = false;  // Level::Message is passing on the host's message
+    bool AllowScriptReset();                        // a level script here asked for "reset"
+    bool CoopCampaign();                            // the level belongs to a linear (story) campaign
+    vector<ObjectID> PlayerAvatarIDs();             // every player's character here
+    void CoopUpdate(SceneGraph* sg);                // host: everyone down for 5 s -> reset
+    void CoopCheckpoint() { coop_revive_pending = true; }  // host: a checkpoint was reached
+    void CoopReviveRequest(const string& msg);      // "ohg revive <common id> x y z [fx fz]" from the host
+    void ReviveAvatar(MovementObject* mo, const vec3& pos, const vec3& facing = vec3(0.0f));
+    void PlaceAvatar(ObjectID id, const vec3& pos, const vec3& facing);  // host: up at pos, wherever it runs
+    double coop_all_down_ms = -1.0;
+    bool coop_revive_pending = false;
+    struct PendingRevive {
+        ObjectID id;
+        vec3 pos;
+        vec3 facing;
+        double queued_ms;  // waits (3 s at most) while another machine still has it (a teammate's drag)
+    };
+    bool OwnPlayerCharacter(ObjectID id) const;  // our player's, whoever runs it now
+    vector<PendingRevive> pending_revives;
+    string coop_campaign_for;
+    bool coop_campaign = false;
+
+    // Sounds: scripts of characters this machine runs are playing (main thread)
+    int owned_script_depth = 0;
+    std::atomic<uint64_t> sounds_from_clients{0};  // host: client characters' sounds received
+    bool ShouldShareSound() const { return IsHosting() || (IsClient() && owned_script_depth > 0); }
+    void ReceiveItemDrop(CommonObjectID character, CommonObjectID item);
+
+    // Your online character (co-op menu: mp_character, mp_fur, mp_cloth)
+    // A spot for player number `index` near `base` (facing `facing`): solid ground
+    // at about the same height, or `base` itself (co-op spawns)
+    vec3 SafeSpotNear(const vec3& base, const vec3& facing, int index);
+    // Hits held until the defender shows its attacker landing them
+    struct HeldHit {
+        OnlineMessageRef ref;
+        PeerID from;
+        double resolve_at_ms;
+    };
+    vector<HeldHit> held_hits;
+    double last_link_log_ms = 0.0;  // connection stats in the log every 10 s
+    void LogLinks();
+    void ResolveHitRequest(OnlineMessages::HitRequest* m, bool peers_locked);
+    void ResolveHeldHits();
+    void SendAvatarCharacter(ObjectID character, const string& path);
+    void ReceiveAvatarCharacter(CommonObjectID character, const string& path);  // queued to LateUpdate
+    void ApplyOwnCharacter(SceneGraph* sg);  // once per level, on our own character
+    vector<std::pair<CommonObjectID, string> > pending_avatar_characters;
+    string own_character_applied;  // "<level>|<character id>"
+    void BroadcastOwnerOverride(CommonObjectID cid, PlayerID owner, bool active, float max_seconds, PeerID except, bool peers_locked);
     vector<ObjectID> GetLocalAvatarIDs() const;
     PlayerState GenerateHostPlayerState() const;
 
@@ -356,9 +544,15 @@ class Online {
     void AddFreeAvatarId(uint32_t id);
     void CreateListenSocketIP(const string& localAddress);
     void ConnectByIPAddress(const string& address);
+    void ConnectP2P(uint64_t steam_id);  // Steam: to the host of the lobby we joined
 
     bool NetFrameworkHasFriendInviteOverlay() const;
     void ActivateGameOverlayInviteDialog();
+    bool OpenToFriends(bool overlay);
+    void UpdateFriendPresence(SceneGraph* scenegraph);
+    bool SteamFriendsAvailable() const;
+    std::string FriendGames();
+    bool JoinFriend(const std::string& steam_id);
 
     void CheckPendingMessages();
     void ApplyPlayerInput();
@@ -391,9 +585,24 @@ class Online {
     void HandleConnectionsToBeClosed();
 
     void SendMessageToConnection(NetConnectionID conn_id, char* buffer, uint32_t bytes, bool reliable, bool flush);
+
+    struct DelayedSend {
+        NetConnectionID conn_id;
+        std::vector<char> data;
+        bool reliable;
+        double release_ms;
+    };
+    std::deque<DelayedSend> net_sim_queue;  // network thread only
+    void FlushDelayedSends();
+
+   public:
+    // Transport-level round trip to a peer, ms (-1 if unknown)
+    int GetPeerTransportPing(NetConnectionID conn_id);
+
+   private:
     void SendStateMessages();
 
-    void CheckNewMessages();
+    int CheckNewMessages();  // messages received
 
     size_t CompressData(vector<char>& target_buffer, const void* source_buffer, uint32_t source_size);
     size_t DecompressData(vector<char>& target_buffer, const void* source_buffer, size_t source_size);

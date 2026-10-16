@@ -128,10 +128,8 @@ struct BatchModel {
     VBOContainer vboc_el;         // The vbo containing the batch triangle indices
     unsigned instance_num_faces;  // The number of faces in each instance, so we can control how many instances we draw
     void Create(const Model &model);
-    void Draw(const std::vector<DetailInstance> &di_vec, const std::vector<mat4> &di_vec_transforms);
     BatchModel();
     void StartDraw();
-    void StopDraw();
 };
 
 class DetailObjectSurface {

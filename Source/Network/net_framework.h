@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: net_framework.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -26,6 +27,11 @@
 #include <Network/Steam/steam_net_framework.h>
 
 typedef SteamNetFramework NetFramework;
+
+#elif defined(USE_GNS_NETWORK_FRAMEWORK)
+#include <Network/GNS/gns_net_framework.h>
+
+typedef GNSNetFramework NetFramework;
 
 #elif defined(USE_BASIC_NETWORK_FRAMEWORK)
 

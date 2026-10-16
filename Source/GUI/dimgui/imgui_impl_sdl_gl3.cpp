@@ -81,10 +81,11 @@ void ImGui_ImplSdlGL3_RenderDrawLists(ImDrawData* draw_data) {
     glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &last_element_array_buffer);
     GLint last_vertex_array;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &last_vertex_array);
-    GLint last_blend_src;
-    glGetIntegerv(GL_BLEND_SRC, &last_blend_src);
-    GLint last_blend_dst;
-    glGetIntegerv(GL_BLEND_DST, &last_blend_dst);
+    GLint last_blend_src_rgb, last_blend_dst_rgb, last_blend_src_alpha, last_blend_dst_alpha;
+    glGetIntegerv(GL_BLEND_SRC_RGB, &last_blend_src_rgb);
+    glGetIntegerv(GL_BLEND_DST_RGB, &last_blend_dst_rgb);
+    glGetIntegerv(GL_BLEND_SRC_ALPHA, &last_blend_src_alpha);
+    glGetIntegerv(GL_BLEND_DST_ALPHA, &last_blend_dst_alpha);
     GLint last_blend_equation_rgb;
     glGetIntegerv(GL_BLEND_EQUATION_RGB, &last_blend_equation_rgb);
     GLint last_blend_equation_alpha;
@@ -152,7 +153,7 @@ void ImGui_ImplSdlGL3_RenderDrawLists(ImDrawData* draw_data) {
     glBindBuffer(GL_ARRAY_BUFFER, last_array_buffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, last_element_array_buffer);
     glBlendEquationSeparate(last_blend_equation_rgb, last_blend_equation_alpha);
-    glBlendFunc(last_blend_src, last_blend_dst);
+    glBlendFuncSeparate(last_blend_src_rgb, last_blend_dst_rgb, last_blend_src_alpha, last_blend_dst_alpha);
     if (last_enable_blend)
         glEnable(GL_BLEND);
     else

@@ -656,6 +656,8 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
     detail_objects_surfaces_to_draw.reserve(visible_static_meshes_.size());
 
     last_ofr_is_valid = false;
+    {  // (Overgrowth Online: a frame-timer zone)
+    PROFILER_GPU_ZONE(g_profiler_ctx, "Static meshes");
     for (int i = 1, len = static_meshes_to_draw.size(); i <= len; ++i) {
         if (i == len || (static_meshes_to_draw[i]->ofr->path_ != static_meshes_to_draw[i - 1]->ofr->path_ ||
                          static_meshes_to_draw[i]->winding_flip != static_meshes_to_draw[i - 1]->winding_flip)) {
@@ -667,8 +669,12 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
         }
     }
     EnvObject::AfterDrawInstances();
-    for (auto current : detail_objects_surfaces_to_draw) {
-        current.draw_owner->DrawDetailObjectInstances(current.instance_array, current.num_instances, Object::kFullDraw);
+    }
+    {
+        PROFILER_GPU_ZONE(g_profiler_ctx, "Detail objects");
+        for (auto current : detail_objects_surfaces_to_draw) {
+            current.draw_owner->DrawDetailObjectInstances(current.instance_array, current.num_instances, Object::kFullDraw);
+        }
     }
     if (g_draw_collision) {
         batch_start = 0;
@@ -814,7 +820,7 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
             }
 
             {
-                PROFILER_ZONE(g_profiler_ctx, "Draw transparent objects");
+                PROFILER_GPU_ZONE(g_profiler_ctx, "Draw transparent objects");
                 for (auto& visible_static_meshe : visible_static_meshes_) {
                     EnvObject& obj = *visible_static_meshe;
                     if (obj.enabled_ && obj.transparent) {

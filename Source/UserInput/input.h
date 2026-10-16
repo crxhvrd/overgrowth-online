@@ -1,6 +1,7 @@
 //-----------------------------------------------------------------------------
 //           Name: input.h
 //      Developer: Wolfire Games LLC
+//    Modified By: Overgrowth Online (crxhvrd)
 //    Description:
 //        License: Read below
 //-----------------------------------------------------------------------------
@@ -133,7 +134,19 @@ class Input {
     std::vector<Mouse::MousePress> GetMouseInputs();
     std::vector<Joystick::JoystickPress> GetJoystickInputs(int player_index);
 
+    // Automated tests (Testing/test_bridge): bindings held for controller 0,
+    // applied on every step after the real devices. depth >= 0.5 behaves like
+    // a key press; steps_left < 0 means until released.
+    struct InjectedKey {
+        float depth = 1.0f;
+        int steps_left = -1;
+    };
+    std::map<std::string, InjectedKey> injected_keys_;
+    float injected_look_[2] = {0.0f, 0.0f};  // added once, on the next step
+
    private:
+    void ApplyInjectedInput(PlayerInput& control);
+
     unsigned num_players_;
     BindMap bindings_;
     std::vector<PlayerInput> player_inputs_;
