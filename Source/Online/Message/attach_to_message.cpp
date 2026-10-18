@@ -66,6 +66,9 @@ void AttachToMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID 
     AttachToMessage* t = static_cast<AttachToMessage*>(object);
     ObjectID parent_object_id = Online::Instance()->GetObjectID(t->parent_id);
     ObjectID child_object_id = Online::Instance()->GetObjectID(t->child_id);
+    if (!Online::Instance()->PeerMayChange(from, parent_object_id)) {
+        return;  // (a guest attaches to and takes from its own character only)
+    }
 
     SceneGraph* graph = Engine::Instance()->GetSceneGraph();
 

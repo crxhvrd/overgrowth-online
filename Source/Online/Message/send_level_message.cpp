@@ -65,6 +65,10 @@ void SendLevelMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID
             Engine::Instance()->FollowGameSpeed((float)atof(lm->msg.c_str() + 10));  // the host's game speed
         } else if (lm->msg.compare(0, 11, "ohg revive ") == 0) {
             online->CoopReviveRequest(lm->msg);  // a checkpoint: our character back up
+        } else if (lm->msg.compare(0, 4, "ohl ") != 0 && (lm->msg.find(' ') != std::string::npos || lm->msg.find("reset") == std::string::npos)) {
+            // Overgrowth Online: from the network only the level channel and the
+            // host's reset (never "loadlevel <path>", "go_to_main_menu", ...)
+            LOGW << "Overgrowth Online: a level message from the host refused: " << lm->msg.substr(0, 40) << std::endl;
         } else {
             online->delivering_network_level_message = true;  // (the host's reset counts here)
             sg->level->Message(lm->msg.compare(0, 4, "ohl ") == 0 ? online->TranslateIDs(lm->msg, false) : lm->msg);

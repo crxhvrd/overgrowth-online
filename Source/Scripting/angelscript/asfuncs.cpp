@@ -5847,6 +5847,10 @@ void AS_Online_Host() {
 }
 
 // Overgrowth Online (host): a player's character up at `pos`, facing `facing`, on its machine
+static bool AS_Online_IsPlayerCharacter(int char_id) {
+    return Online::Instance()->IsPlayerCharacter(char_id);
+}
+
 void AS_Online_PlaceAvatar(int char_id, const vec3& pos, const vec3& facing) {
     Online::Instance()->PlaceAvatar(char_id, pos, facing);
 }
@@ -6022,6 +6026,7 @@ void AttachOnline(ASContext* context) {
     context->RegisterGlobalFunction("void Online_SpectateNext()", asFUNCTION(AS_Online_SpectateNext), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_RestoreOwnCharacter()", asFUNCTION(AS_Online_RestoreOwnCharacter), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_PlaceAvatar(int char_id, const vec3 &in pos, const vec3 &in facing)", asFUNCTION(AS_Online_PlaceAvatar), asCALL_CDECL);
+    context->RegisterGlobalFunction("bool Online_IsPlayerCharacter(int char_id)", asFUNCTION(AS_Online_IsPlayerCharacter), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_AnnounceObject(int id, const string &in path)", asFUNCTION(AS_Online_AnnounceObject), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_SendKillMessage(uint victim, uint killer)", asFUNCTION(AS_Online_SendKillMessage), asCALL_CDECL);
     context->RegisterGlobalFunction("bool Online_TakeOver(int char_id, float max_seconds)", asFUNCTION(AS_Online_TakeOver), asCALL_CDECL);

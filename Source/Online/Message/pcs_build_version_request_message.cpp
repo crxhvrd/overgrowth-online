@@ -40,8 +40,11 @@ void PCSBuildVersionRequestMessage::Deserialize(void* object, binn* l) {
 }
 
 void PCSBuildVersionRequestMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
-    Online::Instance()->SendTo<OnlineMessages::PCSBuildVersionMessage>(Online::Instance()->GetPeerFromID(from)->conn_id, GetBuildID(),
-                                                                       OnlineUtility::GetOvergrowthOnlineVersion());
+    Peer* peer = Online::Instance()->GetPeerFromID(from);
+    if (peer == nullptr) {
+        return;  // (gone meanwhile)
+    }
+    Online::Instance()->SendTo<OnlineMessages::PCSBuildVersionMessage>(peer->conn_id, GetBuildID(), OnlineUtility::GetOvergrowthOnlineVersion());
 }
 
 void* PCSBuildVersionRequestMessage::Construct(void* mem) {

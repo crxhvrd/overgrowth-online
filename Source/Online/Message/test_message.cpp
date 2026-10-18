@@ -48,8 +48,13 @@ binn* TestMessage::Serialize(void* object) {
 void TestMessage::Deserialize(void* object, binn* l) {
     TestMessage* test_message = static_cast<TestMessage*>(object);
 
-    char* message;
-    binn_object_get_str(l, "message", &message);
+    char* message = nullptr;
+
+    if (!binn_object_get_str(l, "message", &message) || message == nullptr) {
+
+        return;
+
+    }
 
     test_message->message = string(message);
 }

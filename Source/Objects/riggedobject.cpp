@@ -3314,6 +3314,17 @@ void RiggedObject::MPCutPlane(const vec3& normal, const vec3& pos, const vec3& d
     Model* model = &Models::Instance()->GetModel(model_id[0]);
     vec3 points[3];
 
+    // Overgrowth Online: the host's triangle numbers: ones this model has
+    int num_tris = (int)(model->faces.size() / 3);
+    if (mp_hit_list.size() > 4096) {
+        return;
+    }
+    for (int i : mp_hit_list) {
+        if (i < 0 || i >= num_tris) {
+            return;
+        }
+    }
+
     for (int i = 0; i < 3; i++)
         points[i] = mp_points[i];
 

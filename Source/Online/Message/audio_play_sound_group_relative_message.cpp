@@ -20,6 +20,7 @@
 //   limitations under the License.
 //
 //-----------------------------------------------------------------------------
+#include <Online/online_utility.h>
 #include "audio_play_sound_group_relative_message.h"
 
 #include <Main/engine.h>
@@ -47,6 +48,9 @@ void AudioPlaySoundGroupRelativeMessage::Deserialize(void* object, binn* l) {
 
 void AudioPlaySoundGroupRelativeMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
     AudioPlaySoundGroupRelativeMessage* t = static_cast<AudioPlaySoundGroupRelativeMessage*>(object);
+    if (!OnlineUtility::IsSafeAssetPath(t->path)) {
+        return;  // (a sound under Data/, nothing else)
+    }
 
     SoundGroupRef sgr = Engine::Instance()->GetAssetManager()->LoadSync<SoundGroup>(t->path);
     SoundGroupPlayInfo sgpi(SoundGroupPlayInfo(*sgr, vec3(0.0f)));

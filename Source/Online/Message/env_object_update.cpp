@@ -62,6 +62,11 @@ void EnvObjectUpdate::Deserialize(void* object, binn* l) {
 void EnvObjectUpdate::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
     EnvObjectUpdate* eou = static_cast<EnvObjectUpdate*>(object);
     ObjectID object_id = Online::Instance()->GetObjectID(eou->id);
+    for (int i = 0; i < 16; ++i) {
+        if (!std::isfinite(eou->transform.entries[i])) {
+            return;
+        }
+    }
 
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
 

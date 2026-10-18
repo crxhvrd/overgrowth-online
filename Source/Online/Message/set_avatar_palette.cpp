@@ -55,6 +55,9 @@ void SetAvatarPalette::Deserialize(void* object, binn* l) {
 void SetAvatarPalette::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
     SetAvatarPalette* sap = static_cast<SetAvatarPalette*>(object);
     ObjectID object_id = Online::Instance()->GetObjectID(sap->id);
+    if (!Online::Instance()->PeerMayChange(peer, object_id)) {
+        return;  // (a guest: only its own character)
+    }
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
 
     if (sg != nullptr) {

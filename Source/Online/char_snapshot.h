@@ -124,6 +124,10 @@ bool Read(const uint8_t* data, size_t size, size_t& offset, Frame& f);
 // Rebuilds the derived bones from their parents. False if the rig does not fit.
 bool Resolve(Frame& f, const Rig& rig);
 
+// Every number in it finite (a NaN on the machine that sent it stays there:
+// shown here, it spreads through the physics to whatever touches it)
+bool Finite(const Frame& f);
+
 // Where the record's content starts after the id and timestamp: hash from
 // here to tell an unchanged pose (a still character costs nothing)
 const size_t kContentOffset = 8;

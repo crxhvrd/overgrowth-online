@@ -55,6 +55,9 @@ void SPRenameMessage::Deserialize(void* object, binn* l) {
 void SPRenameMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
     SPRenameMessage* t = static_cast<SPRenameMessage*>(object);
     ObjectID object_id = Online::Instance()->GetObjectID(t->param_id);
+    if (!Online::Instance()->PeerMayChange(from, object_id)) {
+        return;  // (a guest: only its own character)
+    }
 
     ScriptParams* params = Online::Instance()->GetScriptParamsFromID(object_id);
     if (params != nullptr) {

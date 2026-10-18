@@ -176,6 +176,12 @@ bool Online::NetworkRemoveableType(Object* o) const {
     return type == _env_object || type == _movement_object || type == _item_object;
 }
 
+// Overgrowth Online: what arrives from another machine is finite, or it is
+// dropped (a NaN there must not reach the physics here)
+static bool Finite3(const vec3& v) {
+    return std::isfinite(v[0]) && std::isfinite(v[1]) && std::isfinite(v[2]);
+}
+
 void Online::ChangeLevel(const string& id) {
     campaign_id = ModLoading::Instance().WhichCampaignLevelBelongsTo(id);
     host_started_level = false;
@@ -796,6 +802,85 @@ bool Online::IsLocalAvatar(const ObjectID avatar_id) const {
     return IsHosting();
 }
 
+void Online::TestSendMalformed(int mode) {
+    if (online_session == nullptr) {
+        return;
+    }
+    NetConnectionID conn;
+    {
+        lock_guard<mutex> guard(online_session->connected_peers_lock);
+        if (online_session->connected_peers.empty()) {
+            return;
+        }
+        conn = online_session->connected_peers[0].conn_id;
+    }
+    vector<char> raw, buf;
+    if (mode == 0) {
+        raw.assign(64, (char)0xAB);
+    } else if (mode == 1) {
+        vector<char> junk(40, 'x');
+        size_t n = CompressData(buf, junk.data(), (uint32_t)junk.size());
+        raw.assign(buf.begin(), buf.begin() + n);
+    } else {
+        binn* l = binn_list();
+        binn_list_add_int8(l, (int8_t)PackageHeader::Type::MESSAGE_OBJECT);
+        binn_list_add_int8(l, mode == 2 ? (int8_t)100 : (int8_t)-5);
+        binn* o = binn_object();
+        binn_list_add_object(l, o);
+        binn_free(o);
+        size_t n = CompressData(buf, binn_ptr(l), (uint32_t)binn_size(l));
+        raw.assign(buf.begin(), buf.begin() + n);
+        binn_free(l);
+    }
+    SendMessageToConnection(conn, raw.data(), (uint32_t)raw.size(), true, true);
+}
+
+bool Online::PeerMayChange(PeerID from, ObjectID id) const {
+    if (!IsHosting() || online_session == nullptr || from == online_session->local_player_id) {
+        return true;
+    }
+    SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+    Object* o = sg != nullptr ? sg->GetObjectFromID(id) : nullptr;
+    if (o == nullptr) {
+        return false;
+    }
+    if (o->GetType() == _item_object) {
+        ObjectID holder = static_cast<ItemObject*>(o)->HeldByWhom();
+        return holder != -1 && GetAvatarOwner(holder) == from;
+    }
+    return o->GetType() == _movement_object && GetAvatarOwner(id) == from;
+}
+
+// What only the host sends: the world, the session, the players' states
+bool Online::HostOnlyMessage(OnlineMessageType type) const {
+    static const OnlineMessageType kHostOnly[] = {
+        message_handler.GetMessageType<OnlineMessages::TestMessage>(),
+        message_handler.GetMessageType<OnlineMessages::SetObjectEnabledMessage>(),
+        message_handler.GetMessageType<OnlineMessages::PCSSessionParametersMessage>(),
+        message_handler.GetMessageType<OnlineMessages::PCSAssignPlayerID>(),
+        message_handler.GetMessageType<OnlineMessages::PCSFileTransferMetadataMessage>(),
+        message_handler.GetMessageType<OnlineMessages::SetPlayerState>(),
+        message_handler.GetMessageType<OnlineMessages::RemovePlayerState>(),
+        message_handler.GetMessageType<OnlineMessages::MorphTargetUpdate>(),
+        message_handler.GetMessageType<OnlineMessages::ItemUpdate>(),
+        message_handler.GetMessageType<OnlineMessages::EnvObjectUpdate>(),
+        message_handler.GetMessageType<OnlineMessages::CutLine>(),
+        message_handler.GetMessageType<OnlineMessages::AngelscriptData>(),
+        message_handler.GetMessageType<OnlineMessages::HostSessionFlag>(),
+        message_handler.GetMessageType<OnlineMessages::TimedSlowMotion>(),
+        message_handler.GetMessageType<OnlineMessages::CreateEntity>(),
+        message_handler.GetMessageType<OnlineMessages::RemoveObject>(),
+        message_handler.GetMessageType<OnlineMessages::ItemHit>(),
+        message_handler.GetMessageType<OnlineMessages::ItemDrop>(),
+    };
+    for (OnlineMessageType t : kHostOnly) {
+        if (t == type) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool Online::IsPlayerCharacter(ObjectID id) const {
     if (online_session == nullptr) {
         return false;
@@ -894,6 +979,9 @@ void Online::StreamCharacters(SceneGraph* sg) {
             CharSnapshot::Frame frame;
             mo->CaptureNetworkPose(frame, true);
             frame.src_ms = (uint32_t)now;
+            if (now < test_nan_stream_until_ms) {
+                frame.position = vec3(std::numeric_limits<float>::quiet_NaN());  // (test bridge: a blow-up here)
+            }
 
             // Morphs: only the ones that moved since we last sent them
             owned.sent_morphs.resize(frame.morphs.size() * 2, std::numeric_limits<int>::min());
@@ -1127,6 +1215,12 @@ void Online::ReceiveSnapshots(PeerID from, const uint8_t* data, size_t size) {
         if (!CharSnapshot::Resolve(frame, mo->rigged_object()->NetworkRig())) {
             continue;  // a different skeleton here: nothing sensible to show
         }
+        if (!CharSnapshot::Finite(frame)) {
+            if (snapshot_non_finite++ % 100 == 0) {
+                LOGW << "Overgrowth Online: a non-finite record of character " << id << " from peer " << (int)from << " dropped" << std::endl;
+            }
+            continue;  // its owner's physics blew up: hold the last good pose here
+        }
         mo->net_buffer.Push(frame, now);
 
         // Who holds what, as soon as it arrives (a throw or drop can't wait for the playback delay)
@@ -1245,6 +1339,7 @@ MovementObject* CharacterByID(ObjectID id) {
 }
 
 const float kHitRangeSlack = 0.75f;  // both machines see the other a little late
+const float kMaxMeleeReach = 5.5f;   // the longest weapon, a lunge and the lag: no hit from farther
 }  // namespace
 
 // A script of ours hit a character another machine runs: ask its owner, and
@@ -1277,9 +1372,12 @@ void Online::ReceiveHitRequest(const OnlineMessageRef& ref, OnlineMessages::HitR
     MovementObject* target = CharacterByID(target_id);
     MovementObject* attacker = CharacterByID(attacker_id);
 
-    if (target == nullptr || attacker == nullptr) {
+    if (target == nullptr || attacker == nullptr || !Finite3(m->dir) || !Finite3(m->pos) || !std::isfinite(m->damage_mult) ||
+        !std::isfinite(m->knockback_mult) || (!m->attack_path.empty() && !OnlineUtility::IsSafeAssetPath(m->attack_path))) {
         return;
     }
+    m->damage_mult = std::max(0.0f, std::min(m->damage_mult, 4.0f));  // (a guest's word: no one-hit kills)
+    m->knockback_mult = std::max(0.0f, std::min(m->knockback_mult, 4.0f));
 
     if (!IsLocalAvatar(target_id)) {
         if (IsHosting()) {
@@ -1339,12 +1437,16 @@ void Online::ResolveHitRequest(OnlineMessages::HitRequest* m, bool peers_locked)
     }
 
     int result = 0;  // _miss
-    bool reaches = m->max_range <= 0.0f || distance(attacker->position, target->position) <= m->max_range + kHitRangeSlack;
+    // Within the attacker's reach as it saw it, and within any melee reach here
+    // whatever it claims (a guest's word: no hits from across the map)
+    float d = distance(attacker->position, target->position);
+    bool in_melee = d <= kMaxMeleeReach;
+    bool reaches = in_melee && (m->max_range <= 0.0f || d <= m->max_range + kHitRangeSlack);
 
     if (!reaches) {
         ++hits_out_of_range;
     }
-    if (reaches || m->type == "attackblocked") {
+    if (reaches || (m->type == "attackblocked" && in_melee)) {
         ++owned_script_depth;  // the defender's sounds are everyone's
         result = target->ResolveRemoteHit(m->type, m->attack_path, m->dir, m->pos, attacker_id, m->damage_mult, m->knockback_mult);
         --owned_script_depth;
@@ -1481,6 +1583,19 @@ void Online::ReceiveOwnerOverride(CommonObjectID cid, PlayerID owner, bool activ
     }
 
     auto it = owner_overrides.find(cid);
+    max_seconds = std::isfinite(max_seconds) ? std::max(0.0f, std::min(max_seconds, 60.0f)) : 0.0f;  // (a choke holds 60 s at most)
+
+    if (IsHosting() && active && from != online_session->local_player_id) {
+        // A guest takes over what its own character grabs: beside it
+        SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+        auto ps = online_session->player_states.find(from);
+        Object* taker = (sg != nullptr && ps != online_session->player_states.end()) ? sg->GetObjectFromID(ps->second.object_id) : nullptr;
+        Object* target = sg != nullptr ? sg->GetObjectFromID(GetObjectID(cid)) : nullptr;
+        if (taker == nullptr || target == nullptr || taker->GetType() != _movement_object || target->GetType() != _movement_object ||
+            distance(static_cast<MovementObject*>(taker)->position, static_cast<MovementObject*>(target)->position) > 5.0f) {
+            return;
+        }
+    }
 
     if (IsHosting()) {
         // The host keeps the table: the first taker holds it until it lets go
@@ -1610,6 +1725,10 @@ void Online::ReceiveItemLaunch(OnlineMessages::ItemLaunch* m, PeerID from) {
 
     ItemObject* item = static_cast<ItemObject*>(o);
     ObjectID thrower = m->thrower == -1 ? -1 : GetObjectID(m->thrower);
+    if (!Finite3(m->position) || !Finite3(m->rotation_x) || !Finite3(m->rotation_y) || !Finite3(m->linear_velocity) ||
+        !Finite3(m->angular_velocity) || length_squared(cross(m->rotation_x, m->rotation_y)) < 1e-6f) {
+        return;  // a broken throw there: it stays where it is here
+    }
 
     if (item->IsHeld()) {
         Object* holder = sg->GetObjectFromID(item->HeldByWhom());
@@ -1694,6 +1813,13 @@ void Online::ReceiveItemHit(OnlineMessages::ItemHit* m) {
 
     MovementObject* mo = static_cast<MovementObject*>(co);
     ItemObject* item = static_cast<ItemObject*>(io);
+    if (!Finite3(m->point) || !Finite3(m->velocity) || !Finite3(m->stick_pos) || !Finite3(m->stick_x) || !Finite3(m->stick_y) ||
+        !Finite3(m->rel_pos) || !Finite3(m->rel_x) || !Finite3(m->rel_y)) {
+        return;
+    }
+    if (m->bone >= 0 && length_squared(cross(m->rel_x, m->rel_y)) < 1e-6f) {
+        m->bone = -1;  // no usable place on the bone: the ray
+    }
 
     if (m->type == 2 && item->IsHeld()) {
         // The thrower's record letting go is still on its way here: the host's flight decides
@@ -1958,6 +2084,14 @@ void Online::CheckPendingMessages() {
         lock_guard<mutex> guard(online_session->incoming_messages_lock);
 
         for (auto& it : online_session->incoming_messages) {
+            // Overgrowth Online: a guest sending what only the host sends: refused
+            if (IsHosting() && HostOnlyMessage(message_handler.GetMessageType(it.message))) {
+                if (net_refused++ % 50 == 0) {
+                    LOGW << "Overgrowth Online: peer " << (int)it.from << " sent a host's message (type "
+                         << (int)message_handler.GetMessageType(it.message) << "): refused" << std::endl;
+                }
+                continue;
+            }
             message_handler.Execute(it.message, it.from);
 
             // Overgrowth Online: a client's character sounds go to the other clients too
@@ -2089,30 +2223,24 @@ size_t Online::CompressData(vector<char>& target_buffer, const void* source_buff
     return compressedSize;
 }
 
+// Overgrowth Online: 0 for anything unusable (no size, too big, broken); the
+// size a package claims comes from whoever sent it
 size_t Online::DecompressData(vector<char>& target_buffer, const void* source_buffer, size_t source_size) {
+    const size_t kMaxPackageBytes = 4u << 20;
     size_t decompressed_size = ZSTD_getFrameContentSize(source_buffer, source_size);
 
-    if (decompressed_size == ZSTD_CONTENTSIZE_UNKNOWN) {
-        LOGW << "Unable to determine uncompressed package size" << std::endl;
-    } else if (decompressed_size == ZSTD_CONTENTSIZE_ERROR) {
-        LOGE << "Error while trying to determine content size" << std::endl;
-    } else if (target_buffer.size() < decompressed_size) {
+    if (decompressed_size == ZSTD_CONTENTSIZE_UNKNOWN || decompressed_size == ZSTD_CONTENTSIZE_ERROR || decompressed_size == 0 ||
+        decompressed_size > kMaxPackageBytes) {
+        return 0;
+    }
+    if (target_buffer.size() < decompressed_size) {
         target_buffer.resize(decompressed_size);
     }
 
-    size_t final_decompressed_size = 0;
-    while (true) {
-        size_t final_decompressed_size = ZSTD_decompressDCtx(zstdDContext, target_buffer.data(), target_buffer.size(), source_buffer, source_size);
-        if (ZSTD_isError(final_decompressed_size)) {
-            LOGE << ZSTD_getErrorString(ZSTD_getErrorCode(final_decompressed_size)) << endl;
-        } else if (final_decompressed_size > target_buffer.size()) {
-            // If the final decompressed size is larger than the target buffer, re-do the decompression after resizing.
-            target_buffer.resize(final_decompressed_size);
-            continue;
-        }
-        break;
+    size_t final_decompressed_size = ZSTD_decompressDCtx(zstdDContext, target_buffer.data(), target_buffer.size(), source_buffer, source_size);
+    if (ZSTD_isError(final_decompressed_size) || final_decompressed_size != decompressed_size) {
+        return 0;
     }
-
     return final_decompressed_size;
 }
 
@@ -2519,10 +2647,14 @@ void Online::SendAvatarCharacter(ObjectID character, const string& path) {
     }
 }
 
-void Online::ReceiveAvatarCharacter(CommonObjectID character, const string& path) {
+void Online::ReceiveAvatarCharacter(CommonObjectID character, const string& path, PeerID from) {
     // At once, before the colours sent after it (they are the new character's channels)
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
     ObjectID id = GetObjectID(character);
+    if (!OnlineUtility::IsSafeCharacterPath(path) || !PeerMayChange(from, id)) {
+        LOGW << "Overgrowth Online: a character change from peer " << (int)from << " refused" << std::endl;
+        return;
+    }
     Object* o = sg != nullptr ? sg->GetObjectFromID(id) : nullptr;
     if (o != nullptr && o->GetType() == _movement_object && !IsLocalAvatar(id)) {
         static_cast<MovementObject*>(o)->ApplyNetworkCharacter(path);
@@ -3055,7 +3187,14 @@ uint8_t Online::GetPlayerLimit() {
 }
 
 bool Online::IsLobbyFull() {
-    return GetPlayerLimit() <= GetPlayerCount();
+    size_t peers = 0;
+    if (online_session != nullptr) {
+        lock_guard<mutex> guard(online_session->connected_peers_lock);
+        peers = online_session->connected_peers.size();
+    }
+    // Overgrowth Online: connections still joining count too (a flood of
+    // half-open ones can't go past the limit; connection ids are 8 bits)
+    return GetPlayerLimit() <= std::max<size_t>(GetPlayerCount(), peers + 1);
 }
 
 void Online::AddFreeAvatarsIds() {
@@ -3596,7 +3735,15 @@ int Online::CheckNewMessages() {
             ++net_msgs_in;
             PackageHeader package_header;
             static vector<char> data;
-            DecompressData(data, msg.GetData(), msg.GetSize());
+            size_t bytes = DecompressData(data, msg.GetData(), msg.GetSize());
+            int binn_bytes = (int)bytes;
+            if (bytes == 0 || !binn_is_valid_ex(data.data(), nullptr, nullptr, &binn_bytes)) {
+                if (net_malformed++ % 100 == 0) {
+                    LOGW << "Overgrowth Online: a malformed package from peer " << (int)it.peer_id << " dropped" << endl;
+                }
+                msg.Release();
+                continue;  // (not parsed: the size and the structure are the sender's word)
+            }
             package_header.Deserialize(data.data());
 
             if (package_header.package_type == PackageHeader::Type::MESSAGE_OBJECT) {
@@ -3651,11 +3798,14 @@ void PackageHeader::Deserialize(void* data) {
     this->package_type = (Type)v_package_type;
 
     if (package_type == Type::MESSAGE_OBJECT) {
-        int8_t message_type;
-        binn_list_get_int8(l, pos++, &message_type);
-
-        void* serialized_object;
-        binn_list_get_object(l, pos++, &serialized_object);
+        int8_t message_type = -1;
+        void* serialized_object = nullptr;
+        // Overgrowth Online: the type indexes the handlers: in range or nothing
+        if (!binn_list_get_int8(l, pos++, &message_type) || message_type < 0 || message_type >= OnlineMessageHandler::COUNT ||
+            !binn_list_get_object(l, pos++, &serialized_object)) {
+            package_type = (Type)-1;
+            return;
+        }
 
         if (serialized_object != nullptr) {
             message_ref = message_handler.Deserialize((OnlineMessageType)message_type, (binn*)serialized_object);

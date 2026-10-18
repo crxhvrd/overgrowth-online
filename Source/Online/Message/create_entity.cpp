@@ -28,6 +28,7 @@
 #include "create_entity.h"
 
 #include <Online/online.h>
+#include <Online/online_utility.h>
 #include <Main/engine.h>
 #include <Editors/map_editor.h>
 
@@ -61,6 +62,9 @@ void CreateEntity::Execute(const OnlineMessageRef& ref, void* object, PeerID pee
     CreateEntity* ce = static_cast<CreateEntity*>(object);
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
     Online* online = Online::Instance();
+    if (!OnlineUtility::IsSafeAssetPath(ce->path) || !std::isfinite(ce->pos[0]) || !std::isfinite(ce->pos[1]) || !std::isfinite(ce->pos[2])) {
+        return;  // (an object file under Data/, somewhere real)
+    }
 
     if (sg != nullptr) {
         sg->map_editor->CreateObjectFromHost(ce->path, ce->pos, ce->entity_object_id);

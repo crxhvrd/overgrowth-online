@@ -59,6 +59,7 @@
 #include <Asset/Asset/actorfile.h>
 
 #include <Online/online.h>
+#include <Online/online_utility.h>
 #include <Online/Message/set_object_enabled_message.h>
 #include <Online/online_datastructures.h>
 
@@ -523,12 +524,18 @@ void MovementObject::ApplyNetworkCharacter(const std::string& path) {
     if (path == rig_character_path) {
         return;
     }
+    if (!OnlineUtility::IsSafeCharacterPath(path)) {
+        return;  // (it goes into a script below: plain paths only)
+    }
     LOGI << "Overgrowth Online: character " << GetID() << " is now " << path << std::endl;
     if (HasFunction("void CheckSpecies()") && HasFunction("void CacheSkeletonInfo()") && HasFunction("void ResetLayers()")) {
         // aschar.as SwitchCharacter without dropping weapons (the stream says
         // what it holds) or random colours (the owner's come with its palette)
         as_context->Execute("this_mo.char_path = \"" + path + "\"; character_getter.Load(this_mo.char_path); if(params.HasParam(\"Species\")) { params.SetString(\"Species\", character_getter.GetTag(\"species\")); } CheckSpecies(); "
                             "this_mo.RecreateRiggedObject(this_mo.char_path); ResetLayers(); CacheSkeletonInfo();");
+        if (HasFunction("void ResetSecondaryAnimation(bool include_tail)")) {
+            as_context->Execute("ResetSecondaryAnimation(true);");  // (as SwitchCharacter: ears, tail, arms of the new body)
+        }
     } else {
         RecreateRiggedObject(path);
     }
@@ -3545,6 +3552,9 @@ void CDrawTailImpl(
 
     int chain_start = ik_chain_start_index[kTailIK];
     int chain_length = ik_chain_length[kTailIK];
+    if (chain_length <= 0) {
+        return;  // (no tail)
+    }
 
     // Tail wag behavior
     bool wag_tail = false;
@@ -3598,7 +3608,13 @@ void CDrawTailImpl(
     tail_correction.resize(chain_length + 1);
     old_tail_points.resize(chain_length + 1);
     temp_old_tail_points.resize(chain_length + 1);
-    if (tail_points.size() == 0) {
+    if ((int)tail_points.size() != chain_length + 1) {
+        // First time, or another tail since (Overgrowth Online: a species
+        // switch, here or from the network): the old arrays were too short
+        if (tail_points.size() != 0) {
+            LOGI << "Overgrowth Online: character " << this_mo.GetID() << " has another tail (" << tail_points.size() << " -> "
+                 << chain_length + 1 << " points)" << std::endl;
+        }
         tail_points.resize(chain_length + 1);
         for (int i = 0; i < chain_length; ++i) {
             tail_points[i] = rigged_object_GetTransformedBonePoint(ik_chain_elements[chain_start + i], 1);

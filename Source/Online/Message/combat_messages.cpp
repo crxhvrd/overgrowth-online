@@ -232,7 +232,7 @@ void AvatarCharacter::Deserialize(void* object, binn* l) {
 
 void AvatarCharacter::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
     AvatarCharacter* m = static_cast<AvatarCharacter*>(object);
-    Online::Instance()->ReceiveAvatarCharacter(m->character, m->path);
+    Online::Instance()->ReceiveAvatarCharacter(m->character, m->path, peer);
 }
 
 void* AvatarCharacter::Construct(void* mem) {

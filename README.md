@@ -21,6 +21,8 @@ Wolfire's online prototype (2021) was left unfinished. Overgrowth Online started
 | Weapons | Pick-ups not shared | Held, thrown, stuck in a body or left on the ground: the same on every machine, tested with guests on different pings |
 | Sounds | No footsteps from other players | Shared |
 | Game modes | Any level, without co-op or PvP rules | Story co-op, arena PvP with bots |
+| Who may change what | Any connected player could delete, spawn or move any object and rewrite player states and settings | The host checks every message: a player can only affect their own character; hits and grabs must be in reach |
+| Malformed packets | Could crash the game | Dropped unread; tested with forged attacks |
 
 ## License
 

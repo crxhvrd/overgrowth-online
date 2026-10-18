@@ -20,6 +20,7 @@
 //   limitations under the License.
 //
 //-----------------------------------------------------------------------------
+#include <Online/online_utility.h>
 #include "audio_play_sound_group_gain_message.h"
 
 #include <Main/engine.h>
@@ -53,6 +54,9 @@ void AudioPlaySoundGroupGainMessage::Deserialize(void* object, binn* l) {
 
 void AudioPlaySoundGroupGainMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
     AudioPlaySoundGroupGainMessage* t = static_cast<AudioPlaySoundGroupGainMessage*>(object);
+    if (!OnlineUtility::IsSafeAssetPath(t->path)) {
+        return;  // (a sound under Data/, nothing else)
+    }
 
     SoundGroupRef sgr = Engine::Instance()->GetAssetManager()->LoadSync<SoundGroup>(t->path);
     SoundGroupPlayInfo sgpi(*sgr, t->pos);

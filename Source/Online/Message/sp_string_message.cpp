@@ -65,6 +65,9 @@ void SPStringMessage::Deserialize(void* object, binn* l) {
 void SPStringMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
     SPStringMessage* t = static_cast<SPStringMessage*>(object);
     ObjectID object_id = Online::Instance()->GetObjectID(t->param_id);
+    if (!Online::Instance()->PeerMayChange(from, object_id)) {
+        return;  // (a guest: only its own character)
+    }
 
     ScriptParam param;
     param.SetString(t->value);

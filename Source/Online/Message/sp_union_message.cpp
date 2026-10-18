@@ -95,6 +95,9 @@ void SPUnionMessage::Deserialize(void* object, binn* l) {
 void SPUnionMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
     SPUnionMessage* t = static_cast<SPUnionMessage*>(object);
     ObjectID object_id = Online::Instance()->GetObjectID(t->param_id);
+    if (!Online::Instance()->PeerMayChange(from, object_id)) {
+        return;  // (a guest: only its own character)
+    }
 
     ScriptParam param;
     if (t->type == ScriptParam::ScriptParamType::FLOAT) {

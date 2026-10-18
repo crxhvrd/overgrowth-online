@@ -52,6 +52,9 @@ void SPRemoveMessage::Deserialize(void* object, binn* l) {
 void SPRemoveMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
     SPRemoveMessage* t = static_cast<SPRemoveMessage*>(object);
     ObjectID object_id = Online::Instance()->GetObjectID(t->param_id);
+    if (!Online::Instance()->PeerMayChange(from, object_id)) {
+        return;  // (a guest: only its own character)
+    }
 
     ScriptParams* params = Online::Instance()->GetScriptParamsFromID(object_id);
     if (params != nullptr) {

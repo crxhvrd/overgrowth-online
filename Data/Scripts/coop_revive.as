@@ -201,6 +201,13 @@ void ReviveDo(int reviver, int target) {
     if(!MovementObjectExists(target) || ReadCharacterID(target).GetIntVar("knocked_out") == _awake) {
         return;
     }
+    // A guest's word: only a player's character, by another player who
+    // stands beside it (not oneself from afar, not an enemy back up)
+    if(!Online_IsPlayerCharacter(target) || reviver == target || !MovementObjectExists(reviver) ||
+       !Online_IsPlayerCharacter(reviver) || ReadCharacterID(reviver).GetIntVar("knocked_out") != _awake ||
+       distance(ReadCharacterID(reviver).position, ReadCharacterID(target).position) > 3.0f) {
+        return;
+    }
     // Where it lies, on safe ground; else beside the reviver (water, a ledge)
     MovementObject@ body = ReadCharacterID(target);
     vec3 spot;

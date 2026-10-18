@@ -50,9 +50,11 @@ binn* AngelscriptData::Serialize(void* object) {
 void AngelscriptData::Deserialize(void* object, binn* l) {
     AngelscriptData* ad = static_cast<AngelscriptData*>(object);
     binn_object_get_uint32(l, "s", &ad->state);
-    void* data_ptr;
-    int data_size;
-    binn_object_get_blob(l, "b", &data_ptr, &data_size);
+    void* data_ptr = nullptr;
+    int data_size = 0;
+    if (!binn_object_get_blob(l, "b", &data_ptr, &data_size) || data_ptr == nullptr || data_size < 0) {
+        data_size = 0;  // (missing or broken: no data)
+    }
     ad->data.resize(data_size);
     memcpy(ad->data.data(), data_ptr, data_size);
     BOOL is_persistent_sync_binn;

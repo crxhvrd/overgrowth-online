@@ -588,6 +588,43 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
     } else if (cmd == "menu") {
         // A menu script, as a menu button opens it ("multiplayer_menu.as")
         Engine::Instance()->ScriptableUICallback(req.get("script", "").asString());
+    } else if (cmd == "forge") {
+        // A guest's attack on the host, as a crafted message would be (test of the checks)
+        std::string kind = req.get("kind", "").asString();
+        int id = req.get("target", -1).asInt();
+        const Json::Value& p = req["pos"];
+        vec3 pos = p.isArray() ? vec3(p[0].asFloat(), p[1].asFloat(), p[2].asFloat()) : vec3(0.0f);
+        if (kind == "malformed") {
+            online->TestSendMalformed(req.get("mode", 0).asInt());
+        } else if (kind == "remove_object") {
+            online->Send<OnlineMessages::RemoveObject>(id, _movement_object);
+        } else if (kind == "create_entity") {
+            online->Send<OnlineMessages::CreateEntity>(req.get("path", "").asString(), pos, 999999);
+        } else if (kind == "avatar_character") {
+            online->Send<OnlineMessages::AvatarCharacter>(id, req.get("path", "").asString());
+        } else if (kind == "owner_override") {
+            online->Send<OnlineMessages::OwnerOverride>(id, 0, true, 1.0e6f);
+        } else if (kind == "set_player_state") {
+            PlayerState ps;
+            ps.playername = "Hacked";
+            ps.object_id = id;
+            online->Send<OnlineMessages::SetPlayerState>((PlayerID)req.get("player", 0).asInt(), &ps);
+        } else if (kind == "hit") {
+            online->Send<OnlineMessages::HitRequest>(req.get("attacker", -1).asInt(), id, "attackimpact", "", vec3(0.0f, 0.0f, 1.0f), pos,
+                                                     1000.0f, 1000.0f, 0.0f);
+        } else if (kind == "teleport") {
+            online->Send<OnlineMessages::EditorTransformChange>(id, pos, vec3(1.0f), quaternion());
+        } else if (kind == "sp_string") {
+            online->Send<OnlineMessages::SPStringMessage>(id, req.get("key", "Teams").asString(), req.get("value", "x").asString(),
+                                                          ScriptParamEditorType::UNDEFINED, "");
+        } else if (kind == "level") {
+            online->Send<OnlineMessages::SendLevelMessage>(req.get("msg", "").asString());
+        } else {
+            throw std::runtime_error("forge: unknown kind");
+        }
+    } else if (cmd == "net_nan") {
+        // Our characters' records go out non-finite for this long (seconds)
+        online->test_nan_stream_until_ms = OnlineClockMs() + req.get("seconds", 2.0).asDouble() * 1000.0;
     } else if (cmd == "net_sim" && req.isMember("conn_id")) {
         int c = req["conn_id"].asInt() & 255;
         online->net_sim_conn_latency_ms[c] = req.get("latency_ms", 0).asInt();

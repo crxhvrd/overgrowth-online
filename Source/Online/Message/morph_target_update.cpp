@@ -61,9 +61,11 @@ void MorphTargetUpdate::Deserialize(void* object, binn* l) {
     binn_object_get_float(l, "dw", &mtu->disp_weight);
     binn_object_get_float(l, "mw", &mtu->mod_weight);
 
-    char* b_name_str;
-    binn_object_get_str(l, "n", &b_name_str);
-    strncpy(mtu->name.data(), b_name_str, mtu->name.size());
+    char* b_name_str = nullptr;
+    mtu->name.fill('\0');
+    if (binn_object_get_str(l, "n", &b_name_str) && b_name_str != nullptr) {
+        strncpy(mtu->name.data(), b_name_str, mtu->name.size() - 1);  // (always terminated)
+    }
 }
 
 void MorphTargetUpdate::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {

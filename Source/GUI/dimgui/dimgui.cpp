@@ -629,7 +629,7 @@ static void DrawDebugText(GUI* gui) {
          iter != gui->debug_text.end();) {
         GUI::DebugTextEntry* debug_text_entry = &(iter->second);
         if (debug_text_entry->delete_time >= curr_ticks) {
-            ImGui::Text(debug_text_entry->text.c_str());
+            ImGui::Text("%s", debug_text_entry->text.c_str());
             ++iter;
         } else {
             gui->debug_text.erase(iter++);
@@ -640,7 +640,7 @@ static void DrawDebugText(GUI* gui) {
 static void DrawDebugText(GUI* gui, const std::string& text) {
     GUI::DebugTextMap::iterator iter = gui->debug_text.find(text);
     if (iter != gui->debug_text.end()) {
-        ImGui::Text(iter->second.text.c_str());
+        ImGui::Text("%s", iter->second.text.c_str());
     }
 }
 
@@ -2829,7 +2829,7 @@ void DrawImGui(Graphics* graphics, SceneGraph* scenegraph, GUI* gui, AssetManage
                         first = false;
                     }
 
-                    ImGui::Text(output.c_str());
+                    ImGui::Text("%s", output.c_str());
 
                     ImGui::EndMenu();
                 }
@@ -3813,7 +3813,7 @@ Mark Stockton\nMikko Tarmia\nDavid Lyhed Danielsson");
                 // Display actual chat messages
                 ImGui::PushTextWrapPos();
                 for (const auto& chat_message : chat_messages) {
-                    ImGui::Text(chat_message.message.c_str());
+                    ImGui::Text("%s", chat_message.message.c_str());
                 }
                 ImGui::PopTextWrapPos();
 

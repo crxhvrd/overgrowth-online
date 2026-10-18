@@ -223,6 +223,13 @@ class Online {
     // Per connection on top (a host with guests on different pings)
     std::atomic<int> net_sim_conn_latency_ms[256]{};
     std::atomic<int> net_sim_conn_jitter_ms[256]{};
+    double test_nan_stream_until_ms = 0.0;  // test bridge: our captures go out non-finite until then
+    // Test bridge: a broken package to the first peer (0 garbage, 1 compressed
+    // garbage, 2 message type out of range up, 3 negative)
+    void TestSendMalformed(int mode);
+    uint64_t snapshot_non_finite = 0;        // records dropped for a NaN in them
+    uint64_t net_malformed = 0;              // packages dropped unread
+    uint64_t net_refused = 0;                // messages a guest may not send
 
     // The network thread queues connections to close; the main thread closes
     // them (LateUpdate): closing deletes the player's character
@@ -444,6 +451,10 @@ class Online {
     bool IsLocalAvatar(const ObjectID avatar) const;
     PlayerID GetAvatarOwner(const ObjectID avatar) const;  // whose machine simulates it
     bool IsPlayerCharacter(ObjectID id) const;  // someone's avatar (ours too)
+    // The host about a guest's message naming this object: only its own character
+    // (or what that holds); the host's own word and a client's view always pass
+    bool PeerMayChange(PeerID from, ObjectID id) const;
+    bool HostOnlyMessage(OnlineMessageType type) const;
     void StreamCharacters(SceneGraph* scenegraph);
     void ReceiveSnapshots(PeerID from, const uint8_t* data, size_t size);
 
@@ -560,7 +571,7 @@ class Online {
     void ResolveHitRequest(OnlineMessages::HitRequest* m, bool peers_locked);
     void ResolveHeldHits();
     void SendAvatarCharacter(ObjectID character, const string& path);
-    void ReceiveAvatarCharacter(CommonObjectID character, const string& path);  // queued to LateUpdate
+    void ReceiveAvatarCharacter(CommonObjectID character, const string& path, PeerID from);  // queued to LateUpdate
     void ApplyOwnCharacter(SceneGraph* sg);  // once per level, on our own character
     vector<std::pair<CommonObjectID, string> > pending_avatar_characters;
     string own_character_applied;  // "<level>|<character id>"

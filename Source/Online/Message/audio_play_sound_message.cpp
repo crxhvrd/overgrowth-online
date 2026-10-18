@@ -20,6 +20,7 @@
 //   limitations under the License.
 //
 //-----------------------------------------------------------------------------
+#include <Online/online_utility.h>
 #include "audio_play_sound_message.h"
 
 #include <Main/engine.h>
@@ -47,6 +48,9 @@ void AudioPlaySoundMessage::Deserialize(void* object, binn* l) {
 
 void AudioPlaySoundMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
     AudioPlaySoundMessage* t = static_cast<AudioPlaySoundMessage*>(object);
+    if (!OnlineUtility::IsSafeAssetPath(t->path)) {
+        return;  // (a sound under Data/, nothing else)
+    }
 
     SoundPlayInfo spi;
     spi.path = t->path;

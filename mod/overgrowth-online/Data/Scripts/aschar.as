@@ -10560,6 +10560,10 @@ void HandleThrow() {
         }
     }
 
+    if(going_to_throw_item && !ItemExists(weapon_slots[primary_weapon_slot])) {
+        going_to_throw_item = false;  // Overgrowth Online: disarmed before the throw (a round started, the item was deleted)
+    }
+
     if(going_to_throw_item && going_to_throw_item_time <= time && going_to_throw_item_time > time - 1.0f) {
         if(!flip_info.IsFlipping() || flip_info.flip_progress > 0.5f) {
             int8 flags = 0;

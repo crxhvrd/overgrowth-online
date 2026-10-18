@@ -68,7 +68,11 @@ void ItemUpdate::Execute(const OnlineMessageRef& ref, void* object, PeerID peer)
 
     if (sg != nullptr) {
         Object* obj = sg->GetObjectFromID(object_id);
-        if (obj && obj->GetType() == _item_object) {
+        bool finite = true;
+        for (int i = 0; i < 16; ++i) {
+            finite = finite && std::isfinite(iu->transform.entries[i]);
+        }
+        if (obj && obj->GetType() == _item_object && finite) {
             ItemObject* item = static_cast<ItemObject*>(obj);
 
             ItemObjectFrame iof;

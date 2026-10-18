@@ -54,9 +54,11 @@ void AngelscriptObjectData::Deserialize(void* object, binn* l) {
 
     binn_object_get_int32(l, "id", &ad->object_id);
     binn_object_get_uint32(l, "s", &ad->state);
-    void* data_ptr;
-    int data_size;
-    binn_object_get_blob(l, "b", &data_ptr, &data_size);
+    void* data_ptr = nullptr;
+    int data_size = 0;
+    if (!binn_object_get_blob(l, "b", &data_ptr, &data_size) || data_ptr == nullptr || data_size < 0) {
+        data_size = 0;  // (missing or broken: no data)
+    }
     ad->data.resize(data_size / sizeof(uint32_t));
     memcpy(ad->data.data(), data_ptr, data_size);
 }
@@ -64,6 +66,9 @@ void AngelscriptObjectData::Deserialize(void* object, binn* l) {
 void AngelscriptObjectData::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
     AngelscriptObjectData* ad = static_cast<AngelscriptObjectData*>(object);
     ObjectID object_id = Online::Instance()->GetObjectID(ad->object_id);
+    if (!Online::Instance()->PeerMayChange(peer, object_id)) {
+        return;  // (a guest: only its own character)
+    }
 
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
 

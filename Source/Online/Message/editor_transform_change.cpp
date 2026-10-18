@@ -58,6 +58,14 @@ void EditorTransformChange::Deserialize(void* object, binn* l) {
 void EditorTransformChange::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
     EditorTransformChange* etc = static_cast<EditorTransformChange*>(object);
     ObjectID object_id = Online::Instance()->GetObjectID(etc->id);
+    if (!Online::Instance()->PeerMayChange(peer, object_id)) {
+        return;  // (a guest: only its own character)
+    }
+    for (int i = 0; i < 3; ++i) {
+        if (!std::isfinite(etc->trans[i]) || !std::isfinite(etc->scale[i]) || !std::isfinite(etc->rot[i])) {
+            return;
+        }
+    }
 
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
 

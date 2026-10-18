@@ -605,6 +605,38 @@ def _held_delete(ctx):
 SCENARIOS["held_delete"] = _held_delete
 
 
+def _arena_fights(ctx):
+    from .arena_fights_suite import arena_fights
+    return arena_fights(ctx)
+
+
+SCENARIOS["arena_fights"] = _arena_fights
+
+
+def _nan_guard(ctx):
+    from .nan_guard_suite import nan_guard
+    return nan_guard(ctx)
+
+
+SCENARIOS["nan_guard"] = _nan_guard
+
+
+def _species_cycle(ctx):
+    from .species_cycle_suite import species_cycle
+    return species_cycle(ctx)
+
+
+SCENARIOS["species_cycle"] = _species_cycle
+
+
+def _forged(ctx):
+    from .forge_suite import forged
+    return forged(ctx)
+
+
+SCENARIOS["forged"] = _forged
+
+
 def _weapons_session(ctx):
     from .combat_suite import weapons_session
     return weapons_session(ctx)

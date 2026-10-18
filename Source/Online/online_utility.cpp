@@ -23,6 +23,7 @@
 #include <Online/online_utility.h>
 #include <Main/engine.h>
 #include <Internal/config.h>
+#include <Internal/filesystem.h>
 
 #if ENABLE_STEAMWORKS
 #include <isteamfriends.h>
@@ -32,8 +33,27 @@
 using std::stringstream;
 
 // Name is invalid if (less than 3 letters) or (contains any non alpha numerical characters)
+bool OnlineUtility::IsSafeAssetPath(const std::string& path) {
+    if (path.size() < 6 || path.size() > 255 || path.compare(0, 5, "Data/") != 0 || path.find("..") != std::string::npos) {
+        return false;
+    }
+    for (char c : path) {
+        // Printable, and nothing that ends a script string or leaves the folder
+        // tree (a character path goes into a script: no quote, no backslash)
+        bool ok = c >= 32 && c < 127 && c != '"' && c != '\\' && c != ':' && c != '<' && c != '>' && c != '|' && c != '?' && c != '*';
+        if (!ok) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool OnlineUtility::IsSafeCharacterPath(const std::string& path) {
+    return IsSafeAssetPath(path) && path.size() > 4 && path.compare(path.size() - 4, 4, ".xml") == 0 && FileExists(path, kAnyPath);
+}
+
 bool OnlineUtility::IsValidPlayerName(const std::string& name) {
-    if (name.length() <= 2)
+    if (name.length() <= 2 || name.length() > 24)  // (shown over heads, in feeds, in level messages)
         return false;
 
     for (char c : name) {

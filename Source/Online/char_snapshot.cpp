@@ -91,6 +91,20 @@ uint32_t PackQuat(const quaternion& in) {
     return v;
 }
 
+bool Finite(const Frame& f) {
+    auto fin3 = [](const vec3& v) { return std::isfinite(v[0]) && std::isfinite(v[1]) && std::isfinite(v[2]); };
+    if (!fin3(f.position) || !fin3(f.velocity) || !fin3(f.facing)) {
+        return false;
+    }
+    for (const Bone& b : f.bones) {
+        if (!fin3(b.translation) || !std::isfinite(b.scale) || !std::isfinite(b.rotation[0]) || !std::isfinite(b.rotation[1]) ||
+            !std::isfinite(b.rotation[2]) || !std::isfinite(b.rotation[3])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 quaternion UnpackQuat(uint32_t v) {
     int largest = (int)(v >> 30);
     float q[4];

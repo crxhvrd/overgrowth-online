@@ -50,6 +50,19 @@ void ChatEntryMessage::Deserialize(void* object, binn* l) {
 void ChatEntryMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID from) {
     ChatEntryMessage* t = static_cast<ChatEntryMessage*>(object);
 
+    // Overgrowth Online: printable and short, from a known player
+    if (t->entry.size() > 200) {
+        t->entry.resize(200);
+    }
+    for (char& c : t->entry) {
+        if ((unsigned char)c < 32 || c == 127) {
+            c = ' ';
+        }
+    }
+    if (Online::Instance()->IsHosting() && Online::Instance()->online_session->player_states.count(from) == 0) {
+        return;
+    }
+
     // Hosts will prefix name of sender and send it to everyone, clients will simply apply it here.
     if (Online::Instance()->IsActive()) {
         if (Online::Instance()->IsHosting()) {

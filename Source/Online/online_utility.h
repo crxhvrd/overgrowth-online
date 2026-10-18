@@ -30,6 +30,10 @@
 class OnlineUtility {
    public:
     static bool IsValidPlayerName(const std::string& name);
+    // Overgrowth Online: a path another machine sent: under Data/, no way up or out,
+    // plain characters (it may end up in a script or an asset load)
+    static bool IsSafeAssetPath(const std::string& path);
+    static bool IsSafeCharacterPath(const std::string& path);  // ... and an existing .xml
     static std::string GetDefaultPlayerName();
     static std::string GetPlayerName();
     static std::string GetActiveModsString();
