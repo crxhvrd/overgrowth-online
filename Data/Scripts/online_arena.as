@@ -80,6 +80,24 @@ const array<array<string>> kRndCharacters = {
     {"rat", "female_rat", "hooded_rat"},
     {"wolf", "male_wolf"}
 };
+// How often each of those comes up (of 100): a wolf outclasses everyone, so rarely
+const array<int> kRndWeights = {30, 23, 22, 22, 3};
+
+int RandomSpecies(bool wolf_taken) {
+    int total = 0;
+    for(uint i = 0; i < kRndWeights.length(); ++i) {
+        total += (wolf_taken && i == 4) ? 0 : kRndWeights[i];
+    }
+    int r = rand() % total;
+    for(uint i = 0; i < kRndWeights.length(); ++i) {
+        int w = (wolf_taken && i == 4) ? 0 : kRndWeights[i];
+        if(r < w) {
+            return int(i);
+        }
+        r -= w;
+    }
+    return 0;
+}
 array<int> roster;         // the players' (and bots') characters in this match
 array<int> points;         // their points
 int max_points = 2;
@@ -128,7 +146,6 @@ void Init(string str) {
     text_id = TextInit(512, 512);
     score_id = TextInit(512, 512);
     audience_sound_handle = PlaySoundLoop(level.GetPath("crowd_sound"), 0.0f);
-    level.SendMessage("disable_retry");
     FindMarkers();
 
     if(Online_IsClient()) {
@@ -530,9 +547,11 @@ void PlanRandomizer() {
     rnd_knife.resize(0);
     rnd_wolf.resize(0);
     array<string> weapons = {"", "", "knife", "knife", "sword", "sword", "big_sword", "spear", "spear"};
+    bool wolf_taken = false;
     for(uint k = 0; k < roster.length(); ++k) {
         if(random_round) {
-            int s = rand() % int(kRndCharacters.length());
+            int s = RandomSpecies(wolf_taken);  // (one wolf a round at most)
+            wolf_taken = wolf_taken || s == 4;
             const array<string>@ kinds = kRndCharacters[s];
             rnd_paths.insertLast("Data/Characters/" + kinds[rand() % int(kinds.length())] + ".xml");
             rnd_wolf.insertLast(s == 4);

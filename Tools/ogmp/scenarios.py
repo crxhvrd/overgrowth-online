@@ -583,6 +583,20 @@ def _weapons_ping(ctx):
 SCENARIOS["weapons_ping"] = _weapons_ping
 
 
+def _retry_arena(ctx):
+    from .retry_suite import retry_arena
+    return retry_arena(ctx)
+
+
+def _retry_coop(ctx):
+    from .retry_suite import retry_coop
+    return retry_coop(ctx)
+
+
+SCENARIOS["retry_arena"] = _retry_arena
+SCENARIOS["retry_coop"] = _retry_coop
+
+
 def _weapons_session(ctx):
     from .combat_suite import weapons_session
     return weapons_session(ctx)

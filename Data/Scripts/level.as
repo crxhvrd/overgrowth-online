@@ -37,6 +37,26 @@ uint32 display_text_id;
 string hotspot_image_string;
 bool menu_paused = false;
 bool allow_retry = true;
+
+// Overgrowth Online: the host's Retry loads the level again for everyone (the
+// guests follow a level change; a reset here would leave their scripts, and
+// an arena's score and bots, behind). A campaign level by its id: the
+// campaign still knows what comes next
+void OnlineRetry() {
+    // (a level loaded by its path has no real id: "class LevelInfoAsset")
+    string id = GetCurrLevelID();
+    string campaign_id = GetCurrCampaignID();
+    if(id != "" && campaign_id != "") {
+        array<ModLevel>@ levels = GetCampaign(campaign_id).GetLevels();
+        for(uint i = 0; i < levels.length(); ++i) {
+            if(levels[i].GetID() == id) {
+                LoadLevelID(id);
+                return;
+            }
+        }
+    }
+    LoadLevel(GetCurrLevelRelPath());
+}
 bool non_tutorial_message = false;
 string tutorial_message = "";
 string tutorial_message_display = "";
@@ -543,7 +563,11 @@ void Update(int paused) {
         else if( message.name == "Retry")
         {
             toggle_gui = true;
-            level.SendMessage("reset");
+            if(Online_IsHosting()) {
+                OnlineRetry();
+            } else {
+                level.SendMessage("reset");
+            }
         }
         else if( message.name == "Main Menu")
         {
