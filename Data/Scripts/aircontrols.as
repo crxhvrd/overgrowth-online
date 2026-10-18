@@ -347,7 +347,7 @@ class JumpInfo {
 
         //Print("Start jump: "+this_mo.velocity.y+"\n");
         jetpack_fuel = p_jump_fuel;
-        if(character_getter.GetTag("species") != "rabbit"){
+        if(character_getter.GetTag("species") != "rabbit" && !this_mo.controlled){  // (Overgrowth Online: players jump as the hero)
             jetpack_fuel *= 0.2f;
             this_mo.velocity.y *= 0.6f;
         }

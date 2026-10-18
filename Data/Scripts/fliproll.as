@@ -157,7 +157,8 @@ class FlipInfo {
     }
 
     void StartFlip(vec3 dir){
-        if(allow_rolling && (species == _rabbit || species == _cat)){
+        // (Overgrowth Online: any player flips, whatever species it is)
+        if(allow_rolling && (species == _rabbit || species == _cat || this_mo.controlled)){
             level.SendMessage("character_start_flip "+this_mo.getID());
             AchievementEvent("character_start_flip");
             rolling = false;

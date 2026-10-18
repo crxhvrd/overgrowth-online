@@ -7927,7 +7927,7 @@ void UpdateGroundAttackControls(const Timestep &in ts) {
 }
 
 void UpdateAirAttackControls() {
-    if((species == _rabbit && this_mo.controlled) || (!this_mo.controlled && aio_npc_air_attacks)) {
+    if(this_mo.controlled || aio_npc_air_attacks) {  // (any player's air attack, whatever species it is)
         int air_attack_id = -1;
 
         if(WantsToAttack()) {

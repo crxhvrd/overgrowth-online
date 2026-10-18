@@ -7863,7 +7863,7 @@ void UpdateGroundAttackControls(const Timestep &in ts) {
 }
 
 void UpdateAirAttackControls() {
-    if(species == _rabbit && this_mo.controlled) {
+    if(this_mo.controlled) {  // (Overgrowth Online: any player's air attack, whatever species it is)
         int air_attack_id = -1;
 
         if(WantsToAttack()) {
