@@ -25,6 +25,24 @@ void DrawGeneralTab() {
         SetConfigValueString("aio_menu_key", kMenuKeys[current]);
     }
 
+    // The host's arena matches (online_arena.as in the Overgrowth Online build reads the key)
+    if(MPHost()) {
+        Header("Online arena (you host)");
+        array<string> bot_labels = {"Off", "Up to 2 fighters", "Up to 3 fighters", "Up to 4 fighters", "Up to 6 fighters", "Up to 8 fighters"};
+        array<int> bot_steps = {0, 2, 3, 4, 6, 8};
+        int at = max(0, bot_steps.find(CfgInt("oo_arena_bots", 2)));
+
+        if(ImGui_Combo("Arena bots", at, bot_labels)) {
+            SetConfigValueInt("oo_arena_bots", bot_steps[at]);
+        }
+
+        Tip("AI fighters fill your arena matches up to this many fighters. A player who joins takes a bot's place. " +
+            "Changes apply from the next round.");
+
+        Toggle("Randomizer", "oo_arena_random", false, "Every round each fighter, players and bots, becomes a random species " +
+            "and look with random weapons. Off again: the players get their own characters back. From the next round.");
+    }
+
     Header("About Overgrowth Online " + kVersion);
     ImGui_TextWrapped("Overgrowth Online grows into a whole ecosystem: online play and improvements to the whole game. Each part has its own tab here.");
     ImGui_Spacing();

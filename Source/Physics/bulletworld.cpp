@@ -986,6 +986,14 @@ void BulletWorld::UnlinkObjectPermanent(BulletObject *bullet_object) {
 }
 
 void BulletWorld::LinkObject(BulletObject *bullet_object) {
+    // Overgrowth Online: once. A body added twice (an item stuck in a wall
+    // and set loose: SetPhysicsTransform links it, ActivatePhysics again) kept
+    // a second entry and broadphase proxy after its removal; once it was
+    // deleted the collision passes read freed memory (online arena crashes)
+    if (bullet_object->body->getBroadphaseHandle() != nullptr) {
+        bullet_object->linked = true;
+        return;
+    }
     dynamic_objects_.push_back(bullet_object);
     dynamics_world_->addRigidBody(bullet_object->body,
                                   bullet_object->collision_group,
@@ -998,6 +1006,12 @@ void BulletWorld::UnlinkConstraint(btTypedConstraint *constraint) {
 }
 
 void BulletWorld::LinkConstraint(btTypedConstraint *constraint) {
+    // Overgrowth Online: once (as LinkObject)
+    for (int i = dynamics_world_->getNumConstraints() - 1; i >= 0; --i) {
+        if (dynamics_world_->getConstraint(i) == constraint) {
+            return;
+        }
+    }
     dynamics_world_->addConstraint(constraint, true);
 }
 

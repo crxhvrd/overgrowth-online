@@ -41,6 +41,7 @@
 #include <Objects/envobjectattach.h>
 #include <Objects/riggedobject.h>
 #include <Objects/cameraobject.h>
+#include <Objects/hotspot.h>
 
 #include <Editors/map_editor.h>
 #include <Editors/actors_editor.h>
@@ -183,6 +184,9 @@ void Online::ChangeLevel(const string& id) {
     RemoveAllAvatarIds();
     loading = true;
     held_hits.clear();
+    coop_cutscene = false;  // (the new level's objects)
+    coop_hidden.clear();
+    last_safe_ground.clear();
 
     online_session->outgoing_messages_lock.lock();
     // Clear out Level persistent messages
@@ -391,6 +395,7 @@ void Online::LateUpdate(SceneGraph* scenegraph) {
         }
 
         CoopUpdate(scenegraph);
+        CoopSpectateUpdate(scenegraph);
         ResolveHeldHits();
 
         // Characters: a client's switch goes on to everyone (kept for late
@@ -710,6 +715,13 @@ void Online::StopMultiplayer() {
             }
             online_session->connected_peers.clear();  // We shouldn't have to clear this, since we plan on getting rid of online_session shortyly
             StopListening();
+
+            // Overgrowth Online: a connection still being made (the player
+            // cancelled, or it never answered) is closed too; it went on forever
+            if (has_pending_connection) {
+                net.CloseConnection(pending_connection, ConnectionClosedReason::DISCONNECTED);
+                has_pending_connection = false;
+            }
         }
 
         // Clear up on the fly
@@ -2167,50 +2179,212 @@ string Online::TranslateIDs(const string& msg, bool to_common) const {
     return out;
 }
 
-vec3 Online::SafeSpotNear(const vec3& base, const vec3& facing, int index) {
+// A standing character's position over its ground (aschar.as: legs and char sphere)
+static const float kStandHeight = 0.75f;
+
+// A point in a hotspot's box (its local -2..2 on each axis; Hotspot::UpdateCollisionShape)
+static vec3 HotspotLocal(Hotspot* h, const vec3& p) {
+    return invert(h->GetTransform()) * p;
+}
+
+static bool InBox(const vec3& l) {
+    return std::fabs(l.x()) <= 2.0f && std::fabs(l.y()) <= 2.0f && std::fabs(l.z()) <= 2.0f;
+}
+
+bool Online::GroundHazard(const vec3& ground) const {
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
-    if (sg == nullptr || sg->bullet_world_ == nullptr || index <= 0) {
-        return base;
+    if (sg == nullptr) {
+        return false;
+    }
+    for (Object* o : sg->hotspots_) {
+        if (o == nullptr || o->GetType() != _hotspot_object || !o->enabled_) {
+            continue;
+        }
+        Hotspot* h = static_cast<Hotspot*>(o);
+        const string& file = h->GetScriptFile();
+        bool water = file.find("wet_cube") != string::npos || file.find("wet_cylinder") != string::npos;
+        bool lethal = file.find("kill") != string::npos || file.find("spike") != string::npos ||
+                      (file.find("checkpoint") != string::npos && h->GetScriptParams()->HasParam("fall_death"));
+        if (water) {
+            // Deeper than a wade (the surface is the top of the box), or lethal water
+            vec3 l = HotspotLocal(h, ground);
+            bool inside = file.find("wet_cylinder") != string::npos ? l.x() * l.x() + l.z() * l.z() <= 4.0f
+                                                                      : std::fabs(l.x()) <= 2.0f && std::fabs(l.z()) <= 2.0f;
+            if (inside && l.y() <= 2.0f && l.y() >= -2.5f) {
+                float surface = (h->GetTransform() * vec3(l.x(), 2.0f, l.z())).y();
+                if (surface - ground.y() > 0.5f || h->GetScriptParams()->HasParam("Lethal")) {
+                    return true;
+                }
+            }
+        } else if (lethal) {
+            // The feet or the body in it
+            if (InBox(HotspotLocal(h, ground)) || InBox(HotspotLocal(h, ground + vec3(0.0f, 1.0f, 0.0f)))) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool Online::FindSafeSpot(const vec3& base, const vec3& facing, int index, vec3* spot) {
+    SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+    if (sg == nullptr || sg->bullet_world_ == nullptr) {
+        return false;
     }
     BulletWorld* world = sg->bullet_world_;
     const vec3 up(0.0f, 1.0f, 0.0f);
 
-    // The ground under the base point
+    // The ground under the base point (a jump or a step off a ledge: further down)
     vec3 hit;
-    if (world->CheckRayCollision(base + up * 0.5f, base - up * 3.0f, &hit) == nullptr) {
-        return base;
+    if (world->CheckRayCollision(base + up * 0.5f, base - up * 6.0f, &hit) == nullptr) {
+        return false;
     }
-    float above = base.y() - hit.y();  // how high a character's position sits over its ground
-    float ground = hit.y();
+    const float ground = hit.y();
+    float above = base.y() - ground;  // how high a standing character's position sits over its ground
+    if (above < 0.3f || above > 1.3f) {
+        above = kStandHeight;  // (the base wasn't a standing character)
+    }
 
     vec3 f = facing;
     f.y() = 0.0f;
     f = length_squared(f) > 1e-6f ? normalize(f) : vec3(0.0f, 0.0f, 1.0f);
     vec3 right(-f.z(), 0.0f, f.x());
 
-    // Beside, behind, in front; further out for the later ones
-    const float kSide[] = {1.2f, -1.2f, 0.0f, 1.2f, -1.2f, 0.0f, 2.4f, -2.4f};
-    const float kBack[] = {0.0f, 0.0f, -1.2f, -1.2f, -1.2f, 1.2f, 0.0f, 0.0f};
-    const int n = 8;
-    for (int t = 0; t < n; ++t) {
-        int k = (index - 1 + t) % n;
-        vec3 spot = base + right * kSide[k] + f * kBack[k];
+    // Index 0: the base itself first. Then beside, behind, in front, in three
+    // rings; each player starts at its own place in the first
+    const float kSide[] = {1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, 1.0f, -1.0f};
+    const float kBack[] = {0.0f, 0.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f};
+    const float kRing[] = {1.2f, 2.4f, 3.6f};
+    vector<vec3> candidates;
+    if (index <= 0) {
+        candidates.push_back(vec3(base.x(), ground, base.z()));
+    }
+    for (float r : kRing) {
+        for (int t = 0; t < 8; ++t) {
+            int k = (std::max(0, index - 1) + t) % 8;
+            vec3 d = right * kSide[k] + f * kBack[k];
+            candidates.push_back(vec3(base.x(), ground, base.z()) + normalize(d) * r);
+        }
+    }
+
+    const vec3 from(base.x(), ground, base.z());
+    for (const vec3& c : candidates) {
+        bool is_base = length_squared(c - from) < 1e-4f;
 
         // Nothing in between (a wall, a rock)
-        if (world->CheckRayCollision(base + up * 0.3f, spot + up * 0.3f) != nullptr) {
+        if (!is_base && (world->CheckRayCollision(from + up * 0.6f, c + up * 0.6f) != nullptr ||
+                         world->CheckRayCollision(from + up * 1.3f, c + up * 1.3f) != nullptr)) {
             continue;
         }
         // Solid ground at about the same height (no drop, no sea floor)
         vec3 g;
-        if (world->CheckRayCollision(spot + up * 1.0f, spot - up * 2.5f, &g) == nullptr) {
+        if (world->CheckRayCollision(c + up * 1.5f, c - up * 2.5f, &g) == nullptr) {
             continue;
         }
-        if (std::fabs(g.y() - ground) > 0.6f) {
+        if (!is_base && std::fabs(g.y() - ground) > 0.6f) {
             continue;
         }
-        return vec3(spot.x(), g.y() + above, spot.z());
+        // Room to stand
+        if (world->CheckRayCollision(g + up * 0.1f, g + up * 1.8f) != nullptr) {
+            continue;
+        }
+        // Ground all around it (not on the very edge of a drop)
+        bool footing = true;
+        for (int s = 0; s < 4 && footing; ++s) {
+            vec3 o = (s < 2 ? right : f) * (s % 2 == 0 ? 0.45f : -0.45f);
+            vec3 g2;
+            footing = world->CheckRayCollision(g + o + up * 0.6f, g + o - up * 0.9f, &g2) != nullptr;
+        }
+        if (!footing || GroundHazard(g)) {
+            continue;
+        }
+        *spot = vec3(g.x(), g.y() + above, g.z());
+        return true;
     }
-    return base;
+    return false;
+}
+
+vec3 Online::SafeSpotNear(const vec3& base, const vec3& facing, int index) {
+    vec3 spot;
+    return FindSafeSpot(base, facing, index, &spot) ? spot : base;
+}
+
+// Every quarter second: where each player's character stands safely
+void Online::TrackSafeGround(SceneGraph* sg) {
+    if (sg == nullptr || sg->bullet_world_ == nullptr || OnlineClockMs() - last_safe_ground_ms < 250.0) {
+        return;
+    }
+    last_safe_ground_ms = OnlineClockMs();
+    if (last_safe_level != level_name) {  // (a client may not see ChangeLevel)
+        last_safe_level = level_name;
+        last_safe_ground.clear();
+    }
+    for (ObjectID id : PlayerAvatarIDs()) {
+        Object* o = sg->GetObjectFromID(id);
+        if (o == nullptr || o->GetType() != _movement_object) {
+            continue;
+        }
+        MovementObject* mo = static_cast<MovementObject*>(o);
+        if (mo->ASGetIntVar("knocked_out") != 0 || !mo->ASGetBoolVar("on_ground") || mo->ASGetBoolVar("dialogue_control")) {
+            continue;
+        }
+        vec3 g;
+        if (sg->bullet_world_->CheckRayCollision(mo->position, mo->position - vec3(0.0f, 1.5f, 0.0f), &g) != nullptr && !GroundHazard(g)) {
+            last_safe_ground[id] = mo->position;
+        }
+    }
+}
+
+// A spot for player number `index` beside the character `anchor_id` (where it
+// is, else where it last stood safely), and the way it faces
+static bool SpotBeside(Online* online, SceneGraph* sg, ObjectID anchor_id, int index, vec3* spot, vec3* facing) {
+    Object* o = sg != nullptr ? sg->GetObjectFromID(anchor_id) : nullptr;
+    if (o == nullptr || o->GetType() != _movement_object) {
+        return false;
+    }
+    MovementObject* anchor = static_cast<MovementObject*>(o);
+    *facing = anchor->GetFacing();
+    if (online->FindSafeSpot(anchor->position, *facing, index, spot)) {
+        return true;
+    }
+    auto it = online->last_safe_ground.find(anchor_id);
+    return it != online->last_safe_ground.end() && online->FindSafeSpot(it->second, *facing, index, spot);
+}
+
+ObjectID Online::HostAvatarID() const {
+    if (online_session == nullptr) {
+        return -1;
+    }
+    // The host's own player state (its local_player_id, -1 as a PlayerID) on every machine
+    auto it = online_session->player_states.find((PlayerID)-1);
+    if (it != online_session->player_states.end() && it->second.object_id >= 0) {
+        return it->second.object_id;
+    }
+    if (IsHosting()) {
+        vector<ObjectID> mine = GetLocalAvatarIDs();
+        return mine.empty() ? -1 : mine[0];
+    }
+    return -1;
+}
+
+int Online::GuestIndex(ObjectID id) const {
+    if (online_session == nullptr) {
+        return 0;
+    }
+    ObjectID host = HostAvatarID();
+    vector<PlayerID> guests;
+    for (const auto& it : online_session->player_states) {
+        if (it.second.object_id >= 0 && it.second.object_id != host) {
+            guests.push_back(it.first);
+        }
+    }
+    std::sort(guests.begin(), guests.end());
+    for (size_t k = 0; k < guests.size(); ++k) {
+        if (online_session->player_states.at(guests[k]).object_id == id) {
+            return (int)k + 1;
+        }
+    }
+    return 0;
 }
 
 // ---- Your online character -----------------------------------------------------
@@ -2346,6 +2520,9 @@ bool Online::CoopCampaign() {
 }
 
 void Online::CoopUpdate(SceneGraph* sg) {
+    TrackSafeGround(sg);
+    CoopCutsceneUpdate(sg);
+
     // Revives: a client's own character, as the host asked
     // (one a teammate still drags comes back first: wait for it, a while)
     double now_ms = OnlineClockMs();
@@ -2355,7 +2532,9 @@ void Online::CoopUpdate(SceneGraph* sg) {
         if (o == nullptr || o->GetType() != _movement_object) {
             continue;
         }
-        if (IsLocalAvatar(r.id)) {
+        if (coop_cutscene && OwnPlayerCharacter(r.id)) {
+            waiting.push_back(r);  // after the cutscene (held still in it; its end places us)
+        } else if (IsLocalAvatar(r.id)) {
             MovementObject* mo = static_cast<MovementObject*>(o);
             mo->SetNetworkProxy(false);  // (now: its update would only do it later)
             ReviveAvatar(mo, r.pos, r.facing);
@@ -2367,44 +2546,10 @@ void Online::CoopUpdate(SceneGraph* sg) {
 
     if (!IsHosting() || !host_started_level || sg == nullptr || sg->level == nullptr) {
         coop_all_down_ms = -1.0;
-        coop_revive_pending = false;
         return;
     }
 
     vector<ObjectID> players = PlayerAvatarIDs();
-
-    // A checkpoint: everyone who is down gets up beside someone who isn't
-    if (coop_revive_pending) {
-        coop_revive_pending = false;
-        MovementObject* anchor = nullptr;
-        vector<ObjectID> mine = GetLocalAvatarIDs();
-        if (!mine.empty() && AvatarUp(sg, mine[0])) {
-            anchor = static_cast<MovementObject*>(sg->GetObjectFromID(mine[0]));
-        }
-        for (ObjectID id : players) {
-            if (anchor == nullptr && AvatarUp(sg, id)) {
-                anchor = static_cast<MovementObject*>(sg->GetObjectFromID(id));
-            }
-        }
-        int k = 0;
-        for (ObjectID id : players) {
-            Object* o = sg->GetObjectFromID(id);
-            if (anchor == nullptr || o == nullptr || o->GetType() != _movement_object || AvatarUp(sg, id)) {
-                continue;
-            }
-            vec3 facing = anchor->GetFacing();
-            vec3 right = normalize(vec3(-facing.z(), 0.0f, facing.x()) + vec3(0.0001f, 0.0f, 0.0f));
-            vec3 pos = anchor->position + right * (1.3f * (1 + k / 2) * (k % 2 == 0 ? 1.0f : -1.0f)) - facing * 0.6f;
-            ++k;
-            LOGI << "Overgrowth Online: checkpoint, player character " << id << " back up" << std::endl;
-            if (IsLocalAvatar(id)) {
-                ReviveAvatar(static_cast<MovementObject*>(o), pos);
-            } else {
-                Send<OnlineMessages::SendLevelMessage>("ohg revive " + to_string((int)GetOriginalID(id)) + " " +
-                                                       to_string(pos.x()) + " " + to_string(pos.y()) + " " + to_string(pos.z()));
-            }
-        }
-    }
 
     // Everyone down for 5 s in a story level: the level starts over for all
     if (players.size() < 2 || !CoopCampaign()) {
@@ -2425,6 +2570,187 @@ void Online::CoopUpdate(SceneGraph* sg) {
         sg->level->Message("reset");
         sg->level->Message("skip_dialogue");
     }
+}
+
+// Host, from the level's "coop_checkpoint" message (Level::Message): everyone
+// who is down gets up beside the one who reached the checkpoint (else the
+// host, else anyone up), on safe ground
+void Online::CoopCheckpoint(ObjectID by) {
+    SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+    if (!IsHosting() || !host_started_level || sg == nullptr) {
+        return;
+    }
+    vector<ObjectID> players = PlayerAvatarIDs();
+    vector<ObjectID> anchors;
+    if (by >= 0 && AvatarUp(sg, by)) {
+        anchors.push_back(by);
+    }
+    vector<ObjectID> mine = GetLocalAvatarIDs();
+    if (!mine.empty() && AvatarUp(sg, mine[0])) {
+        anchors.push_back(mine[0]);
+    }
+    for (ObjectID id : players) {
+        if (AvatarUp(sg, id)) {
+            anchors.push_back(id);
+        }
+    }
+    int k = 0;
+    for (ObjectID id : players) {
+        Object* o = sg->GetObjectFromID(id);
+        if (anchors.empty() || o == nullptr || o->GetType() != _movement_object || AvatarUp(sg, id)) {
+            continue;
+        }
+        ++k;
+        vec3 pos, facing;
+        ObjectID beside = -1;
+        for (ObjectID a : anchors) {
+            if (SpotBeside(this, sg, a, k, &pos, &facing)) {
+                beside = a;
+                break;
+            }
+        }
+        if (beside < 0) {
+            LOGW << "Overgrowth Online: checkpoint, no safe ground for player character " << id << " (stays down)" << std::endl;
+            continue;
+        }
+        LOGI << "Overgrowth Online: checkpoint, player character " << id << " back up beside " << beside << std::endl;
+        if (IsLocalAvatar(id)) {
+            ReviveAvatar(static_cast<MovementObject*>(o), pos, facing);
+        } else {
+            Send<OnlineMessages::SendLevelMessage>("ohg revive " + to_string((int)GetOriginalID(id)) + " " +
+                                                   to_string(pos.x()) + " " + to_string(pos.y()) + " " + to_string(pos.z()) + " " +
+                                                   to_string(facing.x()) + " " + to_string(facing.z()));
+        }
+    }
+}
+
+// Every machine. A dialogue is the host's character's scene: the guests'
+// characters aren't in it (hidden here; level.as holds a client's own one
+// still). When it ends, each guest stands up beside the host
+void Online::CoopCutsceneUpdate(SceneGraph* sg) {
+    bool cutscene = host_started_level && sg != nullptr && sg->level != nullptr && sg->level->DialogueCameraControl();
+    ObjectID host = HostAvatarID();
+
+    if (cutscene && host >= 0) {
+        for (ObjectID id : PlayerAvatarIDs()) {
+            Object* o = id != host ? sg->GetObjectFromID(id) : nullptr;
+            if (o == nullptr || o->GetType() != _movement_object) {
+                continue;
+            }
+            static_cast<MovementObject*>(o)->visible = false;  // (every frame: aschar.as Reset shows it again)
+            if (std::find(coop_hidden.begin(), coop_hidden.end(), id) == coop_hidden.end()) {
+                coop_hidden.push_back(id);
+                LOGI << "Overgrowth Online: cutscene, player character " << id << " hidden" << std::endl;
+            }
+        }
+    }
+    if (cutscene == coop_cutscene) {
+        return;
+    }
+    coop_cutscene = cutscene;
+    if (cutscene) {
+        return;
+    }
+
+    for (ObjectID id : coop_hidden) {
+        Object* o = sg != nullptr ? sg->GetObjectFromID(id) : nullptr;
+        if (o != nullptr && o->GetType() == _movement_object) {
+            static_cast<MovementObject*>(o)->visible = true;
+        }
+    }
+    coop_hidden.clear();
+
+    // Our own character, a guest's: beside the host, facing its way (a revive
+    // that came during the cutscene is this now)
+    ObjectID me = IsHosting() ? -1 : GetOwnPlayerState().object_id;
+    pending_revives.erase(std::remove_if(pending_revives.begin(), pending_revives.end(),
+                                         [&](const PendingRevive& r) { return r.id == me; }),
+                          pending_revives.end());
+    Object* o = me >= 0 && me != host && IsLocalAvatar(me) ? sg->GetObjectFromID(me) : nullptr;
+    vec3 pos, facing;
+    if (o != nullptr && o->GetType() == _movement_object && SpotBeside(this, sg, host, std::max(1, GuestIndex(me)), &pos, &facing)) {
+        LOGI << "Overgrowth Online: cutscene over, player character " << me << " beside the host's " << host << std::endl;
+        ReviveAvatar(static_cast<MovementObject*>(o), pos, facing);
+    }
+}
+
+// Every machine, once a frame after the game updates: while our own character
+// is down and another player's is up, the camera looks at theirs. The
+// character script still turns it (mouse look); only its centre moves, set
+// twice so the smoothing goes from our last centre to this one
+void Online::CoopSpectateUpdate(SceneGraph* sg) {
+    ObjectID me = IsHosting() ? HostAvatarID() : GetOwnPlayerState().object_id;
+    Object* mine = sg != nullptr && me >= 0 ? sg->GetObjectFromID(me) : nullptr;
+    bool down = mine != nullptr && mine->GetType() == _movement_object &&
+                static_cast<MovementObject*>(mine)->ASGetIntVar("knocked_out") != 0;
+
+    vector<ObjectID> up;
+    if (down && host_started_level && !coop_cutscene) {
+        for (ObjectID id : PlayerAvatarIDs()) {
+            if (id != me && AvatarUp(sg, id)) {
+                up.push_back(id);
+            }
+        }
+    }
+    if (up.empty()) {
+        if (spectate_target != -1) {
+            LOGI << "Overgrowth Online: spectating stopped" << std::endl;
+        }
+        spectate_target = -1;
+        spectate_name.clear();
+        spectate_next = false;
+        return;
+    }
+
+    // Whose: the same one while they stay up; attack: the next; else the nearest
+    auto at = std::find(up.begin(), up.end(), spectate_target);
+    ObjectID target = spectate_target;
+    if (at == up.end()) {
+        float best = 1e30f;
+        for (ObjectID id : up) {
+            float d = distance_squared(static_cast<MovementObject*>(sg->GetObjectFromID(id))->position,
+                                       static_cast<MovementObject*>(mine)->position);
+            if (d < best) {
+                best = d;
+                target = id;
+            }
+        }
+    } else if (spectate_next) {
+        target = *(++at == up.end() ? up.begin() : at);
+    }
+    spectate_next = false;
+
+    MovementObject* mo = static_cast<MovementObject*>(sg->GetObjectFromID(target));
+    Camera* cam = ActiveCameras::GetCamera(0);  // (ours: a host's other cameras are its players' virtual ones)
+    if (cam == nullptr || mo == nullptr) {
+        return;
+    }
+    vec3 center = mo->position + vec3(0.0f, 0.6f, 0.0f);  // (aschar.as: the camera centre over a standing character)
+    vec3 facing = cam->GetFacing();
+    float dist = std::max(1.5f, std::min(6.0f, cam->GetChaseDistance()));
+    vec3 hit;
+    if (sg->bullet_world_ != nullptr && sg->bullet_world_->CheckRayCollision(center, center - facing * dist, &hit) != nullptr) {
+        dist = std::max(0.4f, distance(center, hit) - 0.25f);  // (a wall behind them: closer)
+    }
+
+    if (target != spectate_target) {
+        spectate_target = target;
+        spectate_name.clear();
+        for (const auto& it : online_session->player_states) {
+            if (it.second.object_id == target) {
+                spectate_name = it.second.playername;
+            }
+        }
+        LOGI << "Overgrowth Online: spectating " << spectate_name << " (character " << target << ")" << std::endl;
+        spectate_center = center;  // (a cut, not a glide)
+        spectate_distance = dist;
+    }
+    cam->SetPos(spectate_center);
+    cam->SetPos(center);
+    cam->SetDistance(spectate_distance);
+    cam->SetDistance(dist);
+    spectate_center = center;
+    spectate_distance = dist;
 }
 
 // Client: "ohg revive <common id> x y z"; runs in LateUpdate
@@ -2820,6 +3146,37 @@ string Online::FriendGames() {
     return "";
 }
 
+// Overgrowth Online: the server browser (public games of Overgrowth Online)
+void Online::RequestPublicGames() {
+#if ENABLE_STEAMWORKS
+    SteamworksMatchmaking* matchmaking = Steamworks::Instance()->GetMatchmaking();
+    if (matchmaking != nullptr) {
+        matchmaking->RequestPublicGames();
+    }
+#endif
+}
+
+string Online::PublicGames() {
+#if ENABLE_STEAMWORKS
+    SteamworksMatchmaking* matchmaking = Steamworks::Instance()->GetMatchmaking();
+    if (matchmaking != nullptr) {
+        return matchmaking->PublicGames(OnlineUtility::GetActiveModsDigest(), OnlineUtility::GetOvergrowthOnlineVersion());
+    }
+#endif
+    return "none";
+}
+
+bool Online::JoinPublicGame(const string& lobby) {
+#if ENABLE_STEAMWORKS
+    SteamworksMatchmaking* matchmaking = Steamworks::Instance()->GetMatchmaking();
+    if (matchmaking != nullptr && !IsActive()) {
+        matchmaking->JoinLobby(lobby);
+        return true;
+    }
+#endif
+    return false;
+}
+
 bool Online::JoinFriend(const string& steam_id) {
 #if ENABLE_STEAMWORKS
     SteamworksMatchmaking* matchmaking = Steamworks::Instance()->GetMatchmaking();
@@ -2843,6 +3200,9 @@ void Online::ConnectP2P(uint64_t steam_id) {
 
         if (net.ConnectP2P(steam_id, &conn_id) == false) {
             StopMultiplayer();
+        } else {
+            pending_connection = conn_id;  // (closed if the player cancels: StopMultiplayer)
+            has_pending_connection = true;
         }
     }
 }
@@ -2855,6 +3215,9 @@ void Online::ConnectByIPAddress(const string& address) {
 
         if (net.ConnectByIPAddress(address, &conn_id) == false) {
             StopMultiplayer();
+        } else {
+            pending_connection = conn_id;  // (closed if the player cancels: StopMultiplayer)
+            has_pending_connection = true;
         }
     }
 }

@@ -36,6 +36,7 @@
 
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 #if ENABLE_STEAMWORKS
 
@@ -63,6 +64,17 @@ class SteamworksMatchmaking {
     std::string presence_mods;
     uint64_t last_presence_request_ms = 0;
 
+    // Server browser: our lobby is public (config "oo_public_game", on unless
+    // set off) and carries what the browser shows; the list we asked Steam for
+    bool lobby_public = false;
+    bool lobby_has_location = false;
+    int browse_state = 0;  // 0 never asked, 1 asking, 2 ready, 3 failed
+    std::vector<uint64_t> browse_lobbies;
+    CCallResult<SteamworksMatchmaking, LobbyMatchList_t> lobby_list_call;
+    void OnLobbyList(LobbyMatchList_t *data, bool io_failure);
+    void SetBrowserData(CSteamID lobby);
+    static bool WantPublic();
+
    public:
     ~SteamworksMatchmaking();
 
@@ -88,6 +100,13 @@ class SteamworksMatchmaking {
 
     // Overgrowth Online: join the game a friend hosts (false: they host none)
     bool JoinFriend(const std::string &steam_id);
+
+    // Overgrowth Online, the server browser: ask Steam for the public games
+    // (worldwide); PublicGames: the first line "busy" | "ready" | "failed" |
+    // "none", then a line each, tab separated: lobby id, host, game, players,
+    // version, mods ("same" | "other" against `mods`), ping ms (-1 unknown)
+    void RequestPublicGames();
+    std::string PublicGames(const std::string &mods, const std::string &version);
 
     void OpenInviteDialog();
 

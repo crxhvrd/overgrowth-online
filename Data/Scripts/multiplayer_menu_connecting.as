@@ -34,6 +34,14 @@ bool back_event_queued = false;
 float dot_counter = 0;
 IMText@ connecting_text;
 
+// Overgrowth Online: Cancel, and no endless wait: an answer comes within
+// kGiveUpSeconds or the attempt ends with a word on why
+const float kGiveUpSeconds = 20.0f;
+float waited = 0.0f;
+float leave_at = -1.0f;       // showing why it failed until then
+FontSetup reason_font("edosz", 55, HexColor("#E0B060"), true);
+IMText@ reason_text;
+
 bool HasFocus() {
     return false;
 }
@@ -53,28 +61,32 @@ void Initialize() {
 }
 
 void BuildUI() {
-    IMDivider left_panel("left_panel", DOVertical);
-    left_panel.setAlignment(CALeft, CACenter);
-    left_panel.append(IMSpacer(DOVertical, 100));
+    IMDivider header_divider("header_div", DOHorizontal);
+    header_divider.setAlignment(CACenter, CACenter);
+    AddTitleHeader("Connecting", header_divider);
+    imGUI.getHeader().setElement(header_divider);
 
-    IMDivider horizontal_buttons_holder(DOHorizontal);
-    horizontal_buttons_holder.append(IMSpacer(DOHorizontal, 75));
+    IMDivider column("column", DOVertical);
+    column.setAlignment(CALeft, CACenter);
 
-    IMDivider buttons_holder("buttons_holder", DOVertical);
-    buttons_holder.append(IMSpacer(DOHorizontal, 200));
-    buttons_holder.setAlignment(CACenter, CACenter);
-    horizontal_buttons_holder.append(buttons_holder);
-    left_panel.append(horizontal_buttons_holder);
+    @connecting_text = IMText("Waiting for the host...", button_font);
+    IMDivider text_row(DOHorizontal);
+    text_row.append(IMSpacer(DOHorizontal, 40));
+    text_row.append(connecting_text);
+    column.append(text_row);
 
+    @reason_text = IMText("", reason_font);
+    IMDivider reason_row(DOHorizontal);
+    reason_row.append(IMSpacer(DOHorizontal, 40));
+    reason_row.append(reason_text);
+    column.append(reason_row);
+    column.append(IMSpacer(DOVertical, 40));
 
-    @connecting_text = IMText("Connecting...", button_font);
-    buttons_holder.append(connecting_text);
-
-    // TODO This relies on being able to close a pending connection in the multiplayer system, which is not currently supported. Once it is, commenting this out should be all that is needed to cancel out of this menu
-    // AddButton("Cancel", buttons_holder, exit_icon);
+    // (Overgrowth Online: closing a connection still being made works now)
+    AddButton("Cancel", column, exit_icon);
 
     IMDivider mainDiv( "mainDiv", DOHorizontal );
-    mainDiv.append(left_panel);
+    mainDiv.append(column);
     imGUI.getMain().setElement( @mainDiv );
 }
 
@@ -91,7 +103,21 @@ void Update() {
     UpdateKeyboardMouse();
 
     // Animate connecting text
-    UpdateConnectingText();
+    if(leave_at < 0.0f) {
+        UpdateConnectingText();
+    }
+
+    // No answer in time: stop trying, say so, then back
+    waited += time_step;
+    if(leave_at < 0.0f && waited > kGiveUpSeconds && !back_event_queued) {
+        Online_Close();
+        connecting_text.setText("No answer");
+        reason_text.setText("The host didn't answer. Check the address, or that their game is open.");
+        leave_at = waited + 3.0f;
+    }
+    if(leave_at >= 0.0f && waited > leave_at) {
+        back_event_queued = true;
+    }
 
     // This is a weak check for connection failures.
     // We expect to either move out of this menu on success, or fail connecting with a popup message
@@ -107,7 +133,7 @@ void Update() {
         IMMessage@ message = imGUI.getNextMessage();
 
         if(message.name == "Cancel") {
-            Online_Close(); // TODO This is currently not supported by the multiplayer system
+            Online_Close();  // (the connection still being made closes too: Online::StopMultiplayer)
             back_event_queued = true;
         }
     }
@@ -124,7 +150,7 @@ void UpdateConnectingText() {
     for(uint i = 0; i < count; i++) {
         dots += ".";
     }
-    connecting_text.setText("Connecting" + dots);
+    connecting_text.setText("Waiting for the host" + dots);
 }
 
 void Resize() {

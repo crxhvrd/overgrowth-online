@@ -67,6 +67,7 @@ def arena_pvp(ctx, profile="typical", arena=ARENA):
         hlog = Log(host)
         host.bridge.call("host", level=arena, campaign=CAMPAIGN)
         wait_loaded(host)
+        host.bridge.call("exec", target="level", code='SetConfigValueInt("oo_arena_bots", 0);')  # (players only)
         time.sleep(4.0)
         m["host_alone_characters"] = len(_chars(host))
         if m["host_alone_characters"] != 1:
@@ -221,6 +222,7 @@ def arena_weapons(ctx, profile="typical", matches=4):
         hlog = Log(host)
         host.bridge.call("host", level=WATERFALL, campaign=CAMPAIGN)
         wait_loaded(host)
+        host.bridge.call("exec", target="level", code='SetConfigValueInt("oo_arena_bots", 0);')  # (players only)
         client = ctx.instance("client1")
         client.bridge.call("net_sim", **PROFILES[profile])
         clog = Log(client)
@@ -300,6 +302,7 @@ def arena_pickups(ctx, profile="typical", arena=STUCCO):
         hlog = Log(host)
         host.bridge.call("host", level=arena, campaign=CAMPAIGN)
         wait_loaded(host)
+        host.bridge.call("exec", target="level", code='SetConfigValueInt("oo_arena_bots", 0);')  # (players only)
         client = ctx.instance("client1")
         client.bridge.call("net_sim", **PROFILES[profile])
         clog = Log(client)

@@ -266,6 +266,9 @@ void MovementObject::ActualPreDraw(float curr_game_time) {
 }
 
 void MovementObject::DrawNametag() {
+    if (!visible || Online::Instance()->CoopCutscene()) {
+        return;  // Overgrowth Online: not on a hidden character, nor in a cutscene's shots
+    }
     RegenerateNametag();  // TODO DEBUG remove this! This should be removed once we can hook this function call into an "OnAvatarChange" event
     if (nametag_string.length() > 1) {
         // Figure out text draw position, apply some smoothing based on the last position
@@ -524,7 +527,7 @@ void MovementObject::ApplyNetworkCharacter(const std::string& path) {
     if (HasFunction("void CheckSpecies()") && HasFunction("void CacheSkeletonInfo()") && HasFunction("void ResetLayers()")) {
         // aschar.as SwitchCharacter without dropping weapons (the stream says
         // what it holds) or random colours (the owner's come with its palette)
-        as_context->Execute("this_mo.char_path = \"" + path + "\"; character_getter.Load(this_mo.char_path); CheckSpecies(); "
+        as_context->Execute("this_mo.char_path = \"" + path + "\"; character_getter.Load(this_mo.char_path); if(params.HasParam(\"Species\")) { params.SetString(\"Species\", character_getter.GetTag(\"species\")); } CheckSpecies(); "
                             "this_mo.RecreateRiggedObject(this_mo.char_path); ResetLayers(); CacheSkeletonInfo();");
     } else {
         RecreateRiggedObject(path);
@@ -4688,6 +4691,15 @@ void MovementObject::NotifyDeleted(Object* other) {
         ASArglist args;
         args.Add(other->GetID());
         as_context->CallScriptFunction(as_funcs.movement_object_deleted, &args);
+    }
+    // Overgrowth Online: a deleted item leaves every slot that still names it
+    // (a body that no longer held it, e.g. after aschar.as SwitchCharacter's
+    // DetachAllItems, never heard of it; the next attach read it and stopped
+    // the game: "There is no item object")
+    if (other->GetType() == _item_object && as_context.get()) {
+        ASArglist args;
+        args.Add(other->GetID());
+        as_context->CallScriptFunction(as_funcs.notify_item_detach, &args);
     }
 }
 

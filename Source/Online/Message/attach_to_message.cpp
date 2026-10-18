@@ -93,6 +93,16 @@ void AttachToMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID 
         online->RelayFromPeer(ref, from);  // everyone else sees the pickup or the drop too
     }
 
+    // Overgrowth Online: an item goes on a character only. An id this machine
+    // doesn't know falls back to a local object with the same number (often
+    // not a character): casting that crashed in AvailableItemSlots
+    if (parent != nullptr && child != nullptr && child->GetType() == EntityType::_item_object &&
+        parent->GetType() != EntityType::_movement_object) {
+        LOGW << "Overgrowth Online: item " << child_object_id << " attached to object " << parent_object_id
+             << ", not a character here (an unknown id): ignored" << std::endl;
+        return;
+    }
+
     if (parent != nullptr && child != nullptr) {
         if (t->attach) {
             child->SetParent(parent);

@@ -200,7 +200,7 @@ bool ActiveDodging(int attacker_id) {
         MovementObject@ char = ReadCharacterID(attacker_id);
         int enemy_primary_weapon_id = GetCharPrimaryWeapon(char);
 
-        if(enemy_primary_weapon_id != -1) {
+        if(enemy_primary_weapon_id != -1 && ItemExists(enemy_primary_weapon_id)) {
             ItemObject@ weap = ReadItemID(enemy_primary_weapon_id);
 
             if(weap.GetLabel() == "knife") {
@@ -929,7 +929,7 @@ void HandleAIEvent(AIEvent event) {
         case _choking: {
             MovementObject@ char = ReadCharacterID(tether_id);
 
-            if(GetCharPrimaryWeapon(char) == -1 || ReadItemID(GetCharPrimaryWeapon(char)).GetLabel() == "staff") {
+            if(GetCharPrimaryWeapon(char) == -1 || !ItemExists(GetCharPrimaryWeapon(char)) || ReadItemID(GetCharPrimaryWeapon(char)).GetLabel() == "staff") {
                 SetGoal(_struggle);
             } else {
                 SetGoal(_hold_still);
@@ -1127,7 +1127,7 @@ AISubGoal PickAttackSubGoal() {
                     bool enemy_using_knife = false;
                     int enemy_primary_weapon_id = GetCharPrimaryWeapon(char);
 
-                    if(enemy_primary_weapon_id != -1) {
+                    if(enemy_primary_weapon_id != -1 && ItemExists(enemy_primary_weapon_id)) {
                         ItemObject@ weap = ReadItemID(enemy_primary_weapon_id);
 
                         if(weap.GetLabel() == "knife") {
@@ -2088,7 +2088,7 @@ void UpdateBrain(const Timestep &in ts) {
     }
     case _get_weapon:
         if(weapon_slots[primary_weapon_slot] != -1 ||
-                !ObjectExists(weapon_target_id) ||
+                !ItemExists(weapon_target_id) ||
                 !IsItemPickupable(ReadItemID(weapon_target_id)) ||
                 distance_squared(ReadItemID(weapon_target_id).GetPhysicsPosition(), this_mo.position) > 15.0 * 15.0 ||
                 get_weapon_time > kMaxGetWeaponTime) {
@@ -2207,9 +2207,9 @@ bool WantsToUnSheatheItem(int &out src) {
 
     src = -1;
 
-    if(weapon_slots[_sheathed_right] != -1 && ReadItemID(weapon_slots[_sheathed_right]).GetType() == _weapon && ReadItemID(weapon_slots[_sheathed_right]).GetLabel() != "scabbard") {
+    if(weapon_slots[_sheathed_right] != -1 && ItemExists(weapon_slots[_sheathed_right]) && ReadItemID(weapon_slots[_sheathed_right]).GetType() == _weapon && ReadItemID(weapon_slots[_sheathed_right]).GetLabel() != "scabbard") {
         src = _sheathed_right;
-    } else if(weapon_slots[_sheathed_left] != -1 && ReadItemID(weapon_slots[_sheathed_left]).GetType() == _weapon && ReadItemID(weapon_slots[_sheathed_left]).GetLabel() != "scabbard") {
+    } else if(weapon_slots[_sheathed_left] != -1 && ItemExists(weapon_slots[_sheathed_left]) && ReadItemID(weapon_slots[_sheathed_left]).GetType() == _weapon && ReadItemID(weapon_slots[_sheathed_left]).GetLabel() != "scabbard") {
         src = _sheathed_left;
     }
 
@@ -3245,6 +3245,9 @@ vec3 GetBaseTargetVelocity() {
     } else if(goal == _get_help) {
         return GetMovementToPoint(ReadCharacterID(ally_id).position, 1.0f);
     } else if(goal == _get_weapon) {
+        if(!ItemExists(weapon_target_id)) {
+            return vec3(0.0f);  // (Overgrowth Online: deleted; the goal check drops it)
+        }
         vec3 pos = ReadItemID(weapon_target_id).GetPhysicsPosition();
         return GetMovementToPoint(pos, 0.0f);
     } else if(goal == _escort) {

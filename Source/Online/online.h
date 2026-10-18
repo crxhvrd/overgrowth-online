@@ -473,12 +473,44 @@ class Online {
     bool CoopCampaign();                            // the level belongs to a linear (story) campaign
     vector<ObjectID> PlayerAvatarIDs();             // every player's character here
     void CoopUpdate(SceneGraph* sg);                // host: everyone down for 5 s -> reset
-    void CoopCheckpoint() { coop_revive_pending = true; }  // host: a checkpoint was reached
+    // host: a checkpoint was reached (by that character, if one did). The
+    // downed get up beside them at once, before the next goal's steps run
+    // (a dialogue there would stand them up where they lie)
+    void CoopCheckpoint(ObjectID by = -1);
+    ObjectID HostAvatarID() const;                  // the host's player's character here, or -1
+    int GuestIndex(ObjectID id) const;              // 1, 2, ... for the guests' characters (player order), else 0
+    // Cutscenes: the guests' characters are hidden on every machine while a
+    // dialogue plays; when it ends each guest stands up beside the host
+    void CoopCutsceneUpdate(SceneGraph* sg);
+    bool CoopCutscene() const { return coop_cutscene; }
+    bool coop_cutscene = false;
+    vector<ObjectID> coop_hidden;
+    // Spectating: our own character is down and another player's isn't, so the
+    // camera follows theirs (the nearest; attack picks the next, level.as)
+    void CoopSpectateUpdate(SceneGraph* sg);
+    void SpectateNext() { spectate_next = true; }
+    string SpectateName() const { return spectate_name; }  // whose we watch, "" none
+    ObjectID spectate_target = -1;
+    string spectate_name;
+    bool spectate_next = false;
+    vec3 spectate_center;
+    float spectate_distance = 3.0f;
+    // Where each player's character last stood safely (the fallback of the spot search)
+    void TrackSafeGround(SceneGraph* sg);
+    std::unordered_map<ObjectID, vec3> last_safe_ground;
+    double last_safe_ground_ms = -1e9;
+    // A client's connection to the host as it is being made (cancel closes it)
+    NetConnectionID pending_connection = 0;
+    bool has_pending_connection = false;
+    // Server browser (public games: SteamworksMatchmaking)
+    void RequestPublicGames();
+    string PublicGames();
+    bool JoinPublicGame(const string& lobby);
+    string last_safe_level;
     void CoopReviveRequest(const string& msg);      // "ohg revive <common id> x y z [fx fz]" from the host
     void ReviveAvatar(MovementObject* mo, const vec3& pos, const vec3& facing = vec3(0.0f));
     void PlaceAvatar(ObjectID id, const vec3& pos, const vec3& facing);  // host: up at pos, wherever it runs
     double coop_all_down_ms = -1.0;
-    bool coop_revive_pending = false;
     struct PendingRevive {
         ObjectID id;
         vec3 pos;
@@ -497,9 +529,13 @@ class Online {
     void ReceiveItemDrop(CommonObjectID character, CommonObjectID item);
 
     // Your online character (co-op menu: mp_character, mp_fur, mp_cloth)
-    // A spot for player number `index` near `base` (facing `facing`): solid ground
-    // at about the same height, or `base` itself (co-op spawns)
+    // A spot for player number `index` near `base` (facing `facing`; 0: `base`
+    // itself if it is safe): solid ground at about the same height, room to
+    // stand, no drop beside it, not in deep water or a kill or fall-death volume.
+    // FindSafeSpot says whether it found one; SafeSpotNear falls back to `base`
+    bool FindSafeSpot(const vec3& base, const vec3& facing, int index, vec3* spot);
     vec3 SafeSpotNear(const vec3& base, const vec3& facing, int index);
+    bool GroundHazard(const vec3& ground) const;  // a point on the ground in water, a kill or a fall-death volume
     // Hits held until the defender shows its attacker landing them
     struct HeldHit {
         OnlineMessageRef ref;
@@ -516,6 +552,11 @@ class Online {
     void ApplyOwnCharacter(SceneGraph* sg);  // once per level, on our own character
     vector<std::pair<CommonObjectID, string> > pending_avatar_characters;
     string own_character_applied;  // "<level>|<character id>"
+    void RestoreOwnCharacter() { own_character_applied.clear(); }  // applied again (the arena randomizer ended)
+    // Host: what a script creates now goes to the clients (CreateEntity, kept
+    // for late joiners): once the level has loaded, alone or not. (While it
+    // loads the scripts of every machine make their own: Online_AnnounceObject.)
+    bool SharesCreatedObjects() const { return IsHosting() && (host_started_level || !loading); }
     void BroadcastOwnerOverride(CommonObjectID cid, PlayerID owner, bool active, float max_seconds, PeerID except, bool peers_locked);
     vector<ObjectID> GetLocalAvatarIDs() const;
     PlayerState GenerateHostPlayerState() const;

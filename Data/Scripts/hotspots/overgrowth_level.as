@@ -26,6 +26,8 @@
 
 int progress = 0;
 float progress_sync_next = 0.0f;  // online host: the progress again now and then (late joiners)
+int coop_checkpoint_by = -1;       // online host: the character that reached a checkpoint last
+float coop_checkpoint_time = -100.0f;
 bool queued_goal_check = true;
 
 float blackout_amount = 0.0;
@@ -295,7 +297,9 @@ void IncrementProgress() {
 
     if(Online_IsHosting()){
         level.SendMessage("ohl og_progress "+progress);  // clients follow
-        level.SendMessage("coop_checkpoint "+progress);  // the engine gets downed players up
+        // the engine gets downed players up (beside who reached it: the goal comes a little later)
+        level.SendMessage("coop_checkpoint "+progress+" "+(the_time - coop_checkpoint_time < 10.0f ? coop_checkpoint_by : -1));
+        coop_checkpoint_by = -1;
     }
 
     TriggerGoalPre();
@@ -334,6 +338,18 @@ void IncrementProgress() {
     // Check if enemies are already defeated
      if(win_time == -1.0){
         PossibleWinEvent("character_defeated", -1, progress);
+    }
+}
+
+// Online: a goal heals the players this machine runs that are up (a downed
+// one isn't stood up where it lies: the engine gets it up beside whoever
+// reached the checkpoint, Online::CoopUpdate)
+void CoopHealOwnPlayers(){
+    for(int i = 0, len = GetNumCharacters(); i < len; ++i){
+        MovementObject@ char = ReadCharacter(i);
+        if(char.controlled && !char.remote && char.GetIntVar("knocked_out") == _awake){
+            char.QueueScriptMessage("restore_health");
+        }
     }
 }
 
@@ -543,7 +559,9 @@ void PossibleWinEvent(const string &in event, int val, int goal_check, int recur
                     }
                     if(success){
                         int player_id = GetPlayerCharacterID();
-                        if(player_id != -1){
+                        if(Online_IsActive()){
+                            CoopHealOwnPlayers();  // (up ones only: the downed get up beside the checkpoint's reacher)
+                        } else if(player_id != -1){
                             EnterTelemetryZone("Restore player health");
                             MovementObject@ mo = ReadCharacter(player_id);
                             mo.QueueScriptMessage("restore_health");
@@ -622,10 +640,7 @@ void ReceiveMessage(string msg) {
             if(what == "og_progress" && token_iter.FindNextToken(msg)){
                 CoopFollowProgress(atoi(token_iter.GetToken(msg)));
             } else if(what == "og_heal"){
-                int player_id = GetPlayerCharacterID();
-                if(player_id != -1){
-                    ReadCharacter(player_id).QueueScriptMessage("restore_health");
-                }
+                CoopHealOwnPlayers();
             }
         } else if(sub_msg == "set_camera_dof"){
             dof_params.resize(0);
@@ -750,6 +765,9 @@ void ReceiveMessage(string msg) {
         if(msg_start == "player_entered_checkpoint"){
             if(token_iter.FindNextToken(msg)){
                 int checkpoint_id = atoi(token_iter.GetToken(msg));
+                // Online: who reached it (the downed players get up beside them)
+                coop_checkpoint_by = token_iter.FindNextToken(msg) ? atoi(token_iter.GetToken(msg)) : -1;
+                coop_checkpoint_time = the_time;
                 PossibleWinEvent("checkpoint", checkpoint_id, progress);
             }
         }
@@ -838,6 +856,9 @@ void Update() {
             string respawn = params.GetString("death_message");
             if(Online_IsActive()){
                 respawn = "\nYou are down. You get up at the next checkpoint; if everyone is down, the level starts over.";
+                if(Online_Spectating() != ""){
+                    respawn += "\nWatching " + Online_Spectating() + "  ($attack$: the next player)";
+                }
             }
             int index = respawn.findFirst("$attack$");
             while(index != -1) {
@@ -950,6 +971,9 @@ void PreDraw(float curr_game_time) {
                 }
             }
             blackout_amount = 0.2 + 0.6 * (1.0 - pow(0.5, (the_time - ko_time)));
+            if(Online_Spectating() != ""){
+                blackout_amount = 0.0;  // (online: watching a teammate who is up)
+            }
         } else {
             ko_time = -1.0f;
         }

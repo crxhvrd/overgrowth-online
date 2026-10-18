@@ -26,6 +26,7 @@
 #include "menu_common.as"
 #include "settings.as"
 #include "coop_revive.as"
+#include "coop_story.as"
 int controller_id = 0;
 bool has_gui = false;
 bool toggle_gui = false;
@@ -152,6 +153,7 @@ void ReceiveMessage(string msg) {
         return;
     }
     string token = token_iter.GetToken(msg);
+    CoopStoryMessage(token);  // (online co-op: the guests' copies of the host's weapons)
 
     // Online co-op: reviving a teammate (coop_revive.as)
     if(CoopReviveMessage(msg)){
@@ -456,6 +458,10 @@ void CoopDialogueFreeze() {
 void Update(int paused) {
     CoopDialogueFreeze();
     CoopReviveUpdate();
+    CoopStoryUpdate();
+    if(Online_Spectating() != "" && GetInputPressed(controller_id, "attack")){
+        Online_SpectateNext();  // (online, ours down: watch the next player who is up)
+    }
     const bool kDialogueQueueDebug = false;
     if(kDialogueQueueDebug){
         string str;

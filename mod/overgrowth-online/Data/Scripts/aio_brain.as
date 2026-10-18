@@ -3592,7 +3592,7 @@ void AIOTrackThrownItem() {
         return;
     }
 
-    if(!ObjectExists(aio_flying_item)) {
+    if(!ItemExists(aio_flying_item)) {
         aio_flying_item = -1;
         return;
     }

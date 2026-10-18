@@ -24,6 +24,7 @@
 #include "steamworks_matchmaking.h"
 
 #include <Online/online.h>
+#include <Online/online_utility.h>
 #include <Main/engine.h>
 #include <Internal/config.h>
 #include <Logging/logdata.h>
@@ -114,11 +115,13 @@ void SteamworksMatchmaking::OpenToFriends(bool overlay) {
     } else if (creating) {
         overlay_on_enter = overlay_on_enter || overlay;
     } else {
-        // Friends only: an invite works, and so does "Join Game" in the friends list
-        LOGI << "Steam: creating our lobby" << std::endl;
+        // Public (the server browser lists it) or friends only: an invite works
+        // either way, and so does "Join Game" in the friends list
+        lobby_public = WantPublic();
+        LOGI << "Steam: creating our lobby (" << (lobby_public ? "public" : "friends only") << ")" << std::endl;
         creating = true;
         overlay_on_enter = overlay;
-        SteamMatchmaking()->CreateLobby(k_ELobbyTypeFriendsOnly, 8);
+        SteamMatchmaking()->CreateLobby(lobby_public ? k_ELobbyTypePublic : k_ELobbyTypeFriendsOnly, 8);
     }
 }
 
@@ -141,6 +144,101 @@ void SteamworksMatchmaking::SetHostPresence(const std::string &game, int players
         presence_mods = mods;
         friends->SetRichPresence("oh_mods", mods.c_str());
     }
+
+    // The server browser's view of it, and public or not as the host now wants
+    CSteamID lobby = *lobbies.begin();
+    SteamMatchmaking()->SetLobbyData(lobby, "oo_game", presence_game.c_str());
+    SteamMatchmaking()->SetLobbyData(lobby, "oo_players", presence_players.c_str());
+    SteamMatchmaking()->SetLobbyData(lobby, "oo_mods", presence_mods.c_str());
+    if (WantPublic() != lobby_public) {
+        lobby_public = WantPublic();
+        SteamMatchmaking()->SetLobbyType(lobby, lobby_public ? k_ELobbyTypePublic : k_ELobbyTypeFriendsOnly);
+        LOGI << "Steam: our game is now " << (lobby_public ? "public" : "friends only") << std::endl;
+    }
+    if (!lobby_has_location) {
+        SetBrowserData(lobby);  // (the ping location comes once Steam's relays have answered)
+    }
+}
+
+static std::string FriendField(const char *text);  // (below)
+
+bool SteamworksMatchmaking::WantPublic() {
+    return !config.HasKey("oo_public_game") || config["oo_public_game"].toNumber<bool>();
+}
+
+// What the server browser lists: our marker, who hosts, the version, where
+// we are (for the ping)
+void SteamworksMatchmaking::SetBrowserData(CSteamID lobby) {
+    ISteamMatchmaking *mm = SteamMatchmaking();
+    if (mm == nullptr) {
+        return;
+    }
+    mm->SetLobbyData(lobby, "oo", "1");
+    mm->SetLobbyData(lobby, "oo_host", SteamFriends() != nullptr ? SteamFriends()->GetPersonaName() : "");
+    mm->SetLobbyData(lobby, "oo_version", OnlineUtility::GetOvergrowthOnlineVersion().c_str());
+    SteamNetworkPingLocation_t location;
+    if (SteamNetworkingUtils() != nullptr && SteamNetworkingUtils()->GetLocalPingLocation(location) >= 0.0f) {
+        char text[k_cchMaxSteamNetworkingPingLocationString];
+        SteamNetworkingUtils()->ConvertPingLocationToString(location, text, sizeof(text));
+        mm->SetLobbyData(lobby, "oo_loc", text);
+        lobby_has_location = true;
+    }
+}
+
+void SteamworksMatchmaking::RequestPublicGames() {
+    ISteamMatchmaking *mm = SteamMatchmaking();
+    if (mm == nullptr || browse_state == 1) {
+        return;
+    }
+    if (SteamNetworkingUtils() != nullptr) {
+        SteamNetworkingUtils()->InitRelayNetworkAccess();  // (the pings)
+    }
+    mm->AddRequestLobbyListStringFilter("oo", "1", k_ELobbyComparisonEqual);
+    mm->AddRequestLobbyListDistanceFilter(k_ELobbyDistanceFilterWorldwide);
+    mm->AddRequestLobbyListResultCountFilter(100);
+    lobby_list_call.Set(mm->RequestLobbyList(), this, &SteamworksMatchmaking::OnLobbyList);
+    browse_state = 1;
+}
+
+void SteamworksMatchmaking::OnLobbyList(LobbyMatchList_t *data, bool io_failure) {
+    browse_lobbies.clear();
+    if (io_failure || data == nullptr || SteamMatchmaking() == nullptr) {
+        browse_state = 3;
+        return;
+    }
+    for (uint32 i = 0; i < data->m_nLobbiesMatching; ++i) {
+        browse_lobbies.push_back(SteamMatchmaking()->GetLobbyByIndex(i).ConvertToUint64());
+    }
+    browse_state = 2;
+    LOGI << "Steam: " << browse_lobbies.size() << " public games" << std::endl;
+}
+
+std::string SteamworksMatchmaking::PublicGames(const std::string &mods, const std::string &version) {
+    static const char *kStates[] = {"none", "busy", "ready", "failed"};
+    std::string rows = kStates[browse_state];
+    ISteamMatchmaking *mm = SteamMatchmaking();
+    if (mm == nullptr) {
+        return "failed";
+    }
+    for (uint64_t id : browse_lobbies) {
+        CSteamID lobby(id);
+        if (lobbies.count(lobby) != 0) {
+            continue;  // (our own)
+        }
+        std::string their_mods = mm->GetLobbyData(lobby, "oo_mods");
+        int ping = -1;
+        SteamNetworkPingLocation_t location;
+        const char *loc = mm->GetLobbyData(lobby, "oo_loc");
+        if (SteamNetworkingUtils() != nullptr && loc[0] != 0 && SteamNetworkingUtils()->ParsePingLocationString(loc, location)) {
+            ping = SteamNetworkingUtils()->EstimatePingTimeFromLocalHost(location);
+        }
+        rows += "\n" + std::to_string(id) + "\t" + FriendField(mm->GetLobbyData(lobby, "oo_host")) + "\t" +
+                FriendField(mm->GetLobbyData(lobby, "oo_game")) + "\t" + FriendField(mm->GetLobbyData(lobby, "oo_players")) + "\t" +
+                FriendField(mm->GetLobbyData(lobby, "oo_version")) + "\t" + (their_mods.empty() ? "" : (their_mods == mods ? "same" : "other")) +
+                "\t" + std::to_string(ping);
+    }
+    (void)version;
+    return rows;
 }
 
 // (a field of a FriendGames line: no tabs or line breaks)
@@ -304,6 +402,8 @@ void SteamworksMatchmaking::OnLobbyEnter(LobbyEnter_t *data) {
         // we are the host
         // set lobby metadata
         SteamMatchmaking()->SetLobbyData(data->m_ulSteamIDLobby, LEVEL_PATH, "");
+        lobby_has_location = false;
+        SetBrowserData(data->m_ulSteamIDLobby);  // (Overgrowth Online: the server browser lists it)
 
         // "Join Game" in the friends list starts (or reaches) the game with this
         std::string connect = "+connect_lobby " + std::to_string(data->m_ulSteamIDLobby);

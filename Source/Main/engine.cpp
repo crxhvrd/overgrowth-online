@@ -2226,8 +2226,12 @@ void Engine::Update() {
                 // Disposing of an object might in turn queue up more items
                 // to delete, so make we loop until we're at the end of
                 // object_ids_to_delete
-                for (int i : scenegraph_->object_ids_to_delete) {
-                    scenegraph_->map_editor->DeleteID(i);
+                // (Overgrowth Online: by index; a range-for went on over freed
+                // memory when a delete queued more and the vector grew, and
+                // the deletes after it were lost: arena weapons stayed)
+                for (size_t n = 0; n < scenegraph_->object_ids_to_delete.size(); ++n) {
+                    int id = scenegraph_->object_ids_to_delete[n];
+                    scenegraph_->map_editor->DeleteID(id);
                 }
                 scenegraph_->object_ids_to_delete.clear();
 

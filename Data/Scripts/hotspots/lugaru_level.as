@@ -85,6 +85,9 @@ void Update() {
 				}
 			}
             blackout_amount = 0.2 + 0.6 * (1.0 - pow(0.5, (the_time - ko_time)));
+            if(Online_Spectating() != ""){
+                blackout_amount = 0.0;  // (online: watching a teammate who is up)
+            }
 		} else {
 			ko_time = -1.0f;
 		}
@@ -93,6 +96,9 @@ void Update() {
         string respawn = params.GetString("death_message");
         if(Online_IsActive()){
             respawn = "You are down. If everyone is down, the level starts over.";
+            if(Online_Spectating() != ""){
+                respawn += "\nWatching " + Online_Spectating() + "  ($attack$: the next player)";
+            }
         }
         int index = respawn.findFirst("$attack$");
         while(index != -1) {

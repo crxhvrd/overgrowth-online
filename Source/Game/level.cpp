@@ -566,7 +566,12 @@ void Level::Message(const std::string& msg) {
             return;
         }
         if (online->IsHosting() && (msg.compare(0, 25, "player_entered_checkpoint") == 0 || msg.compare(0, 16, "coop_checkpoint ") == 0)) {
-            online->CoopCheckpoint();
+            // "coop_checkpoint <progress> [<character that reached it>]"
+            int progress = 0, by = -1;
+            if (msg.compare(0, 16, "coop_checkpoint ") != 0 || sscanf(msg.c_str() + 16, "%d %d", &progress, &by) != 2) {
+                by = -1;
+            }
+            online->CoopCheckpoint(by);
         }
     }
 

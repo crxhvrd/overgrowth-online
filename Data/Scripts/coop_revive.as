@@ -201,7 +201,15 @@ void ReviveDo(int reviver, int target) {
     if(!MovementObjectExists(target) || ReadCharacterID(target).GetIntVar("knocked_out") == _awake) {
         return;
     }
-    Online_PlaceAvatar(target, ReadCharacterID(target).position + vec3(0.0f, 0.3f, 0.0f), vec3(0.0f));
+    // Where it lies, on safe ground; else beside the reviver (water, a ledge)
+    MovementObject@ body = ReadCharacterID(target);
+    vec3 spot;
+    const vec3 any_way(0.0f, 0.0f, 1.0f);  // (which side it tries first)
+    if(!Online_FindSafeSpot(body.position, any_way, 0, spot) &&
+       !(MovementObjectExists(reviver) && Online_FindSafeSpot(ReadCharacterID(reviver).position, any_way, 1, spot))){
+        spot = body.position + vec3(0.0f, 0.3f, 0.0f);
+    }
+    Online_PlaceAvatar(target, spot, vec3(0.0f));
     level.SendMessage("ohl coop_revived #" + reviver + " #" + target);
 }
 

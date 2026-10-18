@@ -355,6 +355,7 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
                 c["controller_id"] = mo->controller_id;
                 c["camera_id"] = mo->camera_id;
                 c["pos"] = Vec(mo->position);
+                c["visible"] = mo->visible;
                 c["vel"] = Vec(mo->velocity);
                 c["proxy"] = mo->network_proxy;
                 c["bones"] = (int)mo->rigged_object()->skeleton_.physics_bones.size();
@@ -384,6 +385,10 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
                     c["state"] = mo->ASGetIntVar("state");
                 }
 
+                if (mo->ASHasVar("on_ground")) {
+                    c["on_ground"] = mo->ASGetBoolVar("on_ground");
+                }
+
                 if (mo->ASHasVar("temp_health")) {
                     c["temp_health"] = mo->ASGetFloatVar("temp_health");
                 }
@@ -406,6 +411,8 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
                 it["common_id"] = online->GetOriginalID(io->GetID());
                 it["label"] = io->item_ref()->GetLabel();
                 it["held_by"] = io->HeldByWhom();
+                it["hidden"] = io->HolderHidden();  // not drawn: on a hidden character
+                it["file"] = io->obj_file;
                 it["stuck_in"] = io->StuckInWhom();
                 it["pos"] = Vec(io->GetPhysicsTransform().GetTranslationPart());
                 it["draw_pos"] = Vec(io->GetTransform().GetTranslationPart());  // where it is drawn
@@ -576,6 +583,9 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         g->screenshot_mode = Graphics::kGameplay;
         g->pre_screenshot_media_mode_state = g->media_mode();
         g->queued_screenshot = 1;
+    } else if (cmd == "menu") {
+        // A menu script, as a menu button opens it ("multiplayer_menu.as")
+        Engine::Instance()->ScriptableUICallback(req.get("script", "").asString());
     } else if (cmd == "net_sim") {
         online->net_sim_latency_ms = req.get("latency_ms", 0).asInt();
         online->net_sim_jitter_ms = req.get("jitter_ms", 0).asInt();

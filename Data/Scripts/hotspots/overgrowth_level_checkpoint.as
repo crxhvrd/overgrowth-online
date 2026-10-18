@@ -70,7 +70,7 @@ void Update() {
             if(ObjectExists(level_hotspot_id)){
                 Object@ obj = ReadObjectFromID(level_hotspot_id);
                 int checkpoint_id = params.GetInt("checkpoint_id");
-                obj.ReceiveScriptMessage("player_entered_checkpoint "+checkpoint_id);
+                obj.ReceiveScriptMessage("player_entered_checkpoint "+checkpoint_id+" "+entered);  // (who: online, the downed get up beside them)
             }
             entered = -1;
         }

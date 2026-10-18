@@ -54,7 +54,8 @@ void FinisherConsider(int victim_id) {
         return;
     }
 
-    if(!CfgBool("ocam_enabled", true) || EditorModeActive() || level.DialogueCameraControl() || BattleSpectating()) {
+    // (not online: a cinematic shot takes the camera away from the fight with the others)
+    if(!CfgBool("ocam_enabled", true) || EditorModeActive() || level.DialogueCameraControl() || BattleSpectating() || MPOnline()) {
         return;
     }
 
@@ -150,7 +151,7 @@ void FinisherUpdate() {
     fin_pending = -1;
     int player_id = HudPlayerId();
 
-    if(player_id == -1 || !MovementObjectExists(victim_id)) {
+    if(player_id == -1 || !MovementObjectExists(victim_id) || MPOnline()) {
         return;
     }
 

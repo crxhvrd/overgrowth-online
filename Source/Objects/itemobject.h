@@ -130,6 +130,7 @@ class ItemObject : public Object {
     void SetState(ItemState state);
     ScriptParams* ASGetScriptParams();
     int HeldByWhom();
+    bool HolderHidden();  // Overgrowth Online: on a hidden character (not drawn)
     void ReceiveObjectMessageVAList(OBJECT_MSG::Type type, va_list args) override;
     bool SetFromDesc(const EntityDescription& desc) override;
     const vec3& GetColorTint();

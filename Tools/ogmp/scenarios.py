@@ -652,6 +652,38 @@ def _coop_revive(ctx):
 SCENARIOS["coop_revive"] = _coop_revive
 
 
+def _coop_cutscene(ctx):
+    from .coop_story_suite import coop_cutscene
+    return coop_cutscene(ctx)
+
+
+SCENARIOS["coop_cutscene"] = _coop_cutscene
+
+
+def _coop_checkpoint(ctx):
+    from .coop_story_suite import coop_checkpoint
+    return coop_checkpoint(ctx)
+
+
+SCENARIOS["coop_checkpoint"] = _coop_checkpoint
+
+
+def _coop_weapons(ctx):
+    from .coop_story_suite import coop_weapons
+    return coop_weapons(ctx)
+
+
+SCENARIOS["coop_weapons"] = _coop_weapons
+
+
+def _arena_stress(ctx):
+    from .arena_stress_suite import arena_stress
+    return arena_stress(ctx)
+
+
+SCENARIOS["arena_stress"] = _arena_stress
+
+
 def _hud_tags(ctx):
     from .coop_suite import hud_tags
     return hud_tags(ctx)
@@ -745,7 +777,7 @@ SUITES = {
     # Overgrowth Online is story co-op for now
     # The renderer (docs_gl46_plan.md): before and after every renderer change
     "renderer": ["gl_errors", "render_compare", "perf_baseline"],
-    "coop": ["unit_tests", "campaign_coop", "coop_character", "coop_camera", "coop_talk", "coop_gear", "coop_revive", "late_join", "drop_rejoin"],
+    "coop": ["unit_tests", "campaign_coop", "coop_character", "coop_camera", "coop_talk", "coop_gear", "coop_revive", "coop_cutscene", "coop_checkpoint", "coop_weapons", "late_join", "drop_rejoin"],
     "phase2_long": ["unit_tests", "connect", "connect_good", "connect_typical", "connect_bad", "clock_sync",
                     "late_join", "drop_rejoin", "clean_leave", "client_camera", "bot_duel"],
 }

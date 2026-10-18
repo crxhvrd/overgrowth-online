@@ -1283,8 +1283,25 @@ void ItemObject::CheckThrownCollisionLine(int line_id, const mat4& cur_transform
     }
 }
 
+// Overgrowth Online: held, sheathed or stuck in a character that is hidden
+// (MovementObject::visible: the guests in co-op cutscenes)
+bool ItemObject::HolderHidden() {
+    for (auto& reader : readers_) {
+        if (reader->char_id != -1 && (reader->holding || reader->stuck)) {
+            Object* o = scenegraph_->GetObjectFromID(reader->char_id);
+            if (o != nullptr && o->GetType() == _movement_object && !static_cast<MovementObject*>(o)->visible) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void ItemObject::DrawItem(const mat4& proj_view_matrix, Object::DrawType type) {
     PROFILER_ZONE(g_profiler_ctx, "ItemObject::DrawItem()");
+    if (HolderHidden()) {
+        return;
+    }
     Shaders* shaders = Shaders::Instance();
     Graphics* graphics = Graphics::Instance();
     Camera* cam = ActiveCameras::Get();

@@ -12,11 +12,23 @@
 //                 are two points; the last one standing takes the round;
 //                 everyone for themselves. The crowd and the arena music.
 //
+//                 Bots (the host's AI fighters, config "oo_arena_bots": fill the
+//                 match up to that many fighters, 0 none; 2 if never set): a
+//                 player who joins takes a bot's place from the next round.
+//                 The randomizer (config "oo_arena_random"): every round each
+//                 fighter, players and bots, becomes a random species and look
+//                 with random gear; when it is switched off the players get
+//                 their own characters back.
+//                 Everyone has knockout shields (kArenaShields; full again at
+//                 each round start).
+//
 //                 The host runs the matches and tells the guests:
 //                   ohl arena text <text>                    the announcement ("" none)
 //                   ohl arena score <max> (#<char> <points>)...
 //                   ohl arena fight                          "Fight!": everyone heals
 //                   ohl arena over                           the round is over
+//                   ohl arena become #<char> <path>|own      the randomizer: that player's machine switches it
+//                   ohl arena disarm                         empty every character's hands and sheaths (old weapons go)
 //                 and places every player where it runs (Online_PlaceAvatar).
 //        License: Apache-2.0 (as the Wolfire scripts it draws from)
 //-----------------------------------------------------------------------------
@@ -41,7 +53,34 @@ ArenaPhase phase = kWaiting;
 float phase_time = 0.0f;   // the_time when the phase began
 int intro_step = 0;
 
-array<int> roster;         // the players' characters in this match
+array<int> bots;           // the host's AI fighters
+int bot_serial = 0;
+
+// The randomizer: this round's (per roster place) character and gear
+bool random_round = false;
+bool random_last = false;    // the round before was random (off now: own characters back)
+bool become_pending = false; // this round switches characters (sent as it starts)
+bool place_pending = false;  // a switching round: the fighters go to their spots once switched
+float arm_at = 0.5f;         // the round's weapons, this long after its start
+bool clear_pending = false;  // the old weapons go once every machine emptied its characters' hands
+
+const int kArenaShields = 5;  // aschar.as "Knockout Shield": hits that don't knock you out
+float next_shields = 0.0f;
+array<string> rnd_paths;     // character file, "own" (the player's own), "" unchanged
+array<string> rnd_hand;      // weapon in hand, "" none
+array<bool> rnd_knife;       // a knife in the sheath too
+array<bool> rnd_wolf;
+
+const array<array<string>> kRndCharacters = {
+    {"turner", "pale_turner", "male_rabbit_1", "male_rabbit_2", "male_rabbit_3", "female_rabbit_1", "female_rabbit_2",
+     "female_rabbit_3", "raider_rabbit", "guard", "guard2", "base_guard", "heavy", "heavy2", "commander", "civ",
+     "pale_rabbit_civ", "ancient", "femaleancient", "bijou", "jairo", "donatas", "reaper", "ghost"},
+    {"cat", "male_cat", "female_cat", "striped_cat", "fancy_striped_cat", "cobus", "drika", "ferdi"},
+    {"dog_soldier", "lt_dog_big", "lt_dog_female", "lt_dog_male_1", "lt_dog_male_2"},
+    {"rat", "female_rat", "hooded_rat"},
+    {"wolf", "male_wolf"}
+};
+array<int> roster;         // the players' (and bots') characters in this match
 array<int> points;         // their points
 int max_points = 2;
 bool weapons_match = false;
@@ -153,8 +192,33 @@ void Update() {
         text_visible = max(0.0f, text_visible - time_step * 2.0f);
     }
 
+    if(the_time > next_shields) {
+        next_shields = the_time + 1.0f;
+        OwnShields();
+    }
+
     if(Online_IsHosting()) {
         HostUpdate();
+    }
+}
+
+// Knockout shields for the characters this machine runs (its player's; the
+// host's also the bots)
+void OwnShields() {
+    for(int i = 0, num = GetNumCharacters(); i < num; ++i) {
+        MovementObject@ char = ReadCharacter(i);
+        if(!((char.controlled && !char.remote) || bots.find(char.GetID()) >= 0)) {
+            continue;
+        }
+        Object@ obj = ReadObjectFromID(char.GetID());
+        ScriptParams@ params = obj.GetScriptParams();
+        if(!params.HasParam("Knockout Shield")) {
+            params.AddInt("Knockout Shield", kArenaShields);
+            obj.UpdateScriptParams();
+        } else if(params.GetInt("Knockout Shield") != kArenaShields) {
+            params.SetInt("Knockout Shield", kArenaShields);
+            obj.UpdateScriptParams();
+        }
     }
 }
 
@@ -180,6 +244,15 @@ void ReceiveMessage(string msg) {
             msh.StartFight();
         } else if(what == "over") {
             msh.MatchEnded();
+        } else if(what == "disarm") {
+            DisarmAll();
+        } else if(what == "become" && token_iter.FindNextToken(msg)) {
+            // "become #<char> <path>": ours switches here (the engine tells the others)
+            string ref = token_iter.GetToken(msg);
+            int id = ref.length() > 1 ? atoi(ref.substr(1)) : -1;
+            if(token_iter.FindNextToken(msg) && MovementObjectExists(id) && ReadCharacterID(id).controlled && !ReadCharacterID(id).remote) {
+                Become(id, token_iter.GetToken(msg));
+            }
         }
         return;
     }
@@ -222,7 +295,7 @@ void HostUpdate() {
     DropGonePlayers();
 
     if(phase == kWaiting) {
-        if(Players().length() >= 2) {
+        if(Players().length() + WantedBots() >= 2) {
             if(shown_text != "") {
                 Show("");
             }
@@ -242,7 +315,19 @@ void HostUpdate() {
         SendScore();
         SetPhase(kWaiting);
     } else if(phase == kIntro) {
-        if(arm_pending && t > 0.5f) {
+        if(clear_pending && t > 0.3f) {
+            clear_pending = false;
+            ClearWeapons();
+            if(become_pending) {
+                become_pending = false;
+                SendBecome();
+            }
+        }
+        if(place_pending && t > 0.7f) {
+            place_pending = false;
+            PlaceFighters();
+        }
+        if(arm_pending && t > arm_at) {
             arm_pending = false;
             ArmPlayers();
         }
@@ -253,6 +338,7 @@ void HostUpdate() {
         float fight_at = round_number == 1 ? 4.0f : 2.0f;
         if(t > fight_at && (AllUp() || t > fight_at + 3.0f)) {
             Show("Fight!");
+            BotsFight();
             HealOwn();
             level.SendMessage("ohl arena fight");
             msh.StartFight();
@@ -316,8 +402,14 @@ void NewMatch() {
 void StartRound() {
     ++round_number;
 
+    // Bots: as many as wanted now (a joined player takes one's place)
+    SyncBots();
+
     // Everyone here plays (late joiners from the next round on), each for themselves
     array<int> players = Players();
+    for(uint k = 0; k < bots.length(); ++k) {
+        players.insertLast(bots[k]);
+    }
     for(uint k = 0; k < players.length(); ++k) {
         if(roster.find(players[k]) < 0) {
             roster.insertLast(players[k]);
@@ -325,25 +417,42 @@ void StartRound() {
         }
     }
 
-    // A weapon match arms everyone again each round (a draw replays it)
-    for(uint k = 0; k < round_items.length(); ++k) {
-        if(ObjectExists(round_items[k])) {
-            QueueDeleteObjectID(round_items[k]);
-        }
-    }
-    round_items.resize(0);
+    // Every weapon from before goes, in hands and on the ground (this round's
+    // are made new). First every machine empties the hands and sheaths of the
+    // characters it has (a script kept one deleted under it: "There is no item
+    // object"), then they are deleted
+    DisarmAll();
+    level.SendMessage("ohl arena disarm");
+    clear_pending = true;
 
+    // A randomizer round switches everyone (with the deletes) and places them
+    // after (a body switched where it stood came out stuck in walls and floors)
+    PlanRandomizer();
+    place_pending = become_pending;
+    if(become_pending) {
+        arm_at = 1.4f;
+    } else {
+        PlaceFighters();
+        arm_at = 1.0f;
+    }
+    arm_pending = true;  // (ArmPlayers, after the old weapons are gone everywhere)
+
+    SendScore();
+    Show(round_number == 1 ? intro : "Round " + round_number);
+    SetPhase(kIntro);
+}
+
+// Every fighter to its spot, stood up (and the bots held until "Fight!")
+void PlaceFighters() {
     for(uint k = 0; k < roster.length(); ++k) {
         int id = roster[k];
         vec3 pos, facing;
         SpotFor(k, pos, facing);
         Online_PlaceAvatar(id, pos, facing);
+        if(bots.find(id) >= 0) {
+            ReadCharacterID(id).ReceiveScriptMessage("set_combat_allowed false");  // (until "Fight!")
+        }
     }
-    arm_pending = true;  // (ArmPlayers, half a second on)
-
-    SendScore();
-    Show(round_number == 1 ? intro : "Round " + round_number);
-    SetPhase(kIntro);
 }
 
 // The round's weapons. Half a second after the old ones were deleted: a hand
@@ -352,16 +461,17 @@ void StartRound() {
 void ArmPlayers() {
     for(uint k = 0; k < roster.length(); ++k) {
         int id = roster[k];
-        string weapon = spot_weapons.length() > 0 ? spot_weapons[k % spot_weapons.length()] : "";
-        if(weapon == "" || !MovementObjectExists(id) || ReadCharacterID(id).GetIntVar("species") == 1) {
+        bool random = random_round && k < rnd_hand.length();
+        string weapon = random ? rnd_hand[k] : (spot_weapons.length() > 0 ? spot_weapons[k % spot_weapons.length()] : "");
+        if(!MovementObjectExists(id) || ReadCharacterID(id).GetIntVar("species") == 1 || (random && rnd_wolf[k])) {
             continue;  // (aschar.as _wolf: no hands)
         }
-        int item_id = CreateObject(weapon, true);
-        Object@ item = ReadObjectFromID(item_id);
-        item.SetTranslation(ReadCharacterID(id).position);
-        item.GetScriptParams().AddIntCheckbox("No Save", true);
-        ReadObjectFromID(id).AttachItem(item, _at_grip, false);
-        round_items.insertLast(item_id);
+        if(weapon != "") {
+            Arm(id, weapon, _at_grip);
+        }
+        if(random && rnd_knife[k]) {
+            Arm(id, WeaponPath("knife"), _at_sheathe);
+        }
     }
 
     for(uint k = 0; k < item_paths.length(); ++k) {
@@ -370,6 +480,107 @@ void ArmPlayers() {
         item.SetTranslation(item_spots[k] + vec3(0.0f, 0.5f, 0.0f));
         item.GetScriptParams().AddIntCheckbox("No Save", true);
         round_items.insertLast(item_id);
+    }
+}
+
+// Every character here lets go of what it holds and carries (every machine,
+// before the host deletes the old weapons)
+const string kDisarm = "for(int s = 0; s < 6; ++s) { int w = weapon_slots[s]; if(w != -1) { "
+                       "if(ItemExists(w)) { this_mo.DetachItem(w); } NotifyItemDetach(w); } } ";
+
+void DisarmAll() {
+    for(int i = 0, num = GetNumCharacters(); i < num; ++i) {
+        ReadCharacter(i).Execute(kDisarm);
+    }
+}
+
+// The weapons the matches made (ours, and any "No Save" one: the level's own
+// stay), wherever they are
+void ClearWeapons() {
+    array<int> @items = GetObjectIDsType(_item_object);
+    for(uint k = 0; k < items.length(); ++k) {
+        if(round_items.find(items[k]) >= 0 || ReadObjectFromID(items[k]).GetScriptParams().HasParam("No Save")) {
+            QueueDeleteObjectID(items[k]);
+        }
+    }
+    round_items.resize(0);
+}
+
+void Arm(int id, const string &in weapon, AttachmentType how) {
+    int item_id = CreateObject(weapon, true);
+    Object@ item = ReadObjectFromID(item_id);
+    item.SetTranslation(ReadCharacterID(id).position);
+    item.GetScriptParams().AddIntCheckbox("No Save", true);
+    ReadObjectFromID(id).AttachItem(item, how, false);
+    round_items.insertLast(item_id);
+}
+
+// ---- host: the randomizer ---------------------------------------------------
+
+bool ArenaRandomizer() {
+    return ConfigHasKey("oo_arena_random") && GetConfigValueBool("oo_arena_random");
+}
+
+// This round's characters and gear (on: random for everyone; switched off:
+// the players their own characters back, the bots stay as they are)
+void PlanRandomizer() {
+    random_round = ArenaRandomizer();
+    rnd_paths.resize(0);
+    rnd_hand.resize(0);
+    rnd_knife.resize(0);
+    rnd_wolf.resize(0);
+    array<string> weapons = {"", "", "knife", "knife", "sword", "sword", "big_sword", "spear", "spear"};
+    for(uint k = 0; k < roster.length(); ++k) {
+        if(random_round) {
+            int s = rand() % int(kRndCharacters.length());
+            const array<string>@ kinds = kRndCharacters[s];
+            rnd_paths.insertLast("Data/Characters/" + kinds[rand() % int(kinds.length())] + ".xml");
+            rnd_wolf.insertLast(s == 4);
+            string w = weapons[rand() % int(weapons.length())];
+            rnd_hand.insertLast(w == "" ? "" : WeaponPath(w));
+            rnd_knife.insertLast(rand() % 10 < 3);
+        } else {
+            rnd_paths.insertLast(random_last && bots.find(roster[k]) < 0 ? "own" : "");
+            rnd_wolf.insertLast(false);
+            rnd_hand.insertLast("");
+            rnd_knife.insertLast(false);
+        }
+    }
+    become_pending = random_round || random_last;
+    random_last = random_round;
+}
+
+// Each machine switches its own characters: the host its own and the bots
+void SendBecome() {
+    for(uint k = 0; k < roster.length() && k < rnd_paths.length(); ++k) {
+        int id = roster[k];
+        if(rnd_paths[k] == "" || !MovementObjectExists(id)) {
+            continue;
+        }
+        MovementObject@ char = ReadCharacterID(id);
+        if(bots.find(id) >= 0 || (char.controlled && !char.remote)) {
+            Become(id, rnd_paths[k]);
+        } else {
+            level.SendMessage("ohl arena become #" + id + " " + rnd_paths[k]);
+        }
+    }
+}
+
+// A character this machine runs becomes `path` ("own": the player's own choice)
+void Become(int id, const string &in path) {
+    string p = path;
+    if(p == "own") {
+        p = GetConfigValueString("mp_character");
+        if(p == "" || !FileExists(p)) {
+            p = level.GetPath("char_player");
+        }
+    }
+    if(p == "" || !FileExists(p)) {
+        return;
+    }
+    ReadCharacterID(id).Execute(kDisarm + "SwitchCharacter(\"" + p + "\"); FixDiscontinuity();");  // (SwitchCharacter detaches all but kept the sheaths named)
+    if(path == "own") {
+        Online_RestoreOwnCharacter();  // (its colours, as the menu set them)
     }
 }
 
@@ -390,8 +601,13 @@ array<int> Players() {
 // (the engine gave them the host's team)
 void DropGonePlayers() {
     array<int> players = Players();
+    for(int k = int(bots.length()) - 1; k >= 0; --k) {
+        if(!MovementObjectExists(bots[k])) {
+            bots.removeAt(k);
+        }
+    }
     for(int k = int(roster.length()) - 1; k >= 0; --k) {
-        if(players.find(roster[k]) < 0) {
+        if(players.find(roster[k]) < 0 && bots.find(roster[k]) < 0) {
             roster.removeAt(k);
             points.removeAt(k);
             score_dirty = true;
@@ -431,6 +647,9 @@ string PlayerName(int id) {
             return states[k].playername;
         }
     }
+    if(ObjectExists(id) && ReadObjectFromID(id).GetScriptParams().HasParam("Bot Name")) {
+        return ReadObjectFromID(id).GetScriptParams().GetString("Bot Name");  // (the host's, on every machine)
+    }
     return "Player";
 }
 
@@ -438,6 +657,94 @@ void HealOwn() {
     int k = GetPlayerCharacterID();  // (an index)
     if(k != -1) {
         ReadCharacter(k).ReceiveScriptMessage("restore_health");
+    }
+}
+
+// ---- host: bots -----------------------------------------------------------
+
+// How many fighters the host wants the match filled up to (0: no bots)
+int ArenaFighters() {
+    return ConfigHasKey("oo_arena_bots") ? min(8, GetConfigValueInt("oo_arena_bots")) : 2;
+}
+
+int WantedBots() {
+    int fighters = ArenaFighters();
+    return fighters <= 0 ? 0 : max(0, fighters - int(Players().length()));
+}
+
+// Bots in or out (round starts): the newest leave first
+void SyncBots() {
+    int want = WantedBots();
+    while(int(bots.length()) > want) {
+        int id = bots[bots.length() - 1];
+        bots.removeLast();
+        int at = roster.find(id);
+        if(at >= 0) {
+            roster.removeAt(at);
+            points.removeAt(at);
+        }
+        if(ObjectExists(id)) {
+            QueueDeleteObjectID(id);
+        }
+    }
+    while(int(bots.length()) < want) {
+        bots.insertLast(MakeBot());
+    }
+}
+
+// An AI fighter of the arena's own kinds (multi_arena_enemy_spawn.as), middling
+int MakeBot() {
+    array<string> kinds = {"char_guard", "char_raider", "char_civ"};
+    array<int> fur_channels = {1, 0, -1};
+    int kind = rand() % 3;
+    string path = level.GetPath(kinds[kind]);
+    if(path == "") {
+        path = level.GetPath("char_player");
+        kind = 2;
+    }
+    int id = CreateObject(path, true);
+    Object@ obj = ReadObjectFromID(id);
+    obj.SetTranslation((spots.length() > 0 ? spots[0] : arena_center) + vec3(0.0f, 0.5f, 0.0f));
+    if(fur_channels[kind] >= 0) {
+        array<vec3> furs = {vec3(0.45f, 0.33f, 0.22f), vec3(0.3f, 0.3f, 0.3f), vec3(0.6f, 0.5f, 0.38f), vec3(0.18f, 0.14f, 0.1f), vec3(0.75f, 0.72f, 0.68f)};
+        obj.SetPaletteColor(fur_channels[kind], furs[rand() % int(furs.length())]);
+    }
+    ++bot_serial;
+    ScriptParams@ params = obj.GetScriptParams();
+    params.AddIntCheckbox("No Save", true);
+    params.AddString("Bot Name", "Bot " + bot_serial);
+    params.AddInt("Knockout Shield", kArenaShields);
+    params.SetString("Teams", "bot" + id);  // everyone for themselves
+    float d = 0.5f;
+    params.SetFloat("Character Scale", mix(RangedRandomFloat(0.9f, 1.0f), RangedRandomFloat(1.0f, 1.1f), d));
+    params.SetFloat("Block Follow-up", mix(RangedRandomFloat(0.01f, 0.25f), RangedRandomFloat(0.75f, 1.0f), d));
+    params.SetFloat("Block Skill", mix(RangedRandomFloat(0.01f, 0.25f), RangedRandomFloat(0.5f, 0.8f), d));
+    params.SetFloat("Movement Speed", mix(RangedRandomFloat(0.8f, 1.0f), RangedRandomFloat(0.9f, 1.1f), d));
+    params.SetFloat("Attack Speed", mix(RangedRandomFloat(0.8f, 1.0f), RangedRandomFloat(0.9f, 1.1f), d));
+    float damage = mix(RangedRandomFloat(0.3f, 0.5f), RangedRandomFloat(0.9f, 1.1f), d);
+    params.SetFloat("Attack Knockback", damage);
+    params.SetFloat("Attack Damage", damage);
+    params.SetFloat("Aggression", RangedRandomFloat(0.25f, 0.75f));
+    params.SetFloat("Ground Aggression", d);
+    params.SetFloat("Damage Resistance", mix(RangedRandomFloat(0.6f, 0.8f), RangedRandomFloat(0.9f, 1.1f), d));
+    obj.UpdateScriptParams();
+    Log(info, "Overgrowth Online: arena bot " + id + " (" + path + ")");
+    return id;
+}
+
+// "Fight!": the bots may fight, and know everyone in the match
+void BotsFight() {
+    for(uint k = 0; k < bots.length(); ++k) {
+        if(!MovementObjectExists(bots[k])) {
+            continue;
+        }
+        MovementObject@ bot = ReadCharacterID(bots[k]);
+        bot.ReceiveScriptMessage("set_combat_allowed true");
+        for(uint j = 0; j < roster.length(); ++j) {
+            if(roster[j] != bots[k] && MovementObjectExists(roster[j])) {
+                bot.ReceiveScriptMessage("notice " + roster[j]);
+            }
+        }
     }
 }
 

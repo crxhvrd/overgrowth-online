@@ -1688,6 +1688,13 @@ void MovementObjectDeleted(int id) {
     }
 
     AIMovementObjectDeleted(id);
+
+    // (Overgrowth Online: forget it; a check of the characters seen in the last second read it)
+    for(int i = int(situation.known_chars.size()) - 1; i >= 0; --i) {
+        if(situation.known_chars[i].id == id) {
+            situation.known_chars.removeAt(i);
+        }
+    }
 }
 
 void PrintWeaponSlotDebugText() {
@@ -6896,6 +6903,10 @@ void HandleEditorAttachment(int which, int attachment_type, bool mirror) {
         return;
     }
 
+    if(weapon_slots[weap_slot] != -1 && !ItemExists(weapon_slots[weap_slot])) {
+        weapon_slots[weap_slot] = -1;  // (Overgrowth Online: it was deleted under us)
+    }
+
     if(weapon_slots[weap_slot] != -1) {
         Log(info, "Slot already has item " + weapon_slots[weap_slot]);
         bool new_goes_in_old = DoesItemFitInItem(which, weapon_slots[weap_slot]);
@@ -10124,6 +10135,12 @@ void UpdateItemFistGrip() {
     }
 }
 
+// Overgrowth Online: an item that still exists. A deleted item's id can be
+// reused by another object, so ObjectExists alone isn't enough for ReadItemID
+bool ItemExists(int id) {
+    return id != -1 && ObjectExists(id) && ReadObjectFromID(id).GetType() == _item_object;
+}
+
 void NotifyItemDetach(int item_id) {
     if(weapon_slots[primary_weapon_slot] == item_id) {
         weapon_slots[primary_weapon_slot] = -1;
@@ -11323,7 +11340,8 @@ bool NeedsCombatPose() {
     for(uint i = 0; i < situation.known_chars.size(); ++i) {
         if(!situation.known_chars[i].friendly &&
             situation.known_chars[i].knocked_out == _awake &&
-            situation.known_chars[i].last_seen_time > time - 1.0f)
+            situation.known_chars[i].last_seen_time > time - 1.0f &&
+            MovementObjectExists(situation.known_chars[i].id))
         {
             MovementObject@ char = ReadCharacterID(situation.known_chars[i].id);
 
@@ -11394,6 +11412,9 @@ void SwitchCharacter(string path) {
     this_mo.DetachAllItems();
     this_mo.char_path = path;
     character_getter.Load(this_mo.char_path);
+    if(params.HasParam("Species")) {
+        params.SetString("Species", character_getter.GetTag("species"));  // (Overgrowth Online: the new one's; CheckSpecies only adds it)
+    }
     CheckSpecies();
     this_mo.RecreateRiggedObject(this_mo.char_path);
     updated = 0;

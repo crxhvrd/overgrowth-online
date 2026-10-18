@@ -183,7 +183,8 @@ void DrawCameraTab() {
     }
 
     Tip("A short cinematic shot when you knock an enemy out or kill it. Last enemy only: when the game's own slow " +
-        "motion plays. Sometimes: that, plus a chance on other knockouts. Never while another enemy is close to you.");
+        "motion plays. Sometimes: that, plus a chance on other knockouts. Never while another enemy is close to you. " +
+        "Off in online games, and so is all slow motion.");
     CamSlider("How often", "ofin_chance", 0.35f, 0.05f, 1.0f, "%.2f", "Sometimes: the chance per knockout (the last enemy always).");
     CamSlider("Shot length", "ofin_length", 2.2f, 1.0f, 4.0f, "%.1f s",
         "Real seconds. Two-shot sequences (last enemy, flying bodies) get 1.25x, your own fall 1.4x.");

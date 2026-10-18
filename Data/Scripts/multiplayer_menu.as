@@ -60,7 +60,6 @@ void Initialize() {
     SetPlayMenuList();
     BuildUI();
 	setBackGround();
-	AddVerticalBar();
 }
 
 // Overgrowth Online: the story campaigns in co-op, the linear ones the co-op
@@ -70,6 +69,35 @@ void Initialize() {
 bool CoopCampaign(Campaign &in camp) {
     return camp.GetMainScript().findFirst("linear_campaign") >= 0 && camp.GetMenuScript().findFirst("arena") < 0 &&
         camp.GetMenuScript().findFirst("aio_battle") < 0;  // (Versus runs on linear_campaign too, with an arena menu)
+}
+
+// Arena bots (online_arena.as reads the same key): fill up to this many
+// fighters, 0 none; 2 if never set
+int ArenaFighters() {
+    return ConfigHasKey("oo_arena_bots") ? GetConfigValueInt("oo_arena_bots") : 2;
+}
+
+string ArenaBotsLabel() {
+    int fighters = ArenaFighters();
+    return fighters <= 0 ? "Bots: off" : "Bots: up to " + fighters;
+}
+
+// Your games: public (the server browser lists them; read by the engine
+// as it opens the lobby) or friends only. Public unless set off
+bool HostingPublic() {
+    return !ConfigHasKey("oo_public_game") || GetConfigValueBool("oo_public_game");
+}
+
+string HostingLabel() {
+    return HostingPublic() ? "Hosting: public" : "Hosting: friends";
+}
+
+bool ArenaRandom() {
+    return ConfigHasKey("oo_arena_random") && GetConfigValueBool("oo_arena_random");
+}
+
+string ArenaRandomLabel() {
+    return ArenaRandom() ? "Randomizer: on" : "Randomizer: off";
 }
 
 bool ArenaCampaign(Campaign &in camp) {
@@ -102,54 +130,81 @@ void SetPlayMenuList() {
 TextBox text_box_ip;
 TextBox text_box_playername;
 
+// The column's buttons (wide enough for "Randomizer: off"), and the campaign
+// cards beside it, three to a row
+const float kButtonWidth = 660.0f;
+const uint kCardsPerRow = 3;
+const float kCardWidth = 480.0f;
+const float kCardHeight = 360.0f;
+FontSetup section_font("edosz", 48, HexColor("#9A9A9A"), true);
+
+void AddWideButton(const string &in text, IMDivider@ parent, const string &in icon) {
+    AddButton(text, parent, icon, button_background_diamond, true, kButtonWidth);
+}
+
+// A group's name above its buttons
+void AddSection(IMDivider@ parent, const string &in title) {
+    parent.append(IMSpacer(DOVertical, 18));
+    IMDivider row(DOHorizontal);
+    row.append(IMSpacer(DOHorizontal, 20));
+    row.append(IMText(title, section_font));
+    parent.append(row);
+    parent.append(IMSpacer(DOVertical, 10));
+}
+
 void BuildUI(){
-    IMDivider mainDiv( "mainDiv", DOHorizontal ); 
+    // The title, as the Play menu's
+    IMDivider header_divider("header_div", DOHorizontal);
+    header_divider.setAlignment(CACenter, CACenter);
+    AddTitleHeader("Multiplayer", header_divider);
+    imGUI.getHeader().setElement(header_divider);
 
+    IMDivider mainDiv("mainDiv", DOHorizontal);
+    mainDiv.setAlignment(CACenter, CATop);
+
+    // Left: what you can do, in groups, every button the same width
     IMDivider left_panel("left_panel", DOVertical);
-    left_panel.setAlignment(CALeft, CACenter);
+    left_panel.setAlignment(CALeft, CATop);
     mainDiv.append(left_panel);
+    mainDiv.append(IMSpacer(DOHorizontal, 40));
 
+    AddSection(left_panel, "Play online");
+    AddWideButton("Browse games", left_panel, play_icon);         // public games anywhere (multiplayer_browser.as)
+    AddWideButton("Join a friend", left_panel, play_icon);        // Steam friends hosting (multiplayer_join_friend.as)
+    AddWideButton("Your character", left_panel, settings_icon);   // character, colours and name: their own screen
 
-    left_panel.append(IMSpacer(DOVertical, 100));
-    IMDivider horizontal_buttons_holder(DOHorizontal);
-    horizontal_buttons_holder.append(IMSpacer(DOHorizontal, 75));
-    IMDivider buttons_holder("buttons_holder", DOVertical);
-    buttons_holder.append(IMSpacer(DOHorizontal, 200));
-    buttons_holder.setAlignment(CACenter, CACenter);
-    horizontal_buttons_holder.append(buttons_holder);
-    left_panel.append(horizontal_buttons_holder);
+    // The games you host: listed in the browser or for friends only; the
+    // arena's bots (a player who joins takes one's place) and randomizer
+    AddSection(left_panel, "Hosting");
+    AddWideButton(HostingLabel(), left_panel, settings_icon);
+    AddWideButton(ArenaBotsLabel(), left_panel, settings_icon);
+    AddWideButton(ArenaRandomLabel(), left_panel, settings_icon);
 
-    int initial_offset = 0;
-    if( StorageHasInt32("play_menu-shift_offset") ) {
-        initial_offset = StorageGetInt32("play_menu-shift_offset");
-    }
-    while( initial_offset >= int(play_menu.length()) ) {
-        initial_offset -= item_per_screen;
-        if( initial_offset < 0 ) {
-            initial_offset = 0;
-            break;
-        }
-    }
-	CreateMenu(mainDiv, play_menu, "play_menu", initial_offset, item_per_screen, rows_per_screen, false, false, menu_width, menu_height, false,false,false,true);
-    // Add it to the main panel of the GUI
-    imGUI.getMain().setElement( @mainDiv );
-    float button_trailing_space = 100.0f;
-    float button_width = 550.0f;
-    bool animated = false;
-
-    // Steam friends hosting (multiplayer_join_friend.as)
-    AddButton("Join a friend", buttons_holder, play_icon);
-
-    // Your character (and name): their own screen
-    AddButton("Your character", buttons_holder, settings_icon);
-
-    // Setup ip Textbox
-    text_box_ip.on_enter_message = "Connect by IP";
+    AddSection(left_panel, "Direct connection");
+    text_box_ip.on_enter_message = "Connect";
     text_box_ip.on_value_changed_message = "update_last_ip";
     text_box_ip.input_text = GetConfigValueString("last_ip");
     text_box_ip.default_text = "Enter IP...";
-    AddTextInput(buttons_holder, text_box_ip, "activate_ip_text_input");
-    AddButton("Connect by IP", buttons_holder, play_icon);
+    IMDivider ip_row("ip_row", DOHorizontal);
+    ip_row.setAlignment(CALeft, CACenter);
+    AddTextInput(ip_row, text_box_ip, "activate_ip_text_input");
+    AddButton("Connect", ip_row, "null", button_background_diamond, true, 380.0f);
+    left_panel.append(ip_row);
+
+    // Right: the campaigns to host, in rows (no page arrows: they all fit)
+    IMDivider cards("cards", DOVertical);
+    cards.setAlignment(CALeft, CATop);
+    IMDivider@ row = null;
+    for(uint i = 0; i < play_menu.length(); ++i) {
+        if(i % kCardsPerRow == 0) {
+            IMDivider new_row("cards_row" + i, DOHorizontal);
+            @row = @new_row;
+            cards.append(new_row);
+        }
+        CreateMenuItem(row, play_menu[i], true, play_menu[i].last_played, int(i) + 1, kCardWidth, kCardHeight, false, false, false, true);
+    }
+    mainDiv.append(cards);
+    imGUI.getMain().setElement( @mainDiv );
 
     AddBackButton(true, true);
 }
@@ -203,7 +258,36 @@ void Update() {
         {
             this_ui.SendCallback("multiplayer_character_menu.as");
         }
-        else if (message.name == "Connect by IP")
+        else if (message.name == ArenaRandomLabel())
+        {
+            SetConfigValueBool("oo_arena_random", !ArenaRandom());
+            SaveConfig();
+            imGUI.clear();
+            Initialize();
+        }
+        else if (message.name == ArenaBotsLabel())
+        {
+            // off, then up to 2, 3, 4, 6, 8 fighters
+            array<int> steps = {0, 2, 3, 4, 6, 8};
+            int at = steps.find(ArenaFighters());
+            SetConfigValueInt("oo_arena_bots", steps[(at + 1) % steps.length()]);
+            SaveConfig();
+            imGUI.clear();
+            Initialize();
+        }
+        else if (message.name == "Browse games")
+        {
+            this_ui.SendCallback("multiplayer_browser.as");
+        }
+        else if (message.name == HostingLabel())
+        {
+            // public: the server browser lists your games; else friends only
+            SetConfigValueBool("oo_public_game", !HostingPublic());
+            SaveConfig();
+            imGUI.clear();
+            Initialize();
+        }
+        else if (message.name == "Connect")
         {
             this_ui.SendCallback("multiplayer_menu_connecting.as");
             Online_Connect(text_box_ip.GetText());
@@ -253,7 +337,6 @@ void Update() {
 void Resize() {
     imGUI.doScreenResize(); // This must be called first
 	setBackGround();
-	AddVerticalBar();
 }
 
 void ScriptReloaded() {

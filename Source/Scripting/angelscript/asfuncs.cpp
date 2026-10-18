@@ -1746,8 +1746,8 @@ void AttachActiveCamera(ASContext* context) {
 #include "Internal/timer.h"
 static void ASTimedSlowMotion(float target_time_scale, float how_long, float delay) {
     Online* online = Online::Instance();
-    if (online->IsHosting()) {
-        online->Send<OnlineMessages::TimedSlowMotion>(target_time_scale, how_long, delay);
+    if (online->IsActive()) {
+        return;  // Overgrowth Online: no slow motion online (it slowed everyone's game for one kill)
     }
     game_timer.AddTimedSlowMotionLayer(target_time_scale, how_long, delay);
 }
@@ -2569,9 +2569,11 @@ int ASCreateObject(const std::string& path, bool exclude_from_save) {
             obj->permission_flags = 0;
             id = obj->GetID();
 
-            // Overgrowth Online: what a host script creates, every client creates too
+            // Overgrowth Online: what a host script creates, every client creates
+            // too, and late joiners (the arena's bots and weapons while the host
+            // was alone were never sent: guests then crashed on their ids)
             Online* online = Online::Instance();
-            if (online->IsHosting() && online->host_started_level &&
+            if (online->SharesCreatedObjects() &&
                 (obj->GetType() == _movement_object || obj->GetType() == _item_object)) {
                 online->Send<OnlineMessages::CreateEntity>(path, obj->GetTranslation(), id);
             }
@@ -2588,7 +2590,7 @@ int ASCreateObject(const std::string& path, bool exclude_from_save) {
 void AS_Online_AnnounceObject(int id, const std::string& path) {  // (the path CreateObject was given)
     Online* online = Online::Instance();
     Object* obj = the_scenegraph->GetObjectFromID(id);
-    if (online->IsHosting() && !online->host_started_level && obj != nullptr &&
+    if (online->IsHosting() && !online->SharesCreatedObjects() && obj != nullptr &&  // (else CreateObject sent it)
         (obj->GetType() == _movement_object || obj->GetType() == _item_object)) {
         online->Send<OnlineMessages::CreateEntity>(path, obj->GetTranslation(), id);
     }
@@ -5854,6 +5856,33 @@ vec3 AS_Online_SafeSpotNear(const vec3& base, const vec3& facing, int index) {
     return Online::Instance()->SafeSpotNear(base, facing, index);
 }
 
+// ... and whether there is one (Online::FindSafeSpot; `spot` is set only then)
+bool AS_Online_FindSafeSpot(const vec3& base, const vec3& facing, int index, vec3& spot) {
+    return Online::Instance()->FindSafeSpot(base, facing, index, &spot);
+}
+
+// Spectating (Online::CoopSpectateUpdate): whose character we watch while ours
+// is down ("" none), and the next player's
+std::string AS_Online_Spectating() {
+    return Online::Instance()->SpectateName();
+}
+
+void AS_Online_SpectateNext() {
+    Online::Instance()->SpectateNext();
+}
+
+// Our own character choice and colours (mp_character, mp_fur, mp_cloth) again
+void AS_Online_RestoreOwnCharacter() {
+    Online::Instance()->RestoreOwnCharacter();
+}
+
+// The file an object was made from ("Data/Items/..."): co-op copies of the host's weapons
+std::string AS_Online_ObjectFile(int id) {
+    SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+    Object* o = sg != nullptr ? sg->GetObjectFromID(id) : nullptr;
+    return o != nullptr ? o->obj_file : std::string();
+}
+
 void AS_Online_Connect(const std::string& ip) {
     Online::Instance()->ConnectByIPAddress(ip.c_str());
 }
@@ -5925,6 +5954,19 @@ bool AS_Online_SteamFriendsAvailable() {
     return Online::Instance()->SteamFriendsAvailable();
 }
 
+// Overgrowth Online: the server browser (Online::PublicGames)
+void AS_Online_RequestPublicGames() {
+    Online::Instance()->RequestPublicGames();
+}
+
+std::string AS_Online_PublicGames() {
+    return Online::Instance()->PublicGames();
+}
+
+bool AS_Online_JoinPublicGame(const std::string& lobby) {
+    return Online::Instance()->JoinPublicGame(lobby);
+}
+
 std::string AS_Online_FriendGames() {
     return Online::Instance()->FriendGames();
 }
@@ -5974,6 +6016,11 @@ void AttachOnline(ASContext* context) {
     context->RegisterGlobalFunction("void Online_Connect(string ip)", asFUNCTION(AS_Online_Connect), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_Host()", asFUNCTION(AS_Online_Host), asCALL_CDECL);
     context->RegisterGlobalFunction("vec3 Online_SafeSpotNear(const vec3 &in base, const vec3 &in facing, int index)", asFUNCTION(AS_Online_SafeSpotNear), asCALL_CDECL);
+    context->RegisterGlobalFunction("bool Online_FindSafeSpot(const vec3 &in base, const vec3 &in facing, int index, vec3 &out spot)", asFUNCTION(AS_Online_FindSafeSpot), asCALL_CDECL);
+    context->RegisterGlobalFunction("string Online_ObjectFile(int id)", asFUNCTION(AS_Online_ObjectFile), asCALL_CDECL);
+    context->RegisterGlobalFunction("string Online_Spectating()", asFUNCTION(AS_Online_Spectating), asCALL_CDECL);
+    context->RegisterGlobalFunction("void Online_SpectateNext()", asFUNCTION(AS_Online_SpectateNext), asCALL_CDECL);
+    context->RegisterGlobalFunction("void Online_RestoreOwnCharacter()", asFUNCTION(AS_Online_RestoreOwnCharacter), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_PlaceAvatar(int char_id, const vec3 &in pos, const vec3 &in facing)", asFUNCTION(AS_Online_PlaceAvatar), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_AnnounceObject(int id, const string &in path)", asFUNCTION(AS_Online_AnnounceObject), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_SendKillMessage(uint victim, uint killer)", asFUNCTION(AS_Online_SendKillMessage), asCALL_CDECL);
@@ -6003,6 +6050,9 @@ void AttachOnline(ASContext* context) {
     context->RegisterGlobalFunction("bool Online_SteamFriendsAvailable()", asFUNCTION(AS_Online_SteamFriendsAvailable), asCALL_CDECL);
     context->RegisterGlobalFunction("string Online_FriendGames()", asFUNCTION(AS_Online_FriendGames), asCALL_CDECL);
     context->RegisterGlobalFunction("bool Online_JoinFriend(const string &in steam_id)", asFUNCTION(AS_Online_JoinFriend), asCALL_CDECL);
+    context->RegisterGlobalFunction("void Online_RequestPublicGames()", asFUNCTION(AS_Online_RequestPublicGames), asCALL_CDECL);
+    context->RegisterGlobalFunction("string Online_PublicGames()", asFUNCTION(AS_Online_PublicGames), asCALL_CDECL);
+    context->RegisterGlobalFunction("bool Online_JoinPublicGame(const string &in lobby)", asFUNCTION(AS_Online_JoinPublicGame), asCALL_CDECL);
 }
 
 void AttachStringConvert(ASContext* context) {

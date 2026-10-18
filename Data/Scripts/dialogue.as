@@ -2027,15 +2027,8 @@ class Dialogue {
                 if(MovementObjectExists(char_id)) {
                     MovementObject@ mo = ReadCharacterID(char_id);
 
-                    // When Online, move every player movementobject if one of them is moved inside dialogue
-                    if (Online_IsHosting() && mo.is_player) {
-                        array<int> player_ids = GetControlledCharacterIDs();
-                        for(uint i = 0; i < player_ids.length(); i++) {
-                            MovementObject@ player_mo = ReadCharacter(player_ids[i]);
-                            player_mo.ReceiveScriptMessage("set_rotation "+rot);
-                            player_mo.ReceiveScriptMessage("set_dialogue_position "+pos.x+" "+pos.y+" "+pos.z);
-                        }
-                    }
+                    // (Overgrowth Online: the other players' characters are not put
+                    // here; they are hidden while a dialogue plays, Online::CoopCutsceneUpdate)
 
                     mo.ReceiveScriptMessage("set_rotation "+rot);
                     mo.ReceiveScriptMessage("set_dialogue_position "+pos.x+" "+pos.y+" "+pos.z);

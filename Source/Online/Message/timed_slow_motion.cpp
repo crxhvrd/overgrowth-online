@@ -54,9 +54,8 @@ void TimedSlowMotion::Deserialize(void* object, binn* l) {
 }
 
 void TimedSlowMotion::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
-    TimedSlowMotion* tsm = static_cast<TimedSlowMotion*>(object);
-
-    game_timer.AddTimedSlowMotionLayer(tsm->target_time_scale, tsm->how_long, tsm->delay);
+    // Overgrowth Online: no slow motion online (an older host may still send it)
+    (void)object;
 }
 
 void* TimedSlowMotion::Construct(void* mem) {
