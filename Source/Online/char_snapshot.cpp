@@ -47,14 +47,6 @@ const float kBoxSteps[3] = {2047.0f, 2047.0f, 1023.0f};  // 11/11/10 bits x/y/z 
 const int kBoxShift[3] = {21, 10, 0};
 const uint32_t kBoxMask[3] = {2047u, 2047u, 1023u};
 
-double Median(std::deque<double> v) {
-    if (v.empty()) {
-        return 0.0;
-    }
-    std::sort(v.begin(), v.end());
-    return v[v.size() / 2];
-}
-
 }  // namespace
 
 vec3 PredictFromParent(const BoneLink& link, const quaternion& parent_rotation, const vec3& parent_translation,
@@ -569,7 +561,14 @@ void Buffer::Clear() {
 }
 
 double Buffer::IntervalMs() const {
-    return gaps_.empty() ? 33.0 : Median(gaps_);
+    if (gaps_.empty()) {
+        return 33.0;
+    }
+    // The longer of the usual gaps: a stream whose rate swings (the camera
+    // turning, distance) keeps one delay instead of re-timing back and forth
+    std::deque<double> sorted = gaps_;
+    std::sort(sorted.begin(), sorted.end());
+    return sorted[(sorted.size() - 1) * 3 / 4];
 }
 
 double Buffer::Target() const {
@@ -635,16 +634,21 @@ bool Buffer::Sample(double now_ms, Frame& out) {
 
     double target = Target();
 
-    if (!started_ || std::fabs(play_offset_ - target) > 150.0) {
+    if (!started_ || std::fabs(play_offset_ - target) > 1000.0) {
         play_offset_ = target;
         started_ = true;
     } else {
-        // Ease toward the target by playing slightly slower (10 %) or faster (2 %)
+        // Ease toward the target by playing slightly slower (10 %) or faster
+        // (5 %: after a hitch the delay comes back within a couple of seconds);
+        // a big change never as a jump (a snap forward or a rewind): later
+        // by pausing until the frames cover it, sooner at 25 %
         double dt = std::max(0.0, std::min(100.0, now_ms - last_now_));
-        if (target > play_offset_) {
-            play_offset_ += std::min(target - play_offset_, dt * 0.10);
+        double diff = target - play_offset_;
+        bool big = std::fabs(diff) > 150.0;
+        if (diff > 0.0) {
+            play_offset_ += std::min(diff, dt * (big ? 1.0 : 0.10));
         } else {
-            play_offset_ -= std::min(play_offset_ - target, dt * 0.02);
+            play_offset_ -= std::min(-diff, dt * (big ? 0.25 : 0.05));
         }
     }
 

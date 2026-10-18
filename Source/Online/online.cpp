@@ -791,6 +791,18 @@ bool Online::IsLocalAvatar(const ObjectID avatar_id) const {
     return IsHosting();
 }
 
+bool Online::IsPlayerCharacter(ObjectID id) const {
+    if (online_session == nullptr) {
+        return false;
+    }
+    for (const auto& it : online_session->player_states) {
+        if (it.second.object_id == id) {
+            return true;
+        }
+    }
+    return false;
+}
+
 PlayerID Online::GetAvatarOwner(const ObjectID avatar_id) const {
     auto ov = owner_overrides.find(GetOriginalID(avatar_id));
     if (ov != owner_overrides.end()) {
@@ -829,7 +841,7 @@ const double kSnapshotBudget = 150000.0;  // bytes a second
 double StreamPriority(float dist, bool in_view, bool engaged) {
     double w = dist < 5.0f ? 1.0 : dist < 12.0f ? 0.6 : dist < 25.0f ? 0.35 : dist < 50.0f ? 0.2 : 0.08;
     if (!in_view) {
-        w *= 0.3;
+        w *= 0.5;  // at most half: a rate jump on turning the camera re-times the playback (a snap)
     }
     if (engaged) {
         w = 1.0;  // fighting each other: full rate
@@ -936,6 +948,7 @@ void Online::StreamCharacters(SceneGraph* sg) {
             r.hash = CharSnapshot::Hash(r.bytes.data() + CharSnapshot::kContentOffset, r.bytes.size() - CharSnapshot::kContentOffset);
             r.position = mo->position;
             r.owner = me;
+            r.player = IsPlayerCharacter(mo->GetID());
         }
     }
 
@@ -958,6 +971,7 @@ void Online::StreamCharacters(SceneGraph* sg) {
         }
     }
     double budget = kSnapshotBudget / std::max<size_t>(1, receivers.size());  // bytes a second each
+    vector<CommonObjectID> players_in_stream;  // (filled once, for the first receiver)
 
     for (Receiver& rc : receivers) {
         auto ps = online_session->player_states.find(rc.peer);
@@ -988,6 +1002,13 @@ void Online::StreamCharacters(SceneGraph* sg) {
         };
         vector<Want> wants;
         double want_bytes = 0.0;
+        if (players_in_stream.empty()) {
+            for (auto& it : stream_latest) {
+                if (it.second.player) {
+                    players_in_stream.push_back(it.first);
+                }
+            }
+        }
         for (auto& it : stream_latest) {
             const StreamRecord& r = it.second;
             if (r.owner == rc.peer || r.bytes.empty()) {
@@ -997,10 +1018,22 @@ void Online::StreamCharacters(SceneGraph* sg) {
             bool in_view = true;
             if (rc.has_cam) {
                 vec3 to = r.position - rc.cam_pos;
-                in_view = length(to) < 6.0f || dot(normalize(to), rc.cam_dir) > 0.35f;
+                in_view = length(to) < 12.0f || dot(normalize(to), rc.cam_dir) > 0.0f;  // (wide: the camera turns fast)
             }
             bool engaged = rc.avatar >= 0 && (r.target == rc.avatar || r.attacker == rc.avatar);
-            double rate = 30.0 * StreamPriority(dist, in_view, engaged);
+            double priority = StreamPriority(dist, in_view, engaged);
+            // Players, and whoever fights one (a friend's fight is watched):
+            // a few of them; full rate within 25 m, smooth however far (the
+            // budget below still rules)
+            bool fights_player = std::find(players_in_stream.begin(), players_in_stream.end(), r.target) != players_in_stream.end() ||
+                                 std::find(players_in_stream.begin(), players_in_stream.end(), r.attacker) != players_in_stream.end();
+            if (r.player || fights_player) {
+                priority = std::max(priority, dist < 25.0f ? 1.0 : 0.5);
+            }
+            if (!IsHosting()) {
+                priority = 1.0;  // to the host: its AI, its hit checks and every relay run on this stream
+            }
+            double rate = 30.0 * priority;
             wants.push_back({it.first, rate});
             want_bytes += rate * (r.lite.empty() ? r.bytes.size() : r.lite.size());
         }
@@ -1119,6 +1152,7 @@ void Online::ReceiveSnapshots(PeerID from, const uint8_t* data, size_t size) {
             r.hash = CharSnapshot::Hash(r.bytes.data() + CharSnapshot::kContentOffset, r.bytes.size() - CharSnapshot::kContentOffset);
             r.position = frame.position;
             r.owner = from;
+            r.player = IsPlayerCharacter(id);
             r.lite.clear();
             if (frame.vitals.valid) {
                 r.target = frame.vitals.target_id;
@@ -1302,6 +1336,9 @@ void Online::ResolveHitRequest(OnlineMessages::HitRequest* m, bool peers_locked)
     int result = 0;  // _miss
     bool reaches = m->max_range <= 0.0f || distance(attacker->position, target->position) <= m->max_range + kHitRangeSlack;
 
+    if (!reaches) {
+        ++hits_out_of_range;
+    }
     if (reaches || m->type == "attackblocked") {
         ++owned_script_depth;  // the defender's sounds are everyone's
         result = target->ResolveRemoteHit(m->type, m->attack_path, m->dir, m->pos, attacker_id, m->damage_mult, m->knockback_mult);
@@ -3370,8 +3407,8 @@ static double NetSimNowMs() {
 }
 
 void Online::SendMessageToConnection(NetConnectionID conn_id, char* buffer, uint32_t bytes, bool reliable, bool flush) {
-    int latency = net_sim_latency_ms.load();
-    int jitter = net_sim_jitter_ms.load();
+    int latency = net_sim_latency_ms.load() + net_sim_conn_latency_ms[conn_id].load();
+    int jitter = net_sim_jitter_ms.load() + net_sim_conn_jitter_ms[conn_id].load();
     float loss = net_sim_loss.load();
 
     if (latency <= 0 && jitter <= 0 && loss <= 0.0f && net_sim_queue.empty()) {

@@ -307,6 +307,7 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         o["bones_captured"] = (Json::UInt64)online->snapshot_bones_captured.load();
         o["hits_requested"] = (Json::UInt64)online->hits_requested.load();
         o["hits_resolved"] = (Json::UInt64)online->hits_resolved.load();
+        o["hits_out_of_range"] = (Json::UInt64)online->hits_out_of_range.load();
         o["hit_results"] = (Json::UInt64)online->hit_results.load();
         o["takeovers"] = (Json::UInt64)online->takeovers.load();
         o["item_launches"] = (Json::UInt64)online->item_launches.load();
@@ -324,6 +325,7 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
             for (const Peer& peer : online->GetPeers()) {
                 Json::Value p;
                 p["peer_id"] = (Json::UInt64)peer.peer_id;
+                p["conn_id"] = (int)peer.conn_id;
                 p["ping_ms"] = peer.current_ping_delta * 1000.0f;
                 p["transport_ping_ms"] = online->GetPeerTransportPing(peer.conn_id);
                 p["clock_offset_ms"] = peer.clock.Offset();
@@ -586,6 +588,10 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
     } else if (cmd == "menu") {
         // A menu script, as a menu button opens it ("multiplayer_menu.as")
         Engine::Instance()->ScriptableUICallback(req.get("script", "").asString());
+    } else if (cmd == "net_sim" && req.isMember("conn_id")) {
+        int c = req["conn_id"].asInt() & 255;
+        online->net_sim_conn_latency_ms[c] = req.get("latency_ms", 0).asInt();
+        online->net_sim_conn_jitter_ms[c] = req.get("jitter_ms", 0).asInt();
     } else if (cmd == "net_sim") {
         online->net_sim_latency_ms = req.get("latency_ms", 0).asInt();
         online->net_sim_jitter_ms = req.get("jitter_ms", 0).asInt();

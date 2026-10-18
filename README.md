@@ -8,6 +8,19 @@ Only code is here. The game's data (art, levels, sounds) comes from your own cop
 
 Overgrowth Online is not affiliated with or endorsed by Wolfire Games.
 
+## Compared to Wolfire's multiplayer prototype
+
+Wolfire's online prototype (2021) was left unfinished. Overgrowth Online started from it and reworked it:
+
+| | Wolfire's prototype | Overgrowth Online |
+|---|---|---|
+| Your character | Runs on the host: every move waits for the network | Runs on your machine: the network adds no input lag |
+| Other characters | Full poses about 120 times a second, about 5 Mbit/s per player | Compact streams, about 35 kbit/s per player in a two-player game, smooth on any ping |
+| Hits | Decided on the host | Decided by the defender's own machine |
+| Joining | Steam invites, or TCP by IP | Steam friends, a server browser, direct IP |
+| Weapons, throws, sounds | Partly or not shared | Shared |
+| Game modes | Any level, without co-op or PvP rules | Story co-op, arena PvP with bots |
+
 ## License
 
 Based on [Overgrowth's source code](https://github.com/WolfireGames/overgrowth). Unless otherwise noted, the code is licensed under `Apache-2.0`; see [LICENSE]. Third-party libraries keep their own licenses.

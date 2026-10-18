@@ -219,6 +219,9 @@ class Online {
     std::atomic<int> net_sim_latency_ms{0};
     std::atomic<int> net_sim_jitter_ms{0};
     std::atomic<float> net_sim_loss{0.0f};
+    // Per connection on top (a host with guests on different pings)
+    std::atomic<int> net_sim_conn_latency_ms[256]{};
+    std::atomic<int> net_sim_conn_jitter_ms[256]{};
 
     // The network thread queues connections to close; the main thread closes
     // them (LateUpdate): closing deletes the player's character
@@ -237,6 +240,7 @@ class Online {
         int vitals_version = 0;    // changes when its vitals do
         CommonObjectID target = -1;    // whom it fights (its target, who hit it last)
         CommonObjectID attacker = -1;
+        bool player = false;  // a player's character: never thinned below half rate
     };
     struct StreamSent {
         uint32_t src_ms = 0;
@@ -265,6 +269,7 @@ class Online {
     std::atomic<uint64_t> snapshot_bytes_out{0};
     std::atomic<uint64_t> hits_requested{0};   // attacks on characters other machines run
     std::atomic<uint64_t> hits_resolved{0};    // attacks on ours, decided here
+    std::atomic<uint64_t> hits_out_of_range{0};  // the defender found the attacker out of reach
     std::atomic<uint64_t> hit_results{0};      // answers about our attacks
     std::atomic<uint64_t> takeovers{0};        // characters we took for a throw, choke or drag
 
@@ -437,6 +442,7 @@ class Online {
     vector<Peer>::iterator GetPeerIt(NetConnectionID conn_id);
     bool IsLocalAvatar(const ObjectID avatar) const;
     PlayerID GetAvatarOwner(const ObjectID avatar) const;  // whose machine simulates it
+    bool IsPlayerCharacter(ObjectID id) const;  // someone's avatar (ours too)
     void StreamCharacters(SceneGraph* scenegraph);
     void ReceiveSnapshots(PeerID from, const uint8_t* data, size_t size);
 
