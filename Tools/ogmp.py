@@ -69,6 +69,13 @@ def run_one(name, out_root):
             result["passed"] = False
             result.setdefault("notes", []).append(f"{inst.name}: fatal log line: {fatal[0]}")
 
+        # A script that doesn't compile (a mod's included file, say) shows a
+        # dialog and the game carries on without it: a failure all the same
+        compile_errs = [l for l, n in log_errors(log) if "ERR:" in l]
+        if compile_errs:
+            result["passed"] = False
+            result.setdefault("notes", []).append(f"{inst.name}: script compile error: {compile_errs[0].strip()}")
+
     json.dump(result, open(f"{out_dir}/result.json", "w", encoding="utf-8"), indent=2)
     status = "PASS" if result["passed"] else "FAIL"
     print(f"[{status}] {name} ({result['seconds']} s)")

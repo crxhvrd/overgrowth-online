@@ -1136,7 +1136,7 @@ void BattleTick() {
             QueueDeleteObjectID(f.id);
 
             for(uint k = 0; k < f.items.length(); ++k) {
-                if(ItemExists(f.items[k]) && !ReadItemID(f.items[k]).IsHeld() && ReadItemID(f.items[k]).StuckInWhom() == -1) {
+                if(ObjectExists(f.items[k]) && ReadObjectFromID(f.items[k]).GetType() == _item_object && !ReadItemID(f.items[k]).IsHeld() && ReadItemID(f.items[k]).StuckInWhom() == -1) {
                     QueueDeleteObjectID(f.items[k]);
                 }
             }
