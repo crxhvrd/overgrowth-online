@@ -43,10 +43,10 @@ void DrawGeneralTab() {
             "and look with random weapons. Off again: the players get their own characters back. From the next round.");
     }
 
-    Header("About Overgrowth Online " + kVersion);
-    ImGui_TextWrapped("Overgrowth Online grows into a whole ecosystem: online play and improvements to the whole game. Each part has its own tab here.");
+    Header("About Overhaul " + kVersion);
+    ImGui_TextWrapped("Overhaul improves the whole game: each part has its own tab here. It works in the normal game too; online play comes with Overgrowth Online, a separate build.");
     ImGui_Spacing();
-    ImGui_TextColored(kHeaderColor, "Overgrowth Online AI");
+    ImGui_TextColored(kHeaderColor, "Overhaul AI");
     ImGui_TextWrapped("Smarter enemies built around the jump kick: air combat, movement, weapons, group and team tactics. " +
         "Settings in the AI tab.");
     ImGui_Spacing();

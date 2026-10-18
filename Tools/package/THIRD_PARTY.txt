@@ -1,6 +1,6 @@
 Overgrowth Online is built from Wolfire Games' open-source Overgrowth engine
 (https://github.com/WolfireGames/overgrowth), Apache License 2.0 (LICENSE.txt),
-with changes by crxhvrd (online play, the Overgrowth Online mod's online support).
+with changes by crxhvrd (online play, the Overhaul mod's online support).
 The game's assets are not included: they come from your own copy of Overgrowth.
 
 Libraries shipped as DLLs, under their own licences (see this folder):

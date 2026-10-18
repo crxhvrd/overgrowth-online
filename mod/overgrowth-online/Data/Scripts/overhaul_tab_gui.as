@@ -17,7 +17,7 @@ void HudSlider(const string &in label, const string &in key, float fallback, flo
 }
 
 void DrawGUITab() {
-    Toggle("Show the Overgrowth Online HUD", "ohud_enabled", true, "Everything below. Hidden in the editor and during cutscenes.");
+    Toggle("Show the Overhaul HUD", "ohud_enabled", true, "Everything below. Hidden in the editor and during cutscenes.");
 
     Header("You");
     Toggle("Health panel", "ohud_health", true,
@@ -44,7 +44,7 @@ void DrawGUITab() {
         "their nicknames): a red diamond for an enemy, a green shield for a teammate (team colours in Large Battles). " +
         "Blue pips under the bar: its knockout shield, the hits it takes before it can be knocked out.");
     Toggle("On allies too", "ohud_tag_allies", true, "");
-    Toggle("Show fighting style", "ohud_tag_style", false, "The Overgrowth Online AI personality: kicker, boxer, trickster...");
+    Toggle("Show fighting style", "ohud_tag_style", false, "The Overhaul AI personality: kicker, boxer, trickster...");
     HudSlider("Tag range", "ohud_tag_range", 14.0f, 4.0f, 40.0f, "%.0f m", "");
 
     Header("Damage and the combat log");

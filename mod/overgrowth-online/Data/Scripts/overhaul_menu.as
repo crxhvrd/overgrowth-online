@@ -23,7 +23,7 @@
 #include "overhaul_weather.as"
 #include "overhaul_tab_weather.as"
 
-const string kVersion = "0.38.1";
+const string kVersion = "0.38.2";
 
 bool menu_open = false;
 bool paused_by_menu = false;
@@ -206,7 +206,7 @@ void RegisterTabs() {
         @DrawWeatherTab, @ResetWeatherTab);
     AddTab("Trainer", "Cheats: god mode, strength and speed, weapons, teleport, enemies, spawning, game speed, gravity",
         @DrawTrainerTab, @ResetTrainerTab);
-    AddTab("General", "The Overgrowth Online window itself, and what it contains", @DrawGeneralTab, @ResetGeneralTab);
+    AddTab("General", "The Overhaul window itself, and what it contains", @DrawGeneralTab, @ResetGeneralTab);
 }
 
 // The tabs share the window's width; too narrow for one row, they wrap into
@@ -272,7 +272,7 @@ void DrawGUI() {
     ImGui_SetNextWindowPos(vec2(max(10.0f, (screen_w - width) * 0.5f), 30.0f), ImGuiSetCond_Appearing);
     bool keep_open = true;
 
-    if(ImGui_Begin("Overgrowth Online " + kVersion + "   [" + ToUpper(MenuKey()) + " to close]", keep_open,
+    if(ImGui_Begin("Overhaul " + kVersion + "   [" + ToUpper(MenuKey()) + " to close]", keep_open,
             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar)) {
         DrawTabBar();
         OverhaulTab@ tab = overhaul_tabs[overhaul_tab];

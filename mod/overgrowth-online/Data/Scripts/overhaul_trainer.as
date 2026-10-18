@@ -400,7 +400,7 @@ int trainer_queue_wait = 0;
 
 const array<string> kTrainerSpecies = {"Random", "Rabbit", "Cat", "Dog", "Rat", "Wolf"};
 const array<string> kTrainerSides = {"Enemy", "Ally"};
-const array<string> kTrainerAIs = {"Overgrowth Online AI", "Vanilla AI"};
+const array<string> kTrainerAIs = {"Overhaul AI", "Vanilla AI"};
 const array<string> kTrainerSpawnWeapons = {"None", "Knife", "Sword", "Spear", "Staff", "Big sword", "Hammer", "Rapier", "Mixed"};
 
 void TrainerSpawnGroup() {

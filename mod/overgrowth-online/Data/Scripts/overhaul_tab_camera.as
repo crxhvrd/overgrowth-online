@@ -85,7 +85,7 @@ void ApplyCamPreset(CamPreset@ preset) {
 
 void DrawCameraTab() {
     SetUpCamPresets();
-    Toggle("Overgrowth Online camera", "ocam_enabled", true,
+    Toggle("Overhaul camera", "ocam_enabled", true,
         "Off: the stock camera whatever is set below (field of view and mouse settings stay, they are the game's own).");
     Note("Changes show live behind this window.");
 

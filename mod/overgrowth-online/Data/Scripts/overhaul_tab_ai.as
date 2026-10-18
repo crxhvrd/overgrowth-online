@@ -9,11 +9,11 @@ void DrawAITab() {
         Note("Online the host runs every NPC: its AI settings apply, not these.");
     }
 
-    Toggle("Overgrowth Online AI", "aio_master", true,
+    Toggle("Overhaul AI", "aio_master", true,
         "Off: every NPC uses the stock AI (bug fixes stay on).");
 
     if(!CfgBool("aio_master", true)) {
-        Note("The Overgrowth Online AI is off: the settings below have no effect.");
+        Note("The Overhaul AI is off: the settings below have no effect.");
     }
 
     Header("Jump kicks");

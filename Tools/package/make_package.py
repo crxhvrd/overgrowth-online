@@ -1,4 +1,4 @@
-"""Overgrowth Online friends package: dist/OvergrowthOnline_<version>/ and its zip.
+"""Overgrowth Online package (public test builds): dist/OvergrowthOnline_<version>/ and its zip.
 
     python -I Tools/package/make_package.py [--build Build_steam/Release] [--name suffix]
 
@@ -59,8 +59,10 @@ shutil.copy2(HERE + "/THIRD_PARTY.txt", online + "/licenses/THIRD_PARTY.txt")
 os.makedirs(out + "/launcher")
 shutil.copy2(ROOT + "/Build/launcher/Overgrowth.exe", out + "/launcher/Overgrowth.exe")
 shutil.copytree(MOD, out + "/mod/overhaul")
-for f in ["install.bat", "install.ps1", "uninstall.bat", "uninstall.ps1", "find_game.ps1", "README.txt"]:
+for f in ["install.bat", "install.ps1", "uninstall.bat", "uninstall.ps1", "find_game.ps1"]:
     shutil.copy2(f"{HERE}/{f}", out)
+readme = open(f"{HERE}/README.txt", encoding="utf-8", newline="").read().replace("{VERSION}", version)
+open(f"{out}/README.txt", "w", encoding="utf-8", newline="").write(readme)  # (its version filled in)
 
 zip_path = shutil.make_archive(f"{ROOT}/dist/{name}", "zip", f"{ROOT}/dist", name)
 size = sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(out) for f in fs)

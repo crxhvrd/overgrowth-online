@@ -104,7 +104,7 @@ $stock_mods = @(
 $rows = ($stock_mods | ForEach-Object { "    <ModInstance id=""$($_[0])"" activated=""true"" modsource=""local"" version=""$($_[1])"" />" }) -join "`n"
 $modconfig = Join-Path $wd "modconfig.xml"
 [IO.File]::WriteAllText($modconfig, "<?xml version=""2.0"" ?>`n<ActiveMods>`n$rows`n</ActiveMods>`n", (New-Object Text.UTF8Encoding $false))
-Write-Host "  Overgrowth Online $version installed and enabled ($wd)"
+Write-Host "  Overgrowth Online $version installed, the Overhaul mod enabled ($wd)"
 
 Write-Host ""
 Write-Host "Done. Start Overgrowth from Steam as usual (Steam must be running)." -ForegroundColor Green

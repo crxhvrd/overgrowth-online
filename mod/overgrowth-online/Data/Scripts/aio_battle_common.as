@@ -10,7 +10,7 @@ const int kMaxTeams = 8;
 const int kMaxPerTeam = 60;
 
 const array<string> kSpeciesNames = {"Rabbits", "Cats", "Dogs", "Rats", "Wolves", "Mixed"};
-const array<string> kAINames = {"Overgrowth Online AI", "Overgrowth Online AI, no team tactics", "Vanilla Overgrowth AI"};
+const array<string> kAINames = {"Overhaul AI", "Overhaul AI, no team tactics", "Vanilla Overgrowth AI"};
 const array<string> kWeaponNames = {"Unarmed", "Knives", "Swords", "Spears", "Staffs", "Big swords", "Hammers",
     "Rapiers", "Mixed weapons"};
 const array<string> kPlayerModes = {"Spectate (free camera)", "Fight on a team"};

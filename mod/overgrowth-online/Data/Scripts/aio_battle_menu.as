@@ -238,7 +238,7 @@ void DrawSetup() {
     float sh = float(GetScreenHeight());
     ImGui_SetNextWindowPos(vec2(sw * 0.04f, sh * 0.06f), ImGuiSetCond_Always);
     ImGui_SetNextWindowSize(vec2(sw * 0.92f, sh * 0.88f), ImGuiSetCond_Always);
-    ImGui_Begin("Large Battles  -  Overgrowth Online", ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+    ImGui_Begin("Large Battles  -  Overhaul", ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings);
     ImGui_SetWindowFontScale(sh >= 1000.0f ? 1.2f : 1.0f);
 
@@ -434,7 +434,7 @@ void DrawTeam(int t) {
         team.ai = ai;
     }
 
-    Tip("Overgrowth Online AI: everything, team tactics included.\nNo team tactics: its fighting without the battle read, target choice and morale.\nVanilla: the game's own AI.");
+    Tip("Overhaul AI: everything, team tactics included.\nNo team tactics: its fighting without the battle read, target choice and morale.\nVanilla: the game's own AI.");
     float skill = team.skill;
 
     if(ImGui_SliderFloat("Skill" + id, skill, 0.0f, 1.0f, "%.2f")) {

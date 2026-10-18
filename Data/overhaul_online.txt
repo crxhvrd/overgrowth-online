@@ -1,1 +1,1 @@
-Overhaul Online build: the Overhaul mod looks for this file to offer online play.
+Overgrowth Online build: the Overhaul mod looks for this file to offer online play.
