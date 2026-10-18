@@ -491,7 +491,7 @@ float aio_blade_patience = 5.0f;
 string aio_match_logged = "";
 
 float AIOReach(int weap) {
-    if(weap == -1) {
+    if(!ItemExists(weap)) {
         return 1.6f;
     }
 
@@ -507,7 +507,7 @@ float AIOReach(int weap) {
 }
 
 bool AIOIsBlade(int weap) {
-    return weap != -1 && ReadItemID(weap).GetType() == _weapon && ReadItemID(weap).GetLabel() != "scabbard";
+    return ItemExists(weap) && ReadItemID(weap).GetType() == _weapon && ReadItemID(weap).GetLabel() != "scabbard";
 }
 
 void AIOUpdateMatchup(MovementObject@ target, float dist) {

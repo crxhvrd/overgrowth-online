@@ -45,7 +45,7 @@ bool AIOCantBlockFrom(MovementObject@ t, const vec3 &in from) {
 
 bool AIOHoldsBlockingWeapon(MovementObject@ t) {
     int weap = GetCharPrimaryWeapon(t);
-    return weap != -1 && ReadItemID(weap).GetLabel() != "knife";
+    return ItemExists(weap) && ReadItemID(weap).GetLabel() != "knife";
 }
 
 // Our blade against someone who can't block it
@@ -523,7 +523,7 @@ int AIOPickWeapon(float range) {
     for(uint i = 0; i < situation.known_items.size(); ++i) {
         int id = situation.known_items[i].id;
 
-        if(!ObjectExists(id)) {
+        if(!ItemExists(id)) {  // (ids are reused)
             continue;
         }
 

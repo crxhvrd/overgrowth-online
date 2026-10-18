@@ -640,6 +640,12 @@ void MovementObject::ReconcileNetworkItems(const CharSnapshot::Vitals& v) {
 
     for (int i = 0; i < 6; ++i) {
         slots[i] = v.slots[i] == -1 ? -1 : online->GetObjectID(v.slots[i]);
+        // Not an item here (already deleted here, or not here yet): an empty
+        // slot here; scripts read these slots as items (the AI: "no item object")
+        Object* o = slots[i] == -1 ? nullptr : scenegraph_->GetObjectFromID(slots[i]);
+        if (o == nullptr || o->GetType() != _item_object) {
+            slots[i] = -1;
+        }
         ASSetArrayIntVar("weapon_slots", i, slots[i]);
     }
     ASSetIntVar("primary_weapon_slot", v.primary_slot);

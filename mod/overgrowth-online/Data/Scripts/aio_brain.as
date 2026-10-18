@@ -2001,7 +2001,7 @@ bool AIOStartRoll(vec3 dir, const string &in kind) {
 
 bool AIOHasBlade(MovementObject@ char) {
     int weap = GetCharPrimaryWeapon(char);
-    return weap != -1 && ReadItemID(weap).GetLabel() != "staff";
+    return ItemExists(weap) && ReadItemID(weap).GetLabel() != "staff";
 }
 
 int AIONearestEnemy(float range) {
@@ -3563,13 +3563,13 @@ bool AIOHasSpareWeapon() {
     for(int slot = _sheathed_left; slot <= _sheathed_right; ++slot) {
         int id = weapon_slots[slot];
 
-        if(id != -1 && ReadItemID(id).GetType() == _weapon && ReadItemID(id).GetLabel() != "scabbard") {
+        if(ItemExists(id) && ReadItemID(id).GetType() == _weapon && ReadItemID(id).GetLabel() != "scabbard") {
             return true;
         }
     }
 
     int secondary = weapon_slots[secondary_weapon_slot];
-    return secondary != -1 && ReadItemID(secondary).GetType() == _weapon;
+    return ItemExists(secondary) && ReadItemID(secondary).GetType() == _weapon;
 }
 
 // One-shot answer for WantsToThrowItem(); the body then asks GetThrowTarget()
@@ -3640,6 +3640,9 @@ float aio_respect_thrower_until = 0.0f;
 
 // What a weapon is worth thrown, against keeping it to hit with (0 = keep)
 float AIOThrowValue(int item_id, int owner_species) {
+    if(!ItemExists(item_id)) {
+        return 0.0f;
+    }
     ItemObject@ io = ReadItemID(item_id);
     string label = io.GetLabel();
 
@@ -3653,6 +3656,9 @@ float AIOThrowValue(int item_id, int owner_species) {
 }
 
 float AIOThrowSpeed(int item_id) {
+    if(!ItemExists(item_id)) {
+        return 20.0f;
+    }
     ItemObject@ io = ReadItemID(item_id);
     string label = io.GetLabel();
     float mass = io.GetMass();
@@ -3785,7 +3791,7 @@ void AIOUpdateThrow(MovementObject@ target) {
 
     int weap = weapon_slots[primary_weapon_slot];
 
-    if(weap == -1 || !combat_allowed || startled || state != _movement_state || !on_ground ||
+    if(!ItemExists(weap) || !combat_allowed || startled || state != _movement_state || !on_ground ||
             tethered != _TETHERED_FREE || throw_knife_layer_id != -1 || going_to_throw_item) {
         return;
     }
@@ -3941,7 +3947,7 @@ void AIOOnAttackStart() {
 
     int weap = weapon_slots[primary_weapon_slot];
 
-    if(weap != -1 && ReadItemID(weap).GetLabel() == "knife") {
+    if(ItemExists(weap) && ReadItemID(weap).GetLabel() == "knife") {
         return;  // knife slashes are animation layers and can't be feinted
     }
 

@@ -597,6 +597,14 @@ SCENARIOS["retry_arena"] = _retry_arena
 SCENARIOS["retry_coop"] = _retry_coop
 
 
+def _held_delete(ctx):
+    from .held_delete_suite import held_delete
+    return held_delete(ctx)
+
+
+SCENARIOS["held_delete"] = _held_delete
+
+
 def _weapons_session(ctx):
     from .combat_suite import weapons_session
     return weapons_session(ctx)
