@@ -4794,10 +4794,39 @@ void RiggedObject::StickItem(int id, const vec3& start, const vec3& end, const m
     }
 }
 
+// Overgrowth Online: an item another machine stuck in this character, on the
+// same bone at the same place on it (this machine shows the body elsewhere)
+bool RiggedObject::StickItemOnBone(int id, int bone, const mat4& rel_mat) {
+    if (bone < 0 || bone >= (int)skeleton_.physics_bones.size() || skeleton_.physics_bones[bone].bullet_object == nullptr) {
+        return false;
+    }
+    Object* obj = scenegraph_->GetObjectFromID(id);
+    if (!obj || obj->GetType() != _item_object) {
+        return false;
+    }
+    ItemObject* io = (ItemObject*)obj;
+    vec3 old_vel = io->GetLinearVelocity();
+    io->SetPhysicsTransform(skeleton_.physics_bones[bone].bullet_object->GetTransform() * rel_mat);
+    io->SetLinearVelocity(old_vel);
+    stuck_items.Add(io, bone, rel_mat, char_id, scenegraph_->bullet_world_, skeleton_);
+    if (!animated) {
+        stuck_items.items.back().item.ActivatePhysics();
+        stuck_items.items.back().item.AddConstraint(skeleton_.physics_bones[bone].bullet_object);
+    }
+    return true;
+}
+
 extern std::stack<ASContext*> active_context_stack;
 
 void RiggedObject::UnStickItem(int id) {
+    bool had = false;
+    for (const AttachedItem& a : stuck_items.items) {
+        had = had || a.item->GetID() == id;
+    }
     stuck_items.Remove(id);
+    if (had) {
+        Online::Instance()->SendItemUnstick(char_id, id);  // Overgrowth Online: out on every machine
+    }
 }
 
 std::vector<ItemRef> RiggedObject::GetWieldedItemRefs() const {

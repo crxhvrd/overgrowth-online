@@ -596,6 +596,36 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         online->net_sim_latency_ms = req.get("latency_ms", 0).asInt();
         online->net_sim_jitter_ms = req.get("jitter_ms", 0).asInt();
         online->net_sim_loss = req.get("loss", 0.0).asFloat();
+    } else if (cmd == "stick_item") {
+        // Host: a free item sticks in a character (item=, char= local ids) as a
+        // thrown one does when it hits: here, then everyone (ItemHit), and the
+        // character's owner takes the hit
+        if (!loaded || online->IsClient()) {
+            throw std::runtime_error("stick_item needs the host");
+        }
+        Object* io = sg->GetObjectFromID(req.get("item", -1).asInt());
+        Object* co = sg->GetObjectFromID(req.get("char", -1).asInt());
+        if (io == nullptr || co == nullptr || io->GetType() != _item_object || co->GetType() != _movement_object) {
+            throw std::runtime_error("stick_item: no such item or character");
+        }
+        ItemObject* item = static_cast<ItemObject*>(io);
+        MovementObject* mo = static_cast<MovementObject*>(co);
+        if (item->IsHeld() || item->StuckInWhom() != -1) {
+            throw std::runtime_error("stick_item: the item is not free");
+        }
+        vec3 at = mo->position + vec3(0.0f, 0.15f, 0.0f);
+        vec3 start = at + vec3(0.9f, 0.0f, 0.0f), end = at - vec3(0.9f, 0.0f, 0.0f);
+        mat4 t = item->GetPhysicsTransform();
+        t.SetTranslationPart(at);
+        int before = (int)mo->rigged_object()->stuck_items.items.size();
+        mo->rigged_object()->StickItem(item->GetID(), start, end, t);
+        out["stuck"] = (int)mo->rigged_object()->stuck_items.items.size() > before;
+        if (out["stuck"].asBool()) {
+            online->SendItemHit(mo->GetID(), item->GetID(), at, "flesh", 2, vec3(-8.0f, 0.0f, 0.0f), start, end, t);
+            if (online->IsLocalAvatar(mo->GetID())) {
+                mo->HitByItem(item->GetID(), at, "flesh", 2);
+            }
+        }
     } else if (cmd == "spawn") {
         // Host (or offline): a character from an object file, replicated to
         // the clients the way the engine adds a hot-joining player

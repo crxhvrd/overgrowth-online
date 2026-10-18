@@ -1131,6 +1131,12 @@ void ItemObject::CheckThrownCollisionLine(int line_id, const mat4& cur_transform
         Object* obj = scenegraph_->GetObjectFromID(char_id);
         MovementObject* mo = (MovementObject*)obj;
 
+        if (thrown_ != kSafe && Online::Instance()->IsClient()) {
+            // Overgrowth Online: the host flies thrown items and decides what
+            // they hit; its ItemHit sticks it here too. A stick made here from
+            // this machine's own copy would stay (stuck items aren't streamed)
+            return;
+        }
         if (thrown_ != kSafe) {
             int accept_hit = 1;
             // Overgrowth Online: a character another machine runs takes the hit there

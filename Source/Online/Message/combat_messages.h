@@ -91,6 +91,10 @@ class ItemHit : public OnlineMessageBase {
     vec3 velocity;
     vec3 stick_start, stick_end;
     vec3 stick_pos, stick_x, stick_y;
+    // Where it sits on the bone it went into (the host's): every machine puts
+    // it there on its own pose (a ray at the host's pose misses a later one)
+    int32_t bone = -1;
+    vec3 rel_pos, rel_x, rel_y;
 
     ItemHit();
 
@@ -126,6 +130,23 @@ class ItemDrop : public OnlineMessageBase {
 
     ItemDrop();
     ItemDrop(CommonObjectID character, CommonObjectID item);
+
+    static binn* Serialize(void* object);
+    static void Deserialize(void* object, binn* l);
+    static void Execute(const OnlineMessageRef& ref, void* object, PeerID peer);
+    static void* Construct(void* mem);
+    static void Destroy(void* object);
+};
+
+// A weapon came out of a character (pulled out, or taken by whoever hit it):
+// everyone unsticks it; the character's owner runs the script's removal
+class ItemUnstick : public OnlineMessageBase {
+   public:
+    CommonObjectID character = -1;
+    CommonObjectID item = -1;
+
+    ItemUnstick();
+    ItemUnstick(CommonObjectID character, CommonObjectID item);
 
     static binn* Serialize(void* object);
     static void Deserialize(void* object, binn* l);

@@ -100,8 +100,8 @@ def _counters(inst):
     return {k: o[k] for k in ("hits_requested", "hits_resolved", "hit_results", "hits_out_of_range")}
 
 
-def sync_ping(ctx, level=LEVEL):
-    m, notes, fails = {}, [], []
+def ping_session(ctx, level=LEVEL):
+    """A host and the GUESTS, each on its own line both ways."""
     host = ctx.instance("host")
     host.bridge.call("host", level=level)
     wait_loaded(host)
@@ -115,7 +115,12 @@ def sync_ping(ctx, level=LEVEL):
         new = [p["conn_id"] for p in host.bridge.status()["online"]["peers"] if p["conn_id"] not in known]
         host.bridge.call("net_sim", conn_id=new[0], latency_ms=prof["latency_ms"], jitter_ms=prof["jitter_ms"])
         guests.append(g)
+    return host, guests
 
+
+def sync_ping(ctx, level=LEVEL):
+    m, notes, fails = {}, [], []
+    host, guests = ping_session(ctx, level)
     machines = [host] + guests
     names = ["host", "guest1", "guest2"]
     ids = [inst.bridge.me()["id"] for inst in machines]

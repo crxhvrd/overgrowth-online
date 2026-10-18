@@ -684,6 +684,7 @@ void MovementObject::ReconcileNetworkItems(const CharSnapshot::Vitals& v) {
             continue;
         }
 
+        online->UnstickHere(scenegraph_, item);  // pulled out there: out of the body here too
         AttachItemToSlot(item->GetID(), grip ? _at_grip : _at_sheathe, mirrored);
     }
 }

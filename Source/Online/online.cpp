@@ -406,6 +406,11 @@ void Online::LateUpdate(SceneGraph* scenegraph) {
         pending_avatar_characters.clear();
         ApplyOwnCharacter(scenegraph);
 
+        for (const auto& u : pending_unsticks) {
+            Send<OnlineMessages::ItemUnstick>(u.first, u.second);
+        }
+        pending_unsticks.clear();
+
         for (const auto& order : pending_drop_orders) {
             SendToOwnerOf(order.first, message_handler.Create<OnlineMessages::ItemDrop>(GetOriginalID(order.first), GetOriginalID(order.second)), false);
         }
@@ -1614,6 +1619,7 @@ void Online::ReceiveItemLaunch(OnlineMessages::ItemLaunch* m, PeerID from) {
         static_cast<MovementObject*>(holder)->NetworkDetachItem(item->GetID());  // its record saying so is on the way
     }
     item->net_released_ms = OnlineClockMs();
+    UnstickHere(sg, item);  // pulled out there and thrown: out of the body here too
 
     vec3 z = normalize(cross(m->rotation_x, m->rotation_y));
     mat4 t;
@@ -1657,6 +1663,17 @@ void Online::SendItemHit(ObjectID character, ObjectID item, const vec3& point, c
     m->stick_pos = stick_transform.GetTranslationPart();
     m->stick_x = stick_transform.GetColumnVec3(0);
     m->stick_y = stick_transform.GetColumnVec3(1);
+    Object* co = Engine::Instance()->GetSceneGraph()->GetObjectFromID(character);
+    if (type == 2 && co != nullptr && co->GetType() == _movement_object) {
+        for (const AttachedItem& a : static_cast<MovementObject*>(co)->rigged_object()->stuck_items.items) {
+            if (a.item->GetID() == item) {  // stuck here a moment ago: that bone, that place
+                m->bone = a.bone_id;
+                m->rel_pos = a.rel_mat.GetTranslationPart();
+                m->rel_x = a.rel_mat.GetColumnVec3(0);
+                m->rel_y = a.rel_mat.GetColumnVec3(1);
+            }
+        }
+    }
     Send(ref);
     ++item_hits;
 }
@@ -1678,14 +1695,36 @@ void Online::ReceiveItemHit(OnlineMessages::ItemHit* m) {
     MovementObject* mo = static_cast<MovementObject*>(co);
     ItemObject* item = static_cast<ItemObject*>(io);
 
+    if (m->type == 2 && item->IsHeld()) {
+        // The thrower's record letting go is still on its way here: the host's flight decides
+        Object* h = sg->GetObjectFromID(item->HeldByWhom());
+        if (h != nullptr && h->GetType() == _movement_object && static_cast<MovementObject*>(h)->network_proxy) {
+            static_cast<MovementObject*>(h)->NetworkDetachItem(item_id);
+            item->net_released_ms = OnlineClockMs();
+        }
+    }
+    if (m->type == 2 && item->StuckInWhom() != -1 && item->StuckInWhom() != char_id) {
+        UnstickHere(sg, item);
+    }
     if (m->type == 2 && !item->IsHeld() && item->StuckInWhom() == -1) {
-        vec3 z = normalize(cross(m->stick_x, m->stick_y));
-        mat4 t;
-        t.SetColumn(0, m->stick_x);
-        t.SetColumn(1, m->stick_y);
-        t.SetColumn(2, z);
-        t.SetTranslationPart(m->stick_pos);
-        mo->rigged_object()->StickItem(item_id, m->stick_start, m->stick_end, t);
+        bool on_bone = false;
+        if (m->bone >= 0) {
+            mat4 rel;
+            rel.SetColumn(0, m->rel_x);
+            rel.SetColumn(1, m->rel_y);
+            rel.SetColumn(2, normalize(cross(m->rel_x, m->rel_y)));
+            rel.SetTranslationPart(m->rel_pos);
+            on_bone = mo->rigged_object()->StickItemOnBone(item_id, m->bone, rel);
+        }
+        if (!on_bone) {
+            vec3 z = normalize(cross(m->stick_x, m->stick_y));
+            mat4 t;
+            t.SetColumn(0, m->stick_x);
+            t.SetColumn(1, m->stick_y);
+            t.SetColumn(2, z);
+            t.SetTranslationPart(m->stick_pos);
+            mo->rigged_object()->StickItem(item_id, m->stick_start, m->stick_end, t);
+        }
     }
 
     if (IsLocalAvatar(char_id)) {
@@ -1720,6 +1759,54 @@ void Online::ReceiveItemDrop(CommonObjectID character, CommonObjectID item) {
         mo->NetworkDetachItem(item_id);
         mo->Execute("NotifyItemDetach(" + to_string(item_id) + ");");
         LOGI << "Dropped item " << item_id << ": someone else got it first" << std::endl;
+    }
+}
+
+// A weapon came out of a character here (a script's UnStickItem)
+void Online::SendItemUnstick(ObjectID character, ObjectID item) {
+    if (!IsActive() || !host_started_level || applying_unstick) {
+        return;
+    }
+    pending_unsticks.push_back(std::make_pair(GetOriginalID(character), GetOriginalID(item)));  // sent from LateUpdate
+}
+
+void Online::ReceiveItemUnstick(const OnlineMessageRef& ref, CommonObjectID character, CommonObjectID item, PeerID from) {
+    SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+    if (sg == nullptr || !host_started_level) {
+        return;
+    }
+    if (IsHosting()) {
+        RelayFromPeer(ref, from);  // (the peers lock is held here)
+    }
+
+    ObjectID char_id = GetObjectID(character);
+    ObjectID item_id = GetObjectID(item);
+    Object* co = sg->GetObjectFromID(char_id);
+    Object* io = sg->GetObjectFromID(item_id);
+    if (co == nullptr || io == nullptr || co->GetType() != _movement_object || io->GetType() != _item_object ||
+        static_cast<ItemObject*>(io)->StuckInWhom() != char_id) {
+        return;
+    }
+
+    MovementObject* mo = static_cast<MovementObject*>(co);
+    applying_unstick = true;
+    if (IsLocalAvatar(char_id) && mo->HasFunction("void WeaponRemovedFromBody(int weapon_id, int remover_id)")) {
+        int remover = static_cast<ItemObject*>(io)->HeldByWhom();
+        mo->Execute("WeaponRemovedFromBody(" + to_string(item_id) + ", " + to_string(remover) + ");");  // its blood, its damage
+    }
+    mo->rigged_object()->UnStickItem(item_id);  // (if the script didn't)
+    applying_unstick = false;
+}
+
+// An item another machine has in a hand or the air, still stuck in a body here
+// (its unstick message is on the way): out, quietly
+void Online::UnstickHere(SceneGraph* sg, ItemObject* item) {
+    ObjectID in = item->StuckInWhom();
+    Object* o = in == -1 ? nullptr : sg->GetObjectFromID(in);
+    if (o != nullptr && o->GetType() == _movement_object) {
+        applying_unstick = true;
+        static_cast<MovementObject*>(o)->rigged_object()->UnStickItem(item->GetID());
+        applying_unstick = false;
     }
 }
 

@@ -18,7 +18,8 @@ Wolfire's online prototype (2021) was left unfinished. Overgrowth Online started
 | Other characters | Full poses about 120 times a second, about 5 Mbit/s per player | Compact streams, about 35 kbit/s per player in a two-player game, smooth on any ping |
 | Hits | Decided on the host | Decided by the defender's own machine |
 | Joining | Steam invites, or TCP by IP | Steam friends, a server browser, direct IP |
-| Weapons, throws, sounds | Partly or not shared | Shared |
+| Weapons | Pick-ups not shared | Held, thrown, stuck in a body or left on the ground: the same on every machine, tested with guests on different pings |
+| Sounds | No footsteps from other players | Shared |
 | Game modes | Any level, without co-op or PvP rules | Story co-op, arena PvP with bots |
 
 ## License

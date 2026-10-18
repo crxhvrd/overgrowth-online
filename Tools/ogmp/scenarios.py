@@ -575,6 +575,14 @@ def _sync_ping(ctx):
 SCENARIOS["sync_ping"] = _sync_ping
 
 
+def _weapons_ping(ctx):
+    from .weapons_ping_suite import weapons_ping
+    return weapons_ping(ctx)
+
+
+SCENARIOS["weapons_ping"] = _weapons_ping
+
+
 def _weapons_session(ctx):
     from .combat_suite import weapons_session
     return weapons_session(ctx)

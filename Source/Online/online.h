@@ -196,7 +196,8 @@ typedef OnlineMessageHandlerTemplate<
     ItemLaunch,
     ItemHit,
     ItemDrop,
-    AvatarCharacter>
+    AvatarCharacter,
+    ItemUnstick>
     OnlineMessageHandler;
 
 extern OnlineMessageHandler message_handler;
@@ -471,7 +472,11 @@ class Online {
                      const vec3& stick_start, const vec3& stick_end, const mat4& stick_transform);
     void ReceiveItemHit(OnlineMessages::ItemHit* m);
     void SendItemDrop(ObjectID character, ObjectID item);  // queued: called inside message handling
+    void SendItemUnstick(ObjectID character, ObjectID item);  // queued too: a weapon came out of a character here
+    void UnstickHere(SceneGraph* sg, ItemObject* item);     // quietly: its unstick is on the way
     vector<std::pair<ObjectID, ObjectID> > pending_drop_orders;
+    vector<std::pair<CommonObjectID, CommonObjectID>> pending_unsticks;  // (character, item)
+    bool applying_unstick = false;  // ours came from the network: don't send it back
 
     // Co-op rules (story campaigns)
     bool delivering_network_level_message = false;  // Level::Message is passing on the host's message
@@ -533,6 +538,7 @@ class Online {
     std::atomic<uint64_t> sounds_from_clients{0};  // host: client characters' sounds received
     bool ShouldShareSound() const { return IsHosting() || (IsClient() && owned_script_depth > 0); }
     void ReceiveItemDrop(CommonObjectID character, CommonObjectID item);
+    void ReceiveItemUnstick(const OnlineMessageRef& ref, CommonObjectID character, CommonObjectID item, PeerID from);
 
     // Your online character (co-op menu: mp_character, mp_fur, mp_cloth)
     // A spot for player number `index` near `base` (facing `facing`; 0: `base`

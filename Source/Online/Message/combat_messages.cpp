@@ -169,6 +169,10 @@ binn* ItemHit::Serialize(void* object) {
     binn_object_set_vec3(l, "sp", m->stick_pos);
     binn_object_set_vec3(l, "sx", m->stick_x);
     binn_object_set_vec3(l, "sy", m->stick_y);
+    binn_object_set_int32(l, "b", m->bone);
+    binn_object_set_vec3(l, "rp", m->rel_pos);
+    binn_object_set_vec3(l, "rx", m->rel_x);
+    binn_object_set_vec3(l, "ry", m->rel_y);
     return l;
 }
 
@@ -185,6 +189,12 @@ void ItemHit::Deserialize(void* object, binn* l) {
     binn_object_get_vec3(l, "sp", &m->stick_pos);
     binn_object_get_vec3(l, "sx", &m->stick_x);
     binn_object_get_vec3(l, "sy", &m->stick_y);
+    if (!binn_object_get_int32(l, "b", &m->bone)) {
+        m->bone = -1;
+    }
+    binn_object_get_vec3(l, "rp", &m->rel_pos);
+    binn_object_get_vec3(l, "rx", &m->rel_x);
+    binn_object_get_vec3(l, "ry", &m->rel_y);
 }
 
 void ItemHit::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
@@ -265,6 +275,40 @@ void* ItemDrop::Construct(void* mem) {
 
 void ItemDrop::Destroy(void* object) {
     static_cast<ItemDrop*>(object)->~ItemDrop();
+}
+
+ItemUnstick::ItemUnstick() : OnlineMessageBase(OnlineMessageCategory::LEVEL_TRANSIENT) {
+}
+
+ItemUnstick::ItemUnstick(CommonObjectID character, CommonObjectID item)
+    : OnlineMessageBase(OnlineMessageCategory::LEVEL_TRANSIENT), character(character), item(item) {
+}
+
+binn* ItemUnstick::Serialize(void* object) {
+    ItemUnstick* m = static_cast<ItemUnstick*>(object);
+    binn* l = binn_object();
+    binn_object_set_int32(l, "c", m->character);
+    binn_object_set_int32(l, "i", m->item);
+    return l;
+}
+
+void ItemUnstick::Deserialize(void* object, binn* l) {
+    ItemUnstick* m = static_cast<ItemUnstick*>(object);
+    binn_object_get_int32(l, "c", &m->character);
+    binn_object_get_int32(l, "i", &m->item);
+}
+
+void ItemUnstick::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
+    ItemUnstick* m = static_cast<ItemUnstick*>(object);
+    Online::Instance()->ReceiveItemUnstick(ref, m->character, m->item, peer);
+}
+
+void* ItemUnstick::Construct(void* mem) {
+    return new (mem) ItemUnstick();
+}
+
+void ItemUnstick::Destroy(void* object) {
+    static_cast<ItemUnstick*>(object)->~ItemUnstick();
 }
 
 OwnerOverride::OwnerOverride() : OnlineMessageBase(OnlineMessageCategory::LEVEL_TRANSIENT) {

@@ -412,6 +412,7 @@ class RiggedObject : public Object {
     vec3 GetIKChainPos(const std::string &target_name, int which);
     mat4 GetIKChainTransform(const std::string &target_name, int which);
     void StickItem(int id, const vec3 &start, const vec3 &end, const mat4 &transform);
+    bool StickItemOnBone(int id, int bone, const mat4& rel_mat);  // Overgrowth Online: where another machine stuck it
     void SetWeaponOffset(AttachedItem &stuck_item, AttachmentType type, bool mirror);
     void SheatheItem(int id, bool on_right);
     void UnSheatheItem(int id, bool right_hand);
