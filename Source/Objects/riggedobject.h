@@ -250,6 +250,7 @@ class RiggedObject : public Object {
     const CharSnapshot::Rig &NetworkRig();             // Overgrowth Online: joints between physics bones, for compact snapshots
     CharSnapshot::Rig network_rig;
     float network_rig_scale = 0.0f;
+    uint32_t network_skeleton_id = 0;                  // Overgrowth Online: hash of the skeleton file, the same on every machine
     std::vector<mat4> display_bone_matrices;          // Final interpolated bone matrices for rendering
     std::vector<BoneTransform> display_bone_transforms;
 #ifdef USE_SSE

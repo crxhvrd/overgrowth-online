@@ -199,12 +199,17 @@ int GameMain(int argc, char* argv[]) {
     LOGI << "Debug" << std::endl;
 #endif
 
+    // Overgrowth Online: crash reports next to the settings, where players find the log
+    CrashReportSetFolder(GetWritePath(CoreGameModID) + "crashes/", GetLogfilePath());
+    LOGI << "Crash reports go to " << GetWritePath(CoreGameModID) << "crashes/" << std::endl;
+
     PROFILER_ENTER(&profiler_context, "Engine initialize");
     // Engine* engine = (Engine*)alloc.stack.Alloc(sizeof(Engine));
     // new(engine) Engine;
     Engine* engine = new Engine();
     engine->Initialize();
     Dialog::Initialize();
+    CrashReportInstall();  // (again: Steam or a driver may have set its own filter)
     PROFILER_LEAVE(&profiler_context);
 
     if (test_bridge_port > 0) {

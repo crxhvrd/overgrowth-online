@@ -96,6 +96,7 @@ void charsnap::test<2>() {
     f.vitals.attacked_by = 4321;
     f.vitals.slots[1] = 77;
     f.vitals.slots[3] = 78;
+    f.skeleton = 0x9E3779B9u;
 
     std::vector<uint8_t> buf;
     Write(buf, f);
@@ -107,6 +108,7 @@ void charsnap::test<2>() {
     ensure("read 2", Read(buf.data(), buf.size(), offset, h));
     ensure("consumed", offset == buf.size());
     ensure("id", g.id == 42 && g.src_ms == 1234 && h.src_ms == 1300);
+    ensure("skeleton", g.skeleton == 0x9E3779B9u && h.skeleton == 0);
     ensure("position", distance(g.position, f.position) < 1e-5f);
     ensure("velocity", distance(g.velocity, f.velocity) < 0.01f);
     ensure("facing", distance(g.facing, f.facing) < 1e-3f);
@@ -132,7 +134,7 @@ void charsnap::test<2>() {
                          g.vitals.attacked_by == 4321);
     ensure("weapon slots", g.vitals.slots[1] == 77 && g.vitals.slots[3] == 78 && g.vitals.slots[0] == -1 && g.vitals.slots[2] == -1);
     ensure("no vitals", !h.vitals.valid);
-    ensure("compact: 8 bytes a bone", buf.size() < 2 * (50 + 20 * 8) + 40 + 40);  // (+ the first record's vitals)
+    ensure("compact: 8 bytes a bone", buf.size() < 2 * (54 + 20 * 8) + 40 + 40);  // (+ the first record's vitals; 54: the skeleton id's 4 bytes)
 
     for (size_t cut = 0; cut < buf.size() / 2; cut += 7) {
         size_t o = 0;

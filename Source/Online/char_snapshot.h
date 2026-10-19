@@ -89,6 +89,7 @@ struct Vitals {
 struct Frame {
     int32_t id = -1;      // common object id (the host's)
     uint32_t src_ms = 0;  // the owner's clock (OnlineClockMs) at capture
+    uint32_t skeleton = 0;  // which skeleton the pose is on (RiggedObject::network_skeleton_id; 0 = not said)
     vec3 position;
     vec3 velocity;
     vec3 facing;
@@ -101,7 +102,7 @@ struct Frame {
 
 // Record layout, little endian, no keys:
 //   int32 id, uint32 src_ms, float pos[3], int16 vel[3] (cm/s), int16 facing[3],
-//   uint8 flags (1 = morphs), uint8 bone count,
+//   uint8 flags (1 = morphs), uint8 bone count, uint32 skeleton id,
 //   [a bit per bone: present (has a body); for the present ones:
 //    the box their positions sit in around pos: int16 min[3], uint16 size[3] (cm);
 //    a bit per bone: position sent (else rebuilt from the joint with its parent);

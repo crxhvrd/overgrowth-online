@@ -1700,6 +1700,16 @@ void RiggedObject::Load(const std::string& character_path, vec3 pos, SceneGraph*
 
     const std::string& skeleton_path = char_ref->GetSkeletonPath();
 
+    // Overgrowth Online: streamed poses name their skeleton (FNV-1a of its
+    // file), so another machine never shows one body's pose on another
+    network_skeleton_id = 2166136261u;
+    for (unsigned char c : skeleton_path) {
+        network_skeleton_id = (network_skeleton_id ^ c) * 16777619u;
+    }
+    if (network_skeleton_id == 0) {
+        network_skeleton_id = 1;  // (0 = not said)
+    }
+
     FZXAssetRef fzx_ref;
     std::string fzx_path = ofc->model_name.substr(0, ofc->model_name.size() - 3) + "fzx";
     if (FileExists(fzx_path.c_str(), kDataPaths | kModPaths)) {

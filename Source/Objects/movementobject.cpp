@@ -473,7 +473,11 @@ void MovementObject::ApplyNetworkPose(const CharSnapshot::Frame& pose) {
 
         for (size_t i = 0; i < bones.size(); ++i) {
             const CharSnapshot::Bone& b = pose.bones[i];
-            rigged_object_->network_display_bone_matrices[i] = rigged_object_->NetworkBoneMatrix((int)i, b.rotation, b.translation, b.scale);
+            // A bone its owner shrank to nothing is that player's own first-person
+            // view (Overhaul hides the head and whatever is near the eye): here it
+            // keeps this rig's own inflation (the same parameters), else spikes
+            float scale = b.scale > 0.0f ? b.scale : (bones[i].display_scale > 0.0f ? bones[i].display_scale : 1.0f);
+            rigged_object_->network_display_bone_matrices[i] = rigged_object_->NetworkBoneMatrix((int)i, b.rotation, b.translation, scale);
             if (i < rigged_object_->display_bone_transforms.size()) {  // gear hangs from these (backpacks)
                 rigged_object_->display_bone_transforms[i] = rigged_object_->NetworkAttachMatrix((int)i, b.rotation, b.translation);
             }
@@ -539,6 +543,7 @@ void MovementObject::ApplyNetworkCharacter(const std::string& path) {
     } else {
         RecreateRiggedObject(path);
     }
+    net_buffer.Clear();  // (poses of the old body: not for this one)
 }
 
 // Overgrowth Online: the script variables that carry a character's game state
@@ -705,6 +710,7 @@ void MovementObject::ReconcileNetworkItems(const CharSnapshot::Vitals& v) {
 // Overgrowth Online: the pose we stream for a character we simulate
 void MovementObject::CaptureNetworkPose(CharSnapshot::Frame& out, bool with_morphs) {
     out.id = Online::Instance()->GetOriginalID(GetID());
+    out.skeleton = rigged_object_->network_skeleton_id;
     out.position = position;
     out.velocity = velocity;
     out.facing = GetFacing();
@@ -1222,7 +1228,11 @@ void MovementObject::Update(float timestep) {
         // DebugDraw::Instance()->AddWireSphere(si->GetPosition(attached_sounds[i]), 1.0f, vec4(1.0f), _delete_on_update);
     }
 
-    if (controlled && (Engine::Instance()->GetSplitScreen() || controller_id == 0)) {
+    // Overgrowth Online: not for a character another machine runs (online every
+    // player's is controlled): with split screen on its virtual controller id
+    // became the active camera, one without a camera object, and the proxy
+    // branch below never sets 0 back -> null camera object, crash on a join
+    if (controlled && !network_proxy && (Engine::Instance()->GetSplitScreen() || controller_id == 0)) {
         ActiveCameras::Set(controller_id);
         ActiveCameras::Get()->IncrementProgress();
     }

@@ -150,6 +150,7 @@ void Write(std::vector<uint8_t>& out, const Frame& f, const Rig* rig, int* posit
     bool morphs = f.has_morphs && morph_count > 0;
     Put<uint8_t>(out, (uint8_t)((morphs ? 1 : 0) | (f.vitals.valid ? 2 : 0) | (f.resumed ? 4 : 0)));
     Put<uint8_t>(out, (uint8_t)bone_count);
+    Put<uint32_t>(out, f.skeleton);
 
     if (bone_count > 0) {
         std::vector<uint8_t> present((bone_count + 7) / 8, 0);
@@ -326,7 +327,8 @@ bool Read(const uint8_t* data, size_t size, size_t& offset, Frame& f) {
             return false;
         }
     }
-    if (!Get(data, size, offset, flags) || !Get(data, size, offset, bone_count) || bone_count > kMaxBones) {
+    if (!Get(data, size, offset, flags) || !Get(data, size, offset, bone_count) || bone_count > kMaxBones ||
+        !Get(data, size, offset, f.skeleton)) {
         return false;
     }
 
@@ -502,7 +504,7 @@ bool Resolve(Frame& f, const Rig& rig) {
 }
 
 bool Similar(const Frame& a, const Frame& b, float pos_tol, float rot_tol) {
-    if (a.bones.size() != b.bones.size() || distance_squared(a.position, b.position) > pos_tol * pos_tol ||
+    if (a.skeleton != b.skeleton || a.bones.size() != b.bones.size() || distance_squared(a.position, b.position) > pos_tol * pos_tol ||
         distance_squared(a.facing, b.facing) > rot_tol * rot_tol) {
         return false;
     }

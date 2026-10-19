@@ -1212,6 +1212,36 @@ void Online::ReceiveSnapshots(PeerID from, const uint8_t* data, size_t size) {
         }
 
         MovementObject* mo = static_cast<MovementObject*>(o);
+        auto relay = [&]() {  // the host passes a player's record on to the others
+            StreamRecord& r = stream_latest[frame.id];
+            r.bytes.assign(data + begin, data + offset);
+            r.src_ms = frame.src_ms;
+            r.hash = CharSnapshot::Hash(r.bytes.data() + CharSnapshot::kContentOffset, r.bytes.size() - CharSnapshot::kContentOffset);
+            r.position = frame.position;
+            r.owner = from;
+            r.player = IsPlayerCharacter(id);
+            r.lite.clear();
+            if (frame.vitals.valid) {
+                r.target = frame.vitals.target_id;
+                r.attacker = frame.vitals.attacked_by;
+            }
+        };
+
+        // A pose of another body than this copy has: a species switch whose
+        // message hasn't come yet, or the old body's poses still on the way.
+        // Shown on this rig its bones (and morphs, by index) land on the wrong
+        // parts; hold the last pose instead. The host still passes it on.
+        uint32_t here = mo->rigged_object()->network_skeleton_id;
+        if (frame.skeleton != 0 && here != 0 && frame.skeleton != here) {
+            if (snapshot_other_skeleton++ % 100 == 0) {
+                LOGW << "Overgrowth Online: a record of character " << id << " for another skeleton than it has here, not shown" << std::endl;
+            }
+            if (IsHosting() && CharSnapshot::Finite(frame)) {
+                relay();
+            }
+            continue;
+        }
+
         if (!CharSnapshot::Resolve(frame, mo->rigged_object()->NetworkRig())) {
             continue;  // a different skeleton here: nothing sensible to show
         }
@@ -1245,18 +1275,7 @@ void Online::ReceiveSnapshots(PeerID from, const uint8_t* data, size_t size) {
         }
 
         if (IsHosting()) {  // relay to the other players
-            StreamRecord& r = stream_latest[frame.id];
-            r.bytes.assign(data + begin, data + offset);
-            r.src_ms = frame.src_ms;
-            r.hash = CharSnapshot::Hash(r.bytes.data() + CharSnapshot::kContentOffset, r.bytes.size() - CharSnapshot::kContentOffset);
-            r.position = frame.position;
-            r.owner = from;
-            r.player = IsPlayerCharacter(id);
-            r.lite.clear();
-            if (frame.vitals.valid) {
-                r.target = frame.vitals.target_id;
-                r.attacker = frame.vitals.attacked_by;
-            }
+            relay();
         }
     }
 }
@@ -3594,6 +3613,20 @@ void Online::SendMessageObjects() {
 
             if (IsHosting()) {
                 if (omb->cat == OnlineMessageCategory::LEVEL_PERSISTENT) {
+                    // Overgrowth Online: a joiner needs a character's latest file only,
+                    // not every one it had (the arena randomizer switches each round:
+                    // a late joiner rebuilt every rig of every round, then crashed)
+                    const OnlineMessageType avatar_character = message_handler.GetMessageType<OnlineMessages::AvatarCharacter>();
+                    if (message_handler.GetMessageType(outgoing_message.message) == avatar_character) {
+                        CommonObjectID character = static_cast<OnlineMessages::AvatarCharacter*>(omb)->character;
+                        std::vector<OnlineMessageRef>& stored = online_session->persistent_outgoing_messages;
+                        for (int k = (int)stored.size() - 1; k >= 0; --k) {
+                            if (message_handler.GetMessageType(stored[k]) == avatar_character &&
+                                static_cast<OnlineMessages::AvatarCharacter*>(message_handler.GetMessageData(stored[k]))->character == character) {
+                                stored.erase(stored.begin() + k);
+                            }
+                        }
+                    }
                     online_session->persistent_outgoing_messages.push_back(outgoing_message.message);
                 }
             }

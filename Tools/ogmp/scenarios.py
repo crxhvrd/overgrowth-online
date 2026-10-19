@@ -629,6 +629,30 @@ def _species_cycle(ctx):
 SCENARIOS["species_cycle"] = _species_cycle
 
 
+def _fp_latejoin(ctx):
+    from .fp_latejoin_suite import fp_latejoin
+    return fp_latejoin(ctx)
+
+
+SCENARIOS["fp_latejoin"] = _fp_latejoin
+
+
+def _splitscreen_join(ctx):
+    from .splitscreen_suite import splitscreen_join
+    return splitscreen_join(ctx)
+
+
+SCENARIOS["splitscreen_join"] = _splitscreen_join
+
+
+def _guest_waits_host(ctx):
+    from .load_wait_suite import guest_waits_host
+    return guest_waits_host(ctx)
+
+
+SCENARIOS["guest_waits_host"] = _guest_waits_host
+
+
 def _forged(ctx):
     from .forge_suite import forged
     return forged(ctx)

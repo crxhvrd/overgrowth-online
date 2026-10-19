@@ -375,6 +375,9 @@ class Graphics {
     void SwapToScreen();
     void InitScreen();
     void ResizeWindow(int& w, int& h);
+    // Overgrowth Online: one log line with the GPU memory the driver reports
+    // (AMD: GL_ATI_meminfo, NVIDIA: GL_NVX_gpu_memory_info; others: nothing)
+    void LogGPUMemory(const char* when);
 
     void SetUpWindowDims(int& w, int& h);
     static Graphics* Instance() {

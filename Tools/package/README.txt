@@ -21,6 +21,26 @@ INSTALL
   to get the normal game. Overgrowth Online keeps its own settings and mods
   in Documents\Wolfire\OvergrowthOnline; your normal game is not touched.
 
+MANUAL INSTALL (if install.bat doesn't work)
+  1. Close Overgrowth. Right-click the downloaded zip > Properties, tick
+     Unblock, OK; then extract it.
+  2. Find the game folder: in Steam, right-click Overgrowth > Manage >
+     Browse local files.
+  3. Copy the OvergrowthOnline folder from this package into the game
+     folder (replace an older one; delete an old OverhaulOnline folder).
+  4. In the game folder: if there is no Overgrowth_stock.exe yet, rename
+     Overgrowth.exe to Overgrowth_stock.exe. It must stay the real game
+     (about 13 MB), never the small launcher. Then copy
+     launcher\Overgrowth.exe from this package into the game folder.
+  5. Copy mod\overhaul from this package to
+     Documents\Wolfire\OvergrowthOnline\Data\Mods\overhaul (make the
+     folders; replace an older overhaul folder).
+  6. Optional, first time only: copy your normal settings,
+     Documents\Wolfire\Overgrowth\Data\config.txt, to
+     Documents\Wolfire\OvergrowthOnline\Data\config.txt.
+  7. Start Overgrowth from Steam. In Main menu > Mods, make sure Overhaul
+     is enabled.
+
 PLAYING
   Main menu > Multiplayer. Connecting by IP needs UDP port 25744 open on
   the host, and shares your IP address with them.
@@ -36,9 +56,14 @@ MODS
 UNINSTALL
   Close Overgrowth and run uninstall.bat. Steam's "Verify integrity of game
   files" also restores the original game.
+  By hand: in the game folder delete Overgrowth.exe (the launcher) and
+  the OvergrowthOnline folder, and rename Overgrowth_stock.exe back to
+  Overgrowth.exe. Documents\Wolfire\OvergrowthOnline holds its settings and
+  mods; delete it too if you don't want them.
 
 REPORTING BUGS
   github.com/crxhvrd/overgrowth-online/issues
   Say what happened and whether you were hosting, and attach
   Documents\Wolfire\OvergrowthOnline\logfile.txt. After a crash, also the
-  newest OvergrowthOnline.exe.*.dmp from %LOCALAPPDATA%\CrashDumps.
+  newest crash_* files (.dmp and .txt) from
+  Documents\Wolfire\OvergrowthOnline\crashes.

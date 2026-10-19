@@ -22,4 +22,17 @@
 //-----------------------------------------------------------------------------
 #pragma once
 
+#include <string>
+
 int RunWithCrashReport(int argc, char* argv[], int (*func)(int, char*[]));
+
+// Overgrowth Online (Windows): a crash on any thread, abort(), a pure virtual
+// call or a CRT invalid parameter writes a minidump, a summary (exception,
+// module + offset) and a copy of the log to this folder, then Windows takes
+// the crash as before (its Event Viewer record stays). UTF-8 paths. Until it
+// is called the reports go to %TEMP%\OvergrowthOnline.
+void CrashReportSetFolder(const std::string& folder, const std::string& log_path);
+// (Again) the process's unhandled-exception filter: a library may replace it
+void CrashReportInstall();
+// Test bridge only: crash on purpose ("thread", "main", "abort", "stack")
+void CrashReportTestCrash(const std::string& kind);

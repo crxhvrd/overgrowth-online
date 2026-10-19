@@ -79,6 +79,11 @@ void PCSFileTransferMetadataMessage::Execute(const OnlineMessageRef& ref, void* 
     }
     online->preloaded_level = t->preload ? t->map_name : "";
     online->preload_loaded = false;
+    // Overgrowth Online: a new level, not started until the host says so. The
+    // previous level's start was still set: a guest that loaded first walked
+    // into the level before the host had it (empty map, no character) instead
+    // of waiting on its loading screen
+    online->SessionStarted(false);
 
     Online::Instance()->level_name = t->map_name;
     if (ModLoading::Instance().WhichCampaignLevelBelongsTo(t->map_name) != "") {

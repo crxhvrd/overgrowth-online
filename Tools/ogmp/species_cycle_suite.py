@@ -56,4 +56,19 @@ def species_cycle(ctx, profile="typical"):
         fails.append(f"the guest crashed after {m['switches']} switches")
     if not host.alive():
         fails.append("the host crashed")
+
+    # Poses name their skeleton now: after all the switches the guest must still
+    # take the host's (a wrong id would freeze the character there)
+    if g.alive() and host.alive():
+        p = host.bridge.me()["pos"]
+        host.bridge.call("exec", target="level", code=f"Online_PlaceAvatar({me['id']}, vec3({p[0] + 3.0:.2f}, {p[1] + 0.2:.2f}, {p[2]:.2f}), vec3(0, 0, 1));")
+        time.sleep(3.0)
+        hp = host.bridge.me()["pos"]
+        seen = next((c for c in g.bridge.state() if c["common_id"] == me["common_id"]), None)
+        m["guest_view_error_m"] = round(sum((a - b) ** 2 for a, b in zip(seen["pos"], hp)) ** 0.5, 2) if seen else None
+        m["guest_view_path"] = seen["char_path"] if seen else None
+        if m["guest_view_error_m"] is None or m["guest_view_error_m"] > 0.5:
+            fails.append(f"the guest's copy of the host doesn't follow it after the switches ({m['guest_view_error_m']} m)")
+        if m["guest_view_path"] != CYCLE[-1]:
+            fails.append(f"the guest shows the host as {m['guest_view_path']}, not {CYCLE[-1]}")
     return {"passed": not fails, "metrics": m, "notes": fails}

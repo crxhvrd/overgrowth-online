@@ -228,6 +228,7 @@ class Online {
     // garbage, 2 message type out of range up, 3 negative)
     void TestSendMalformed(int mode);
     uint64_t snapshot_non_finite = 0;        // records dropped for a NaN in them
+    uint64_t snapshot_other_skeleton = 0;    // records of another body than this copy has (mid character switch)
     uint64_t net_malformed = 0;              // packages dropped unread
     uint64_t net_refused = 0;                // messages a guest may not send
 

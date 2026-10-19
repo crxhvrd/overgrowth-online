@@ -1123,6 +1123,7 @@ void Graphics::InitScreen() {
             LOGI << "OpenGL Self Reported version values: " << gl_major << "." << gl_minor << std::endl;
             LOGI << "OpenGL renderer: " << glGetString(GL_RENDERER) << ", vendor: " << glGetString(GL_VENDOR)
                  << ", GLSL " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+            LogGPUMemory("at start");
         } else if (sdl_gl_major >= 2) {
             LOGI << "OpenGL Self Reported version: " << glGetString(GL_VERSION) << std::endl;
         } else {
@@ -1525,6 +1526,24 @@ void Graphics::SetLineWidth(int val) {
 #ifndef PLATFORM_MACOSX
         glLineWidth((float)val);
 #endif
+    }
+}
+
+void Graphics::LogGPUMemory(const char* when) {
+    if (GLAD_GL_NVX_gpu_memory_info) {
+        GLint dedicated = 0, available = 0, evictions = 0, evicted = 0;
+        glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &dedicated);
+        glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &available);
+        glGetIntegerv(GL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX, &evictions);
+        glGetIntegerv(GL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, &evicted);
+        LOGI << "GPU memory " << when << ": " << available / 1024 << " of " << dedicated / 1024 << " MB free, "
+             << evictions << " evictions (" << evicted / 1024 << " MB)" << std::endl;
+    } else if (GLAD_GL_ATI_meminfo) {
+        GLint texture[4] = {0, 0, 0, 0}, vbo[4] = {0, 0, 0, 0};  // free KB: pool, largest block, shared, largest shared
+        glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, texture);
+        glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, vbo);
+        LOGI << "GPU memory " << when << ": textures " << texture[0] / 1024 << " MB free (largest block " << texture[1] / 1024
+             << ", shared " << texture[2] / 1024 << "), buffers " << vbo[0] / 1024 << " MB free" << std::endl;
     }
 }
 

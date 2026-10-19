@@ -4439,7 +4439,9 @@ void Engine::Draw() {
         const GraphicsConfig& graphics_config = graphics->config_;
         scenegraph_->GetPlayerCharacterIDs(&num_avatars, avatar_ids, kMaxAvatars);
         unsigned num_screens = clamp(num_avatars, 1, 4);
-        if (!Engine::Instance()->GetSplitScreen() || scenegraph_->map_editor->state_ != MapEditor::kInGame) {
+        // (Overgrowth Online: one player per machine online; the other players'
+        // characters are not screens here)
+        if (!Engine::Instance()->GetSplitScreen() || scenegraph_->map_editor->state_ != MapEditor::kInGame || Online::Instance()->IsActive()) {
             num_screens = 1;
         }
         bool old_simple_water = g_simple_water;
@@ -5829,8 +5831,15 @@ void Engine::LoadLevel(Path queued_level) {
         }
     }
 
+    // Overgrowth Online, tests only: this machine finishes its load late (a slow
+    // host, so a guest that loaded first has to wait for it)
+    if (config.HasKey("test_load_delay_ms")) {
+        SDL_Delay((Uint32)max(0, min(60000, config["test_load_delay_ms"].toNumber<int>())));
+    }
+
     Online::Instance()->SetLevelLoaded();
     Shaders::Instance()->create_program_warning = true;
+    Graphics::Instance()->LogGPUMemory("level loaded");  // Overgrowth Online: for crash reports from small GPUs
 }
 
 void Engine::AddLevelPathToRecentLevels(const Path& level_path) {

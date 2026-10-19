@@ -141,6 +141,9 @@ void FileHandler::Log(LogSystem::LogType type, int row, const char* filename, co
                    << " ";
             m_file << message_prefix;
             m_file << message;
+            // Overgrowth Online: hand each line to the OS at once, so a crash
+            // (which kills the process with this buffer in it) keeps the log's end
+            m_file.flush();
         }
     }
 }

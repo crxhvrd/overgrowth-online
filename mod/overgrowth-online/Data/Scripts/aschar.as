@@ -11029,7 +11029,7 @@ bool ocam_fp_active = false;     // first person this update
 vec3 ocam_fp_eye;
 
 bool OcamFirstPerson(bool shared_cam) {
-    return ocam_fp && this_mo.controlled && !shared_cam && state != _ragdoll_state && knocked_out == _awake && !dialogue_control;
+    return ocam_fp && this_mo.controlled && !online_remote && !shared_cam && state != _ragdoll_state && knocked_out == _awake && !dialogue_control;
 }
 
 // The near plane is a fixed 0.1 m, so any of your own body closer to the eye

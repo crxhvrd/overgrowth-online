@@ -450,7 +450,258 @@ static bool filterCallback(void* context, EXCEPTION_POINTERS* exinfo,
 #endif
 #endif
 
+// ---- Overgrowth Online: crash reports on Windows --------------------------------
+// The old minidump routine above is commented out and breakpad is off, so a
+// crash used to leave nothing: no dump, no box, and the log's last lines still
+// in its buffer. Everything here runs once the process is already broken: no
+// heap, no locks, static buffers, and the dump is written by a fresh thread
+// (the crashed one may have no stack left). Not catchable in-process: heap
+// corruption and /GS fast-fails (0xC0000374, 0xC0000409) end the process
+// directly; Windows still records those (Event Viewer > Application, 1000).
+#if PLATFORM_WINDOWS && !BREAKPAD
+#include <windows.h>
+#include <dbghelp.h>
+#include <intrin.h>
+#include <csignal>
+#include <cstdlib>
+#include <atomic>
+
+namespace {
+typedef BOOL(WINAPI* MiniDumpWriteDumpFn)(HANDLE, DWORD, HANDLE, MINIDUMP_TYPE, PMINIDUMP_EXCEPTION_INFORMATION,
+                                          PMINIDUMP_USER_STREAM_INFORMATION, PMINIDUMP_CALLBACK_INFORMATION);
+
+MiniDumpWriteDumpFn g_write_dump = nullptr;
+wchar_t g_folder[MAX_PATH * 2] = L"";
+wchar_t g_log_path[MAX_PATH * 2] = L"";
+DWORD g_main_thread = 0;
+std::atomic<DWORD> g_crashing_thread{0};
+LPTOP_LEVEL_EXCEPTION_FILTER g_previous_filter = nullptr;
+_invalid_parameter_handler g_previous_invalid_parameter = nullptr;
+
+// One report at a time (static buffers: the crashed thread may be out of stack)
+wchar_t g_dir[MAX_PATH * 2];
+wchar_t g_base[MAX_PATH * 2];
+wchar_t g_file[MAX_PATH * 2 + 16];
+wchar_t g_module_path[MAX_PATH];
+char g_module_name[MAX_PATH * 3];
+char g_text[2048];
+char g_line[1024];
+
+struct DumpJob {
+    EXCEPTION_POINTERS* ep;
+    DWORD thread_id;
+    BOOL ok;
+};
+DumpJob g_job;
+
+void ToWide(const std::string& s, wchar_t* out, int size) {
+    out[0] = L'\0';
+    if (MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, out, size) == 0) {
+        out[0] = L'\0';
+    }
+    for (wchar_t* c = out; *c; ++c) {
+        if (*c == L'/') {
+            *c = L'\\';
+        }
+    }
+}
+
+DWORD WINAPI DumpThread(LPVOID) {
+    StringCchPrintfW(g_file, MAX_PATH * 2 + 16, L"%s.dmp", g_base);
+    HANDLE file = CreateFileW(g_file, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE || g_write_dump == nullptr) {
+        return 0;
+    }
+    MINIDUMP_EXCEPTION_INFORMATION info;
+    info.ThreadId = g_job.thread_id;
+    info.ExceptionPointers = g_job.ep;
+    info.ClientPointers = FALSE;
+    // Stacks, the memory they point at, thread and module lists: a few MB (fits a chat upload)
+    MINIDUMP_TYPE type = (MINIDUMP_TYPE)(MiniDumpNormal | MiniDumpWithIndirectlyReferencedMemory |
+                                         MiniDumpWithThreadInfo | MiniDumpWithUnloadedModules);
+    g_job.ok = g_write_dump(GetCurrentProcess(), GetCurrentProcessId(), file, type, g_job.ep ? &info : nullptr, nullptr, nullptr);
+    CloseHandle(file);
+    return 0;
+}
+
+void WriteText(const wchar_t* path, const char* text, bool append) {
+    HANDLE file = CreateFileW(path, append ? FILE_APPEND_DATA : GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                              append ? OPEN_EXISTING : CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file != INVALID_HANDLE_VALUE) {
+        DWORD written = 0;
+        WriteFile(file, text, (DWORD)strlen(text), &written, nullptr);
+        CloseHandle(file);
+    }
+}
+
+void WriteReport(EXCEPTION_POINTERS* ep, const char* kind) {
+    DWORD me = GetCurrentThreadId();
+    DWORD none = 0;
+    if (!g_crashing_thread.compare_exchange_strong(none, me)) {
+        if (none != me) {
+            Sleep(INFINITE);  // another thread is reporting; it ends the process
+        }
+        return;  // a crash inside the report: leave it to Windows
+    }
+
+    // Where: <folder>\crash_<date>-<time>_<pid>
+    if (g_folder[0] != L'\0') {
+        StringCchCopyW(g_dir, MAX_PATH * 2, g_folder);
+    } else {
+        GetTempPathW(MAX_PATH, g_dir);
+        StringCchCatW(g_dir, MAX_PATH * 2, L"OvergrowthOnline\\");
+    }
+    CreateDirectoryW(g_dir, nullptr);
+    SYSTEMTIME t;
+    GetLocalTime(&t);
+    StringCchPrintfW(g_base, MAX_PATH * 2, L"%scrash_%04d%02d%02d-%02d%02d%02d_%lu", g_dir, t.wYear, t.wMonth, t.wDay,
+                     t.wHour, t.wMinute, t.wSecond, GetCurrentProcessId());
+
+    // The dump, from a fresh thread with its own stack
+    g_job.ep = ep;
+    g_job.thread_id = me;
+    g_job.ok = FALSE;
+    HANDLE dumper = CreateThread(nullptr, 256 * 1024, DumpThread, nullptr, 0, nullptr);
+    if (dumper != nullptr) {
+        WaitForSingleObject(dumper, 60000);
+        CloseHandle(dumper);
+    } else {
+        DumpThread(nullptr);
+    }
+
+    // What and where, readable without symbols (the module tells a driver crash from ours)
+    DWORD code = ep ? ep->ExceptionRecord->ExceptionCode : 0;
+    void* address = ep ? ep->ExceptionRecord->ExceptionAddress : nullptr;
+    HMODULE module = nullptr;
+    StringCchCopyW(g_module_path, MAX_PATH, L"?");
+    if (address != nullptr &&
+        GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)address, &module)) {
+        GetModuleFileNameW(module, g_module_path, MAX_PATH);
+    }
+    const wchar_t* slash = wcsrchr(g_module_path, L'\\');
+    WideCharToMultiByte(CP_UTF8, 0, slash ? slash + 1 : g_module_path, -1, g_module_name, sizeof(g_module_name), nullptr, nullptr);
+    unsigned long long offset = module ? (unsigned long long)((char*)address - (char*)module) : 0ULL;
+    StringCchPrintfA(g_line, sizeof(g_line), "%s: exception 0x%08lX in %s+0x%llX, %sthread %lu", kind, code, g_module_name,
+                     offset, me == g_main_thread ? "main " : "", me);
+    if (code == EXCEPTION_ACCESS_VIOLATION && ep->ExceptionRecord->NumberParameters >= 2) {
+        ULONG_PTR op = ep->ExceptionRecord->ExceptionInformation[0];
+        size_t used = strlen(g_line);
+        StringCchPrintfA(g_line + used, sizeof(g_line) - used, ", %s 0x%llX", op == 0 ? "reading" : (op == 1 ? "writing" : "executing"),
+                         (unsigned long long)ep->ExceptionRecord->ExceptionInformation[1]);
+    }
+    StringCchPrintfA(g_text, sizeof(g_text), "Overgrowth Online crash report\r\nBuild: %s_%s %s\r\n%s\r\nDump written: %s\r\n",
+                     GetBuildVersion(), GetBuildIDString(), GetBuildTimestamp(), g_line, g_job.ok ? "yes" : "no");
+    StringCchPrintfW(g_file, MAX_PATH * 2 + 16, L"%s.txt", g_base);
+    WriteText(g_file, g_text, false);
+
+    // The log's last line says so too (each line is already on disk), and a copy
+    // goes with the dump (the next start trims the log)
+    if (g_log_path[0] != L'\0') {
+        StringCchPrintfA(g_text, sizeof(g_text), "%04d/%02d/%02d %02d:%02d:%02d [f][__]: crashreport.cpp: Overgrowth Online crashed: %s\r\n",
+                         t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond, g_line);
+        WriteText(g_log_path, g_text, true);
+        StringCchPrintfW(g_file, MAX_PATH * 2 + 16, L"%s_log.txt", g_base);
+        CopyFileW(g_log_path, g_file, FALSE);
+    }
+}
+
+// Where the caller stands, as an exception record (abort and friends have none)
+__declspec(noinline) void ReportHere(const char* kind) {
+    CONTEXT context;
+    RtlCaptureContext(&context);
+    EXCEPTION_RECORD record = {};
+    record.ExceptionCode = 0xE0000001;  // ours: not a hardware exception
+#if defined(_M_X64)
+    record.ExceptionAddress = (void*)context.Rip;
+#endif
+    EXCEPTION_POINTERS pointers = {&record, &context};
+    WriteReport(&pointers, kind);
+}
+
+LONG WINAPI UnhandledFilter(EXCEPTION_POINTERS* ep) {
+    WriteReport(ep, "unhandled exception");
+    return g_previous_filter ? g_previous_filter(ep) : EXCEPTION_CONTINUE_SEARCH;
+}
+
+void AbortSignal(int) {
+    ReportHere("abort");  // (then the CRT finishes abort: Windows records it)
+}
+
+void __cdecl PureCall() {
+    ReportHere("pure virtual call");
+    abort();
+}
+
+void __cdecl InvalidParameter(const wchar_t* expression, const wchar_t* function, const wchar_t* file, unsigned int line, uintptr_t reserved) {
+    ReportHere("CRT invalid parameter");
+    if (g_previous_invalid_parameter != nullptr) {
+        g_previous_invalid_parameter(expression, function, file, line, reserved);
+    }
+    __fastfail(FAST_FAIL_INVALID_ARG);  // what the CRT's own handler does
+}
+
+DWORD WINAPI CrashingThread(LPVOID) {
+    *(volatile int*)nullptr = 1;
+    return 0;
+}
+
+#pragma warning(suppress : 4717)  // (on purpose: the stack overflow test)
+__declspec(noinline) int Recurse(int n) {
+    volatile char pad[4096];
+    pad[0] = (char)n;
+    return Recurse(n + 1) + pad[0];
+}
+}  // namespace
+
+void CrashReportInstall() {
+    if (g_write_dump == nullptr) {
+        // Loaded now: a broken process may not manage LoadLibrary
+        HMODULE dbghelp = LoadLibraryW(L"dbghelp.dll");
+        if (dbghelp != nullptr) {
+            g_write_dump = (MiniDumpWriteDumpFn)GetProcAddress(dbghelp, "MiniDumpWriteDump");
+        }
+        g_main_thread = GetCurrentThreadId();
+        ULONG reserve = 64 * 1024;  // room for the filter after a stack overflow
+        SetThreadStackGuarantee(&reserve);
+        signal(SIGABRT, AbortSignal);
+        _set_purecall_handler(PureCall);
+        g_previous_invalid_parameter = _set_invalid_parameter_handler(InvalidParameter);
+    }
+    LPTOP_LEVEL_EXCEPTION_FILTER previous = SetUnhandledExceptionFilter(UnhandledFilter);
+    if (previous != UnhandledFilter) {
+        g_previous_filter = previous;
+    }
+}
+
+void CrashReportSetFolder(const std::string& folder, const std::string& log_path) {
+    ToWide(folder, g_folder, MAX_PATH * 2);
+    ToWide(log_path, g_log_path, MAX_PATH * 2);
+}
+
+void CrashReportTestCrash(const std::string& kind) {
+    if (kind == "thread") {
+        HANDLE h = CreateThread(nullptr, 0, CrashingThread, nullptr, 0, nullptr);
+        if (h != nullptr) {
+            WaitForSingleObject(h, INFINITE);
+        }
+    } else if (kind == "main") {
+        *(volatile int*)nullptr = 1;
+    } else if (kind == "abort") {
+        abort();
+    } else if (kind == "stack") {
+        Recurse(0);
+    }
+}
+#else
+void CrashReportInstall() {}
+void CrashReportSetFolder(const std::string&, const std::string&) {}
+void CrashReportTestCrash(const std::string&) {}
+#endif
+
 int RunWithCrashReport(int argc, char* argv[], int (*func)(int, char*[])) {
+#if !BREAKPAD
+    CrashReportInstall();
+#endif
 #if BREAKPAD
 #if PLATFORM_LINUX
     google_breakpad::MinidumpDescriptor descriptor(P_tmpdir);

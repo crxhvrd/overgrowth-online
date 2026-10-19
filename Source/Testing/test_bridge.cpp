@@ -25,6 +25,7 @@
 #include <Editors/map_editor.h>
 #include <Scripting/scriptparams.h>
 #include <Internal/config.h>
+#include <Internal/crashreport.h>
 #include <UserInput/input.h>
 #include <Graphics/graphics.h>
 #include <Graphics/camera.h>
@@ -622,6 +623,11 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         } else {
             throw std::runtime_error("forge: unknown kind");
         }
+    } else if (cmd == "crash") {
+        // Overgrowth Online: crash on purpose, to check the crash reports
+        // (kind: thread, main, abort, stack); there is no reply
+        LOGI << "test bridge: crashing (" << req.get("kind", "main").asString() << ")" << std::endl;
+        CrashReportTestCrash(req.get("kind", "main").asString());
     } else if (cmd == "net_nan") {
         // Our characters' records go out non-finite for this long (seconds)
         online->test_nan_stream_until_ms = OnlineClockMs() + req.get("seconds", 2.0).asDouble() * 1000.0;
