@@ -503,11 +503,12 @@ void IMUIContext::render() {
 
                 // Bind the texture
                 textures->bindTexture(image->textureRef);
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_LOD_BIAS, -1.0f);
+                GLuint image_tex_id = textures->returnTexture(image->textureRef);  // (DSA: binding doesn't set the active unit)
+                glTextureParameterf(image_tex_id, GL_TEXTURE_LOD_BIAS, -1.0f);
 
                 //  Setup our texture parameters
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTextureParameteri(image_tex_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTextureParameteri(image_tex_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
                 // Inform the shader of the color
                 glUniform4fv(color_id, 1, (GLfloat*)&(image->color));
@@ -566,7 +567,7 @@ void IMUIContext::render() {
 
                 graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (const void*)image_index_vbo->offset());
 
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_LOD_BIAS, 0.0f);
+                glTextureParameterf(image_tex_id, GL_TEXTURE_LOD_BIAS, 0.0f);
 
             } break;
 

@@ -113,16 +113,9 @@ void HUDImages::Draw() {
             CHECK_GL_ERROR();
             if (hi.texture_ref.valid()) {
                 textures->bindTexture(hi.texture_ref);
-                if (hi.tex_scale[0] != 1.0f) {
-                    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                } else {
-                    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                }
-                if (hi.tex_scale[1] != 1.0f) {
-                    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                } else {
-                    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                }
+                GLuint hud_tex_id = textures->returnTexture(hi.texture_ref);  // (DSA: binding doesn't set the active unit)
+                glTextureParameteri(hud_tex_id, GL_TEXTURE_WRAP_S, hi.tex_scale[0] != 1.0f ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+                glTextureParameteri(hud_tex_id, GL_TEXTURE_WRAP_T, hi.tex_scale[1] != 1.0f ? GL_REPEAT : GL_CLAMP_TO_EDGE);
                 glUniform4fv(color_id, 1, (GLfloat *)&hi.color);
                 CHECK_GL_ERROR();
 

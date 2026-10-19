@@ -171,6 +171,7 @@ class Program {
     std::string name;
     int shader_ids[kMaxShaderTypes];
     std::vector<GLint> tex_uniform;
+    std::vector<int> sampler_units;  // Overgrowth Online: the units its "texN" samplers read
     typedef ska::flat_hash_map<std::string, GLint> UniformAddressCacheMap;
     UniformAddressCacheMap uniform_address_cache;
     typedef ska::flat_hash_map<GLint, GLint> UniformOffsetCacheMap;

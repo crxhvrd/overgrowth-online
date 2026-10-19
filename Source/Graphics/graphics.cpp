@@ -489,17 +489,21 @@ void Graphics::TakeScreenshot() {
 void Graphics::SwapToScreen() {
     LOG_ASSERT(viewport_dims_stack.empty());
     PROFILER_GPU_ZONE(g_profiler_ctx, "Graphics::SwapToScreen()");  // glFlush(); Unnecessary on Mac OS X, as CGLFlushDrawable auto-flushes the command buffer
-    {
-        PROFILER_ZONE_STALL(g_profiler_ctx, "SDL_GL_SwapWindow");
-        SDL_GL_SwapWindow(sdl_window_);
-    }
-    GL_SWAP();
 
+    // Overgrowth Online: the finished frame, before the swap. After it the back
+    // buffer is undefined, and overlays that hook the swap (RivaTuner/Afterburner,
+    // Steam) have drawn into it: screenshots came out with their OSD
     if (queued_screenshot == 2) {
         TakeScreenshot();
         queued_screenshot = 0;
         SetMediaMode(pre_screenshot_media_mode_state);
     }
+
+    {
+        PROFILER_ZONE_STALL(g_profiler_ctx, "SDL_GL_SwapWindow");
+        SDL_GL_SwapWindow(sdl_window_);
+    }
+    GL_SWAP();
 
     if (queued_screenshot) {
         ++queued_screenshot;
@@ -786,10 +790,9 @@ void Graphics::SetAnisotropy(float val) {
         if (max_anisotropy == -1.0f) {
             glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anisotropy);
         }
+        // (Textures::ApplyAnisotropy sets it on every texture; this used to also
+        // set it on whichever texture happened to be bound)
         config_.SetAnisotropy(min(val, max_anisotropy));
-        if (config_.anisotropy() != 0.0f) {
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, config_.anisotropy());
-        }
     } else {
         config_.SetAnisotropy(0.0f);
     }
@@ -1909,9 +1912,9 @@ void Graphics::SetUpShadowTextures() {
         bindFramebuffer(static_shadow_fb);
         framebufferDepthTexture2D(static_shadow_depth_ref);
 
-        textures->bindTexture(static_shadow_depth_ref);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+        GLuint static_shadow_id = textures->returnTexture(static_shadow_depth_ref);
+        glTextureParameteri(static_shadow_id, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        glTextureParameteri(static_shadow_id, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
         CHECK_FBO_ERROR();
     }
 
@@ -1939,9 +1942,9 @@ void Graphics::SetUpShadowTextures() {
         framebufferColorTexture2D(cascade_shadow_color_ref);
         framebufferDepthTexture2D(cascade_shadow_depth_ref);
 
-        textures->bindTexture(cascade_shadow_depth_ref);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+        GLuint cascade_shadow_id = textures->returnTexture(cascade_shadow_depth_ref);
+        glTextureParameteri(cascade_shadow_id, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        glTextureParameteri(cascade_shadow_id, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
     }
 
     PopFramebuffer();

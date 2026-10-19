@@ -1562,6 +1562,19 @@ bool Online::TakeOver(ObjectID id, float max_seconds) {
     if (o == nullptr || o->GetType() != _movement_object) {
         return false;
     }
+    {
+        // A copy gone non-finite here isn't taken over: run here, its NaN
+        // would reach this machine's physics (a user's crash, 2026-10-19)
+        MovementObject* mo = static_cast<MovementObject*>(o);
+        bool finite = Finite3(mo->position) && Finite3(mo->velocity);
+        for (const PhysicsBone& b : mo->rigged_object()->skeleton_.physics_bones) {
+            finite = finite && (b.bullet_object == nullptr || Finite3(b.bullet_object->transform.GetTranslationPart()));
+        }
+        if (!finite) {
+            LOGW << "Overgrowth Online: character " << id << " is non-finite here: not taken over" << std::endl;
+            return false;
+        }
+    }
 
     // Just handed back (a revived teammate's body goes home to get up): a hand
     // still on the grab key doesn't take it again for a moment
@@ -2812,8 +2825,16 @@ void Online::CoopUpdate(SceneGraph* sg) {
         } else if (IsLocalAvatar(r.id)) {
             MovementObject* mo = static_cast<MovementObject*>(o);
             mo->SetNetworkProxy(false);  // (now: its update would only do it later)
+            if (now_ms - mo->net_local_since_ms < 350.0 && now_ms - r.queued_ms < 5000.0) {
+                // Just home from a teammate's drag: its own script lays the body
+                // down first (its ragdoll was the stream's). Stood up at once, its
+                // ragdoll stayed where the body lay and pulled it back there (out
+                // of the world: dead again)
+                waiting.push_back(r);
+                continue;
+            }
             ReviveAvatar(mo, r.pos, r.facing);
-        } else if (OwnPlayerCharacter(r.id) && now_ms - r.queued_ms < 3000.0) {
+        } else if (OwnPlayerCharacter(r.id) && now_ms - r.queued_ms < 5000.0) {
             waiting.push_back(r);
         }
     }
@@ -3078,12 +3099,32 @@ void Online::PlaceAvatar(ObjectID id, const vec3& pos, const vec3& facing) {
 
 void Online::ReviveAvatar(MovementObject* mo, const vec3& pos, const vec3& facing) {
     // Stock calls: full health (tutorial.as revive_all), dialogue control on
-    // and off stands the body up, then the spot
+    // and off stands the body up, then the spot. Hotspots leave it alone a
+    // moment (a lethal zone's list of who touches it still has the body)
+    mo->net_revive_grace_ms = OnlineClockMs() + 1500.0;
+    std::string spot = "vec3(" + to_string(pos.x()) + ", " + to_string(pos.y()) + ", " + to_string(pos.z()) + ")";
     mo->Execute("Recover();");
+    if (mo->position[1] < -90.0f) {
+        // A body that fell out of the world: dialogue control's end runs one
+        // update where it lies (standing up from the ragdoll puts it there),
+        // and down there that kills it again (aschar's y < -99). The whole
+        // ragdoll goes up to the spot first
+        vec3 offset = pos - mo->position;
+        for (PhysicsBone& b : mo->rigged_object()->skeleton_.physics_bones) {
+            if (b.bullet_object != nullptr) {
+                mat4 t = b.bullet_object->GetTransform();
+                t.SetTranslationPart(t.GetTranslationPart() + offset);
+                b.bullet_object->SetTransform(t);
+                b.bullet_object->SetLinearVelocity(vec3(0.0f));
+                b.bullet_object->SetAngularVelocity(vec3(0.0f));
+                b.bullet_object->UpdateTransform();
+            }
+        }
+        mo->Execute("this_mo.position = " + spot + "; this_mo.velocity = vec3(0.0f);");
+    }
     mo->ReceiveScriptMessage("set_dialogue_control true");
     mo->ReceiveScriptMessage("set_dialogue_control false");
-    mo->Execute("this_mo.position = vec3(" + to_string(pos.x()) + ", " + to_string(pos.y()) + ", " + to_string(pos.z()) +
-                "); this_mo.velocity = vec3(0.0f);");
+    mo->Execute("this_mo.position = " + spot + "; this_mo.velocity = vec3(0.0f);");
     if (length_squared(facing) > 0.01f) {  // turned that way, the camera behind
         vec3 f = normalize(facing);
         mo->Execute("this_mo.SetRotationFromFacing(vec3(" + to_string(f.x()) + ", 0.0f, " + to_string(f.z()) +

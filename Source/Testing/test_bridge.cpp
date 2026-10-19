@@ -14,6 +14,7 @@
 #include <Game/level.h>
 #include <Objects/movementobject.h>
 #include <Objects/riggedobject.h>
+#include <Graphics/flares.h>
 #include <Objects/itemobject.h>
 #include <Online/char_snapshot.h>
 #include <Online/online.h>
@@ -628,6 +629,18 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         // (kind: thread, main, abort, stack); there is no reply
         LOGI << "test bridge: crashing (" << req.get("kind", "main").asString() << ")" << std::endl;
         CrashReportTestCrash(req.get("kind", "main").asString());
+    } else if (cmd == "flares") {
+        // The lens flares this machine would draw now: [visible_mult, distant] each
+        // (the sun is one; an item's glint is "distant" only between glints, at 0)
+        out["flares"] = Json::Value(Json::arrayValue);
+        if (loaded) {
+            for (Flare* f : sg->flares.flares) {
+                Json::Value e(Json::arrayValue);
+                e.append(f->visible_mult);
+                e.append(f->distant);
+                out["flares"].append(e);
+            }
+        }
     } else if (cmd == "net_nan") {
         // Our characters' records go out non-finite for this long (seconds)
         online->test_nan_stream_until_ms = OnlineClockMs() + req.get("seconds", 2.0).asDouble() * 1000.0;

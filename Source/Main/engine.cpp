@@ -2959,7 +2959,11 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
         ActiveCameras::Get()->tint = vec3(1.0);
         ActiveCameras::Get()->vignette_tint = vec3(1.0);
         float predraw_time = game_timer.GetRenderTime();
-        for (auto obj : scenegraph_->objects_) {
+        // By index: a character's PreDrawCamera script makes its blob shadows
+        // the first time (CreateObject), which can grow objects_ mid-loop (a
+        // range-for then read freed memory: a user's crash, 2026-10-19)
+        for (size_t i = 0; i < scenegraph_->objects_.size(); ++i) {
+            Object* obj = scenegraph_->objects_[i];
             if (!obj->parent) {
                 obj->PreDrawCamera(predraw_time);
             }

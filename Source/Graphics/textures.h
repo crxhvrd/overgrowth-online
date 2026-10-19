@@ -208,6 +208,9 @@ class Textures {
     void FindTexturePath(const std::string& rel_path, char* resulting_path, bool* is_dds);
     void SaveToPNG(int texture, std::string path);
     void InvalidateBindCache();
+    // Overgrowth Online: empty these units (a program switch: a sampler its draw
+    // doesn't bind reads zero, as when every unit was emptied on each switch)
+    void ClearUnits(const std::vector<int>& units);
     void Dispose();
     void Reload();
     void EnsureInVRAM(const TextureAssetRef& id);

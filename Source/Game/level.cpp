@@ -468,6 +468,7 @@ void Level::HandleCollisions(CollisionPtrMap& col_map, SceneGraph& scenegraph) {
         PROFILER_ZONE(g_profiler_ctx, "E");
         // Do the delayed calls
         std::vector<std::pair<Hotspot*, MovementObject*> >::iterator exit_call_queue_it = exit_call_queue.begin();
+        Online::Instance()->hotspot_event_depth++;
         for (; exit_call_queue_it != exit_call_queue.end(); exit_call_queue_it++) {
             exit_call_queue_it->first->HandleEvent("exit", exit_call_queue_it->second);
             ASArglist args;
@@ -490,6 +491,7 @@ void Level::HandleCollisions(CollisionPtrMap& col_map, SceneGraph& scenegraph) {
                 as_context.ctx->CallScriptFunction(as_context.as_funcs.hotspot_enter, &args);
             }
         }
+        Online::Instance()->hotspot_event_depth--;
     }
 }
 

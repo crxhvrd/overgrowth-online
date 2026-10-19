@@ -76,6 +76,7 @@ class ItemObject : public Object {
 
     bool Initialize() override;
     void Update(float timestep) override;
+    void UpdateGlint(float timestep);  // the blade's glint flare (also on clients)
     void Draw() override;
     void PreDrawFrame(float curr_game_time) override;
     bool ConnectTo(Object& other, bool checking_other = false) override;

@@ -661,6 +661,22 @@ def _forged(ctx):
 SCENARIOS["forged"] = _forged
 
 
+def _zone_revive(ctx):
+    from .zone_revive_suite import zone_revive
+    return zone_revive(ctx)
+
+
+SCENARIOS["zone_revive"] = _zone_revive
+
+
+def _item_flares(ctx):
+    from .item_flares_suite import item_flares
+    return item_flares(ctx)
+
+
+SCENARIOS["item_flares"] = _item_flares
+
+
 def _weapons_session(ctx):
     from .combat_suite import weapons_session
     return weapons_session(ctx)

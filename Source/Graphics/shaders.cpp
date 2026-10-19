@@ -896,6 +896,15 @@ void Shaders::createProgram(int which_program) {
     program.tex_uniform[29] = glGetUniformLocation(program.gl_program, "tex29");
     program.tex_uniform[30] = glGetUniformLocation(program.gl_program, "tex30");
     program.tex_uniform[31] = glGetUniformLocation(program.gl_program, "tex31");
+    // Overgrowth Online (GL 4.6 stage 2.1): sampler "texN" reads texture unit N,
+    // set once here (Textures::bindTexture set it on every bind before)
+    program.sampler_units.clear();
+    for (int i = 0; i < 32; ++i) {
+        if (program.tex_uniform[i] != -1) {
+            glProgramUniform1i(program.gl_program, program.tex_uniform[i], i);
+            program.sampler_units.push_back(i);
+        }
+    }
     program.attrib_address_cache.clear();
     program.uniform_address_cache.clear();
     program.uniform_value_cache.clear();
@@ -943,7 +952,11 @@ void Shaders::setProgram(int which) {
         createProgram(which);
     }
     glUseProgram(programs[which].gl_program);
-    Textures::Instance()->InvalidateBindCache();
+    // Overgrowth Online (GL 4.6 stage 2.1): not every unit emptied any more, only
+    // the ones this program samples. Some draws leave a sampler unbound and rely
+    // on it reading zero (grass without a translucency map: tex5); other units keep
+    // their textures. Samplers have their units since link, nothing to re-set
+    Textures::Instance()->ClearUnits(programs[which].sampler_units);
     bound_program = which;
     CHECK_GL_ERROR();
 }

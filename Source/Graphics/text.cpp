@@ -186,8 +186,7 @@ void RenderCharacterToConsole(int face_id, uint32_t character) {
 
 TextureRef CreateTextureFromBGRABlock(const TextCanvas::MemoryBlock& bgra_block, int width, int height) {
     TextureRef texture_ref = Textures::Instance()->makeTexture(width, height, GL_RGBA, GL_RGBA, true);
-    Textures::Instance()->bindTexture(texture_ref);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &bgra_block[0]);
+    glTextureSubImage2D(Textures::Instance()->returnTexture(texture_ref), 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &bgra_block[0]);
     Textures::Instance()->GenerateMipmap(texture_ref);
     return texture_ref;
 }
@@ -215,8 +214,7 @@ void TextCanvasTexture::Create(int width, int height) {
 }
 
 void FillTextureFromBGRABlock(const TextureRef& texture_ref, const TextCanvas::MemoryBlock& bgra_block, int width, int height) {
-    Textures::Instance()->bindTexture(texture_ref);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &bgra_block[0]);
+    glTextureSubImage2D(Textures::Instance()->returnTexture(texture_ref), 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &bgra_block[0]);
     Textures::Instance()->GenerateMipmap(texture_ref);
 }
 

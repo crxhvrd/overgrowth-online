@@ -21,6 +21,7 @@
 //   limitations under the License.
 //
 //-----------------------------------------------------------------------------
+#include <Online/online.h>
 #include "hotspot.h"
 
 #include <Graphics/graphics.h>
@@ -231,6 +232,7 @@ void Hotspot::ReceiveObjectMessageVAList(OBJECT_MSG::Type type, va_list args) {
 
 void Hotspot::Update(float timestep) {
     if (as_context) {
+        Online::Instance()->hotspot_event_depth++;
         while (message_queue.empty() == false) {
             ASArglist args;
             const std::string str = message_queue.front();
@@ -239,6 +241,7 @@ void Hotspot::Update(float timestep) {
             message_queue.pop();
         }
         as_context->CallScriptFunction(as_funcs.update);
+        Online::Instance()->hotspot_event_depth--;
     }
 }
 
@@ -317,7 +320,9 @@ void Hotspot::HandleEvent(const std::string& event, MovementObject* mo) {
     ASArglist args;
     args.AddObject((void*)&event);
     args.AddObject(mo);
+    Online::Instance()->hotspot_event_depth++;
     as_context->CallScriptFunction(as_funcs.handle_event, &args);
+    Online::Instance()->hotspot_event_depth--;
 }
 
 void Hotspot::HandleEventItem(const std::string& event, ItemObject* obj) {

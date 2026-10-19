@@ -179,9 +179,11 @@ class MovementObject : public Object {
     void ApplyNetworkVitals(const CharSnapshot::Vitals& v);
     // Overgrowth Online: become the character the owner switched to (no random colours)
     void ApplyNetworkCharacter(const std::string& path);
+    double net_local_since_ms = 0.0;   // Overgrowth Online: when it last became ours to run (OnlineClockMs)
+    double net_revive_grace_ms = 0.0;  // Overgrowth Online: until then (OnlineClockMs) hotspots leave it alone (just revived)
     std::string rig_character_path;  // the character file the current rig was built from
     bool NetworkVitalsSupported();
-    void SetNetworkProxy(bool proxy);  // owned here or shown from the owner's stream
+    void SetNetworkProxy(bool proxy, bool resume = true);  // resume: its script brings the body in line (a ragdoll stays one)  // owned here or shown from the owner's stream
     void ReconcileNetworkItems(const CharSnapshot::Vitals& v);
     void NetworkDetachItem(int item_id) { ASDetachItem(item_id); }  // Overgrowth Online: the host settled a race
     double net_drop_order_ms = -1e9;

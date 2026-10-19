@@ -352,7 +352,7 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
     Textures::Instance()->bindTexture(cube_map_texture_ref);
     {
         PROFILER_ZONE(g_profiler_ctx, "glGenerateMipmap");
-        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+        glGenerateTextureMipmap(Textures::Instance()->returnTexture(cube_map_texture_ref));  // (DSA: binding doesn't set the active unit)
     }
 }
 

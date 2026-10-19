@@ -231,6 +231,12 @@ class Online {
     uint64_t snapshot_other_skeleton = 0;    // records of another body than this copy has (mid character switch)
     uint64_t net_malformed = 0;              // packages dropped unread
     uint64_t net_refused = 0;                // messages a guest may not send
+    // A hotspot's script runs (enter/exit, its update: a lethal water's per-frame
+    // kill): what it does to a character another machine runs is skipped (its
+    // owner runs the same hotspot for it), and to one just revived (the
+    // collision list is a frame old: it still "touches" the zone it was carried
+    // out of)
+    int hotspot_event_depth = 0;
 
     // The network thread queues connections to close; the main thread closes
     // them (LateUpdate): closing deletes the player's character

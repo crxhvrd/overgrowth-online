@@ -365,6 +365,71 @@ void ItemObject::SetLinearVelocity(vec3 vel) {
     bullet_object_->SetLinearVelocity(vel);
 }
 
+// The glint that runs along a blade now and then. Its flare starts as a
+// "distant" one at full strength (a sun): this keeps it hidden between glints
+void ItemObject::UpdateGlint(float timestep) {
+    if (!enabled_ && flare_) {
+        // TODO: This is a hack.
+        //       This Update should not be called if the item object is not enabled.
+        //       Need to implement a SetEnabled override to make that work.
+        //       Would also disable the physics object, etc, inside that function. Maybe the flare too?
+        flare_->visible_mult = 0.0f;
+    } else if (flare_) {
+        const float _flash_threshold = 0.0f;  // 4.0f;
+        if (!flashing_) {
+            flare_->visible_mult = 0.0f;
+            flash_delay_ -= timestep;
+            if (!IsHeld() &&
+                flash_delay_ <= 0.0f &&
+                rand() % 200 == 0 &&
+                distance_squared(ActiveCameras::Get()->GetPos(), bullet_object_->GetPosition()) > square(_flash_threshold)) {
+                /*bool movement_flash = false;
+                if(length_squared(bullet_object_->GetLinearVelocity())>1.0f ||
+                   length_squared(bullet_object_->GetAngularVelocity())>1.0f ||
+                   length_squared(ActiveCameras::Get()->GetVelocity())>1.0f){
+                       movement_flash =true;
+                }
+                if(movement_flash){*/
+                flashing_ = true;
+                flash_progress_ = 0.0f;
+                //}
+            }
+        } else {
+            flash_progress_ += timestep * 8.0f;
+            if (flash_progress_ > 1.0f) {
+                flashing_ = false;
+                flash_delay_ = 4.0f;
+                flare_->visible_mult = 0.0f;
+            }
+        }
+
+        if (flashing_) {
+            const Model& model = Models::Instance()->GetModel(model_id_);
+            int longest_axis = -1;
+            float longest_length = 0.0f;
+            for (unsigned i = 0; i < 3; ++i) {
+                float ax_len = model.max_coords[i] - model.min_coords[i];
+                if (longest_axis == -1 || ax_len > longest_length) {
+                    longest_length = ax_len;
+                    longest_axis = i;
+                }
+            }
+            vec3 axis_vec;
+            axis_vec[longest_axis] = 1.0f;
+            flare_->position = bullet_object_->GetTransform() *
+                               (axis_vec * mix(model.min_coords[longest_axis], model.max_coords[longest_axis], flash_progress_) - display_phys_offset_);
+            flare_->position += normalize(ActiveCameras::Get()->GetPos() - flare_->position) * 0.05f;
+            // flare->size_mult = 1.0f/max(1.0f,distance(ActiveCameras::Get()->GetPos(), flare->position));
+            // flare->size_mult = sqrtf(flare->size_mult);
+            flare_->size_mult = 0.1f;
+            flare_->visible_mult = sinf(flash_progress_ * 3.1415f);
+
+            flare_->distant = false;
+            flare_->color = vec3(0.8f, 0.8f, 1.0f);
+        }
+    }
+}
+
 void ItemObject::Update(float timestep) {
     Online* online = Online::Instance();
     bool fetchedData = false;
@@ -372,6 +437,8 @@ void ItemObject::Update(float timestep) {
         std::list<ItemObjectFrame>& frames = incoming_online_item_frames;
 
         // Overgrowth Online: held or stuck, it follows its character here
+        // (its glint too: a flare left alone is a "distant" one, a sun in the sky)
+        UpdateGlint(timestep);
         if (IsHeld() || StuckInWhom() != -1) {
             frames.clear();
             return;
@@ -568,66 +635,7 @@ void ItemObject::Update(float timestep) {
     if (sticking_collision_occured_) {
         StickToEnvironment(stuck_pos_, stuck_vert_, stuck_collide_info_);
     }
-    if (!enabled_ && flare_) {
-        // TODO: This is a hack.
-        //       This Update should not be called if the item object is not enabled.
-        //       Need to implement a SetEnabled override to make that work.
-        //       Would also disable the physics object, etc, inside that function. Maybe the flare too?
-        flare_->visible_mult = 0.0f;
-    } else if (flare_) {
-        const float _flash_threshold = 0.0f;  // 4.0f;
-        if (!flashing_) {
-            flare_->visible_mult = 0.0f;
-            flash_delay_ -= timestep;
-            if (!IsHeld() &&
-                flash_delay_ <= 0.0f &&
-                rand() % 200 == 0 &&
-                distance_squared(ActiveCameras::Get()->GetPos(), bullet_object_->GetPosition()) > square(_flash_threshold)) {
-                /*bool movement_flash = false;
-                if(length_squared(bullet_object_->GetLinearVelocity())>1.0f ||
-                   length_squared(bullet_object_->GetAngularVelocity())>1.0f ||
-                   length_squared(ActiveCameras::Get()->GetVelocity())>1.0f){
-                       movement_flash =true;
-                }
-                if(movement_flash){*/
-                flashing_ = true;
-                flash_progress_ = 0.0f;
-                //}
-            }
-        } else {
-            flash_progress_ += timestep * 8.0f;
-            if (flash_progress_ > 1.0f) {
-                flashing_ = false;
-                flash_delay_ = 4.0f;
-                flare_->visible_mult = 0.0f;
-            }
-        }
-
-        if (flashing_) {
-            const Model& model = Models::Instance()->GetModel(model_id_);
-            int longest_axis = -1;
-            float longest_length = 0.0f;
-            for (unsigned i = 0; i < 3; ++i) {
-                float ax_len = model.max_coords[i] - model.min_coords[i];
-                if (longest_axis == -1 || ax_len > longest_length) {
-                    longest_length = ax_len;
-                    longest_axis = i;
-                }
-            }
-            vec3 axis_vec;
-            axis_vec[longest_axis] = 1.0f;
-            flare_->position = bullet_object_->GetTransform() *
-                               (axis_vec * mix(model.min_coords[longest_axis], model.max_coords[longest_axis], flash_progress_) - display_phys_offset_);
-            flare_->position += normalize(ActiveCameras::Get()->GetPos() - flare_->position) * 0.05f;
-            // flare->size_mult = 1.0f/max(1.0f,distance(ActiveCameras::Get()->GetPos(), flare->position));
-            // flare->size_mult = sqrtf(flare->size_mult);
-            flare_->size_mult = 0.1f;
-            flare_->visible_mult = sinf(flash_progress_ * 3.1415f);
-
-            flare_->distant = false;
-            flare_->color = vec3(0.8f, 0.8f, 1.0f);
-        }
-    }
+    UpdateGlint(timestep);
     if (stuck_in_environment_) {
         // bullet_object->SetTransform(stuck_transform);
         bullet_object_->UpdateTransform();

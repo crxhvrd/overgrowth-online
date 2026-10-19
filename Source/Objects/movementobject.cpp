@@ -503,7 +503,7 @@ void MovementObject::ApplyNetworkPose(const CharSnapshot::Frame& pose) {
 // Overgrowth Online: from now on run here (false) or show the owner's stream
 // (true). Running it again, its script brings the body in line with the game
 // state that was streamed into it (OnNetworkResume: a ragdoll stays a ragdoll).
-void MovementObject::SetNetworkProxy(bool proxy) {
+void MovementObject::SetNetworkProxy(bool proxy, bool resume) {
     if (proxy == network_proxy) {
         return;
     }
@@ -511,8 +511,11 @@ void MovementObject::SetNetworkProxy(bool proxy) {
     network_proxy = proxy;
     rigged_object_->network_proxy = proxy;
     net_buffer.Clear();
-
     if (!proxy) {
+        net_local_since_ms = OnlineClockMs();
+    }
+
+    if (!proxy && resume) {
         if (HasFunction("void OnNetworkResume()")) {
             Execute("OnNetworkResume();");
         } else if (NetworkVitalsSupported() && HasFunction("void Ragdoll(int type)")) {
@@ -4250,6 +4253,10 @@ void MovementObject::SetEnabled(bool val) {
 }
 
 void MovementObject::ReceiveMessage(std::string msg) {
+    if (Online::Instance()->IsActive() && Online::Instance()->hotspot_event_depth > 0 &&
+        (network_proxy || OnlineClockMs() < net_revive_grace_ms)) {
+        return;  // Overgrowth Online: a hotspot (lava's "ignite"): the owner's hotspot does it
+    }
     ASArglist args;
     args.AddObject((void*)&msg);
     as_context->CallScriptFunction(as_funcs.receive_message, &args);
@@ -4943,6 +4950,13 @@ void MovementObject::Execute(std::string string) {
     // Overgrowth Online: a choke or drag grabs a character another machine runs:
     // it plays out here, so take the character for it first
     Online* online = Online::Instance();
+    if (online->IsActive() && online->hotspot_event_depth > 0 && (network_proxy || OnlineClockMs() < net_revive_grace_ms)) {
+        // A hotspot on a character another machine runs (a kill zone's zone_killed,
+        // damage, ragdoll): its owner runs the same hotspot for it. Here it would
+        // only leave the copy burning or ragdolled with stale flags (a NaN source,
+        // and what a teammate's revive drag took over)
+        return;
+    }
     if (network_proxy && online->IsActive() && online->owned_script_depth > 0 && string.find("SetTethered(") != std::string::npos) {
         online->TakeOver(GetID(), 60.0f);
     }
