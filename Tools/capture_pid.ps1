@@ -16,8 +16,36 @@ public class OgWin {
 Add-Type -AssemblyName System.Drawing
 
 [OgWin]::SetProcessDPIAware() | Out-Null
-$proc = Get-Process -Id $ProcessId -ErrorAction Stop
-$handle = $proc.MainWindowHandle
+# (the process's SDL window, class SDL_app: its "main window" is sometimes its console)
+Add-Type @"
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public class OgWinFind {
+    public delegate bool EnumProc(IntPtr h, IntPtr p);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr p);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+    public static IntPtr GameWindow(uint processId) {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((h, p) => {
+            uint pid;
+            GetWindowThreadProcessId(h, out pid);
+            if (pid != processId) return true;
+            var name = new StringBuilder(64);
+            GetClassName(h, name, name.Capacity);
+            if (name.ToString() != "SDL_app") return true;
+            found = h;
+            return false;
+        }, IntPtr.Zero);
+        return found;
+    }
+}
+"@
+$handle = [OgWinFind]::GameWindow([uint32]$ProcessId)
+if ($handle -eq [IntPtr]::Zero) {
+    $handle = (Get-Process -Id $ProcessId -ErrorAction Stop).MainWindowHandle
+}
 
 if ($handle -eq [IntPtr]::Zero) {
     Write-Error "no window"

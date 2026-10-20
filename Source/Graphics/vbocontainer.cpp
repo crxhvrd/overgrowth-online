@@ -24,6 +24,8 @@
 #include "vbocontainer.h"
 
 #include <Graphics/graphics.h>
+#include <Graphics/render_backend.h>
+#include <Graphics/Vulkan/vk_gl.h>
 #include <Logging/logdata.h>
 #include <Utility/assert.h>
 #include <Internal/profiler.h>
@@ -69,13 +71,13 @@ void VBOContainer::Fill(char flags, GLuint size, void* data) {
                 LOGS << "Disposing " << gl_VBO << std::endl;
                 Dispose();
             }
-            glCreateBuffers(1, &gl_VBO);
+            GLVK(CreateBuffers)(1, &gl_VBO);
             // LOGI << "Generated vbo: " << gl_VBO << std::endl;
             immutable = (flags & kVBOStatic) != 0;
             if (immutable) {
-                glNamedBufferStorage(gl_VBO, size, data, 0);
+                GLVK(NamedBufferStorage)(gl_VBO, size, data, 0);
             } else {
-                glNamedBufferData(gl_VBO, size, data, hint);
+                GLVK(NamedBufferData)(gl_VBO, size, data, hint);
             }
             is_valid = true;
             storage = size;
@@ -118,14 +120,14 @@ void VBOContainer::Fill(char flags, GLuint size, void* data) {
                 LOGW << "Reallocating buffer because of resize" << std::endl;
                 PROFILER_ZONE(g_profiler_ctx, "glBufferData");
                 storage = size;
-                glNamedBufferData(gl_VBO, storage, NULL, hint);
+                GLVK(NamedBufferData)(gl_VBO, storage, NULL, hint);
                 orphaned = true;
             }
 
             // if( !(flags & kVBOForceReBufferData) ){
             if (orphaned == false && kAlwaysOrphan) {
                 PROFILER_ZONE(g_profiler_ctx, "glBufferData orphan");
-                glNamedBufferData(gl_VBO, storage, NULL, hint);
+                GLVK(NamedBufferData)(gl_VBO, storage, NULL, hint);
             }
 
             const bool kUseMapRange = true;
@@ -137,12 +139,12 @@ void VBOContainer::Fill(char flags, GLuint size, void* data) {
                 // For this we have to do a ring buffer implementation instead.
                 // Which we might do anyways..
                 // void* mapped = glMapBufferRange(target, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_INVALIDATE_RANGE_BIT );
-                void* mapped = glMapNamedBufferRange(gl_VBO, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT);
+                void* mapped = GLVK(MapNamedBufferRange)(gl_VBO, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT);
                 memcpy(mapped, data, size);
-                glUnmapNamedBuffer(gl_VBO);
+                GLVK(UnmapNamedBuffer)(gl_VBO);
             } else {
                 PROFILER_ZONE(g_profiler_ctx, "glBufferSubData");
-                glNamedBufferSubData(gl_VBO, 0, size, data);
+                GLVK(NamedBufferSubData)(gl_VBO, 0, size, data);
             }
         }
     }
@@ -165,7 +167,7 @@ void VBOContainer::Dispose() {
     // LOGI << "Disposing vbo: " << gl_VBO << " for target " << target << std::endl;
     LogSystem::Flush();
     graphics->UnbindVBO(target, gl_VBO);
-    glDeleteBuffers(1, &gl_VBO);
+    GLVK(DeleteBuffers)(1, &gl_VBO);
     is_valid = false;
     size_ = 0;
 }

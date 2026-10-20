@@ -465,8 +465,7 @@ float UnLinearizeDepth(float result) {
 #if defined(SKY)
 
     vec2 star_hash( vec2 p ) {
-        p = vec2(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)));
-        return -1.0 + 2.0*fract(sin(p)*43758.5453123);
+        return -1.0 + 2.0*hash01(p);  // (object_frag150.glsl: an integer hash)
     }
 
     float star_noise( in vec2 p ) {
@@ -504,8 +503,7 @@ float UnLinearizeDepth(float result) {
         const mat2 m = mat2( 1.6,  1.2, -1.2,  1.6 );
 
         vec2 clouds_hash( vec2 p ) {
-            p = vec2(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)));
-            return -1.0 + 2.0*fract(sin(p)*43758.5453123);
+            return -1.0 + 2.0*hash01(p);  // (object_frag150.glsl: an integer hash)
         }
 
         float clouds_noise( in vec2 p ) {

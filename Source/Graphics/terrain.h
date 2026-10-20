@@ -94,9 +94,8 @@ class Terrain {
     std::string weight_map_path;
 
     int terrain_texture_size;
-    GLuint framebuffer;
 
-    void BakeTerrainTexture(GLuint framebuffer, const TextureRef& light_cube);
+    void BakeTerrainTexture(const TextureRef& light_cube);
     Model& GetModel() const;
     void Load(const char* name, const std::string& model_override = NULL);
     void LoadMinimal(const char* name, const std::string& model_override = NULL);

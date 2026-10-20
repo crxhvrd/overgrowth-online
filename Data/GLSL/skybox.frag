@@ -45,11 +45,30 @@ vec3 YCOCGtoRGB(in vec4 YCoCg) {
 #endif
 
 #ifdef TEST_CLOUDS
+// Overgrowth Online (GL 4.6 stage 5.5): an integer hash (PCG2D, Jarzynski and Olano
+// 2020). The fract(sin(x) * 43758.5453) one it replaces multiplied the GPU's sin()
+// error for large arguments by ~44000: its noise came out different on each API and
+// vendor
+uvec2 pcg2d(uvec2 v) {
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v = v ^ (v >> 16u);
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v = v ^ (v >> 16u);
+    return v;
+}
+
+// A lattice point's two hash values in [0, 1)
+vec2 hash01(vec2 p) {
+    uvec2 h = pcg2d(uvec2(ivec2(floor(p + 0.5))));
+    return vec2(h >> 8u) * (1.0 / 16777216.0);
+}
+
 float hash( vec2 p )
 {
-    float h = dot(p,vec2(127.1,311.7));
-    
-    return -1.0 + 2.0*fract(sin(h)*43758.5453123);
+    return -1.0 + 2.0*hash01(p).x;
 }
 
 float noise( in vec2 p )
@@ -93,9 +112,31 @@ const vec3 skycolour2 = vec3(0.4, 0.7, 1.0);
 #if defined(TEST_CLOUDS_2) || defined(ADD_STARS)
 const mat2 m = mat2( 1.6,  1.2, -1.2,  1.6 );
 
+#if !defined(TEST_CLOUDS)
+// Overgrowth Online (GL 4.6 stage 5.5): an integer hash (PCG2D, Jarzynski and Olano
+// 2020). The fract(sin(x) * 43758.5453) one it replaces multiplied the GPU's sin()
+// error for large arguments by ~44000: its noise came out different on each API and
+// vendor
+uvec2 pcg2d(uvec2 v) {
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v = v ^ (v >> 16u);
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v = v ^ (v >> 16u);
+    return v;
+}
+
+// A lattice point's two hash values in [0, 1)
+vec2 hash01(vec2 p) {
+    uvec2 h = pcg2d(uvec2(ivec2(floor(p + 0.5))));
+    return vec2(h >> 8u) * (1.0 / 16777216.0);
+}
+#endif
+
 vec2 hash( vec2 p ) {
-    p = vec2(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)));
-    return -1.0 + 2.0*fract(sin(p)*43758.5453123);
+    return -1.0 + 2.0*hash01(p);
 }
 
 float noise( in vec2 p ) {

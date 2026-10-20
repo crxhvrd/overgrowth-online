@@ -219,9 +219,6 @@ void DrawGPUParticleField(SceneGraph* scenegraph, const char* type) {
     shaders->SetUniformInt("subdivisions_z", scenegraph->light_probe_collection.grid_lookup.subdivisions[2]);
     shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_COLOR_BUFFER), TEX_AMBIENT_COLOR_BUFFER);
     shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_GRID_DATA), TEX_AMBIENT_GRID_DATA);
-    if (scenegraph->light_probe_collection.light_probe_buffer_object_id != -1) {
-        glBindBuffer(GL_TEXTURE_BUFFER, scenegraph->light_probe_collection.light_probe_buffer_object_id);
-    }
 
     if (scenegraph->light_probe_collection.light_volume_enabled && scenegraph->light_probe_collection.ambient_3d_tex.valid()) {
         textures->bindTexture(scenegraph->light_probe_collection.ambient_3d_tex, 16);
@@ -399,9 +396,6 @@ void Particle::Draw(SceneGraph* scenegraph, DrawType draw_type, const mat4& proj
         shaders->SetUniformInt("subdivisions_z", scenegraph->light_probe_collection.grid_lookup.subdivisions[2]);
         shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_COLOR_BUFFER), TEX_AMBIENT_COLOR_BUFFER);
         shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_GRID_DATA), TEX_AMBIENT_GRID_DATA);
-        if (scenegraph->light_probe_collection.light_probe_buffer_object_id != -1) {
-            glBindBuffer(GL_TEXTURE_BUFFER, scenegraph->light_probe_collection.light_probe_buffer_object_id);
-        }
 
         if (scenegraph->light_probe_collection.light_volume_enabled && scenegraph->light_probe_collection.ambient_3d_tex.valid()) {
             textures->bindTexture(scenegraph->light_probe_collection.ambient_3d_tex, 16);
@@ -1050,9 +1044,6 @@ void ParticleSystem::Draw(SceneGraph* scenegraph) {
                     if (g_no_reflection_capture == false) {
                         textures->bindTexture(scenegraph->cubemaps, 19);
                     }
-                    if (scenegraph->light_probe_collection.light_probe_buffer_object_id != -1) {
-                        glBindBuffer(GL_TEXTURE_BUFFER, scenegraph->light_probe_collection.light_probe_buffer_object_id);
-                    }
                     if (scenegraph->light_probe_collection.light_volume_enabled && scenegraph->light_probe_collection.ambient_3d_tex.valid()) {
                         textures->bindTexture(scenegraph->light_probe_collection.ambient_3d_tex, 16);
                     }
@@ -1100,7 +1091,6 @@ void ParticleSystem::Draw(SceneGraph* scenegraph) {
                         const unsigned kBatchSize = 100;
 
                         for (unsigned index = start; index < i; index += kBatchSize) {
-                            glUniformBlockBinding(shaders->programs[shader_id].gl_program, instance_block_index, 0);
                             unsigned to_draw = min(kBatchSize, ((int)i - index));
                             PROFILER_ENTER(g_profiler_ctx, "Setup batch data");
 
@@ -1190,8 +1180,8 @@ void ParticleSystem::Draw(SceneGraph* scenegraph) {
                             PROFILER_LEAVE(g_profiler_ctx);  // Setup batch data
                             {
                                 particle_uniform_buffer.Fill(16384 - 1, blockBuffer);
-                                glBindBuffer(GL_UNIFORM_BUFFER, particle_uniform_buffer.gl_id);
-                                glBindBufferRange(GL_UNIFORM_BUFFER, 0, particle_uniform_buffer.gl_id, particle_uniform_buffer.offset, particle_uniform_buffer.next_offset - particle_uniform_buffer.offset);
+                                // (Overgrowth Online stage 5.0: InstanceInfo gets UBO_INSTANCE_INFO at link)
+                                graphics->BindUniformRing(UBO_INSTANCE_INFO, particle_uniform_buffer);
                             }
                             CHECK_GL_ERROR();
                             {

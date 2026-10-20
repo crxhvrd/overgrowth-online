@@ -1005,14 +1005,6 @@ void DebugDrawRibbon::Draw() {
     Graphics::Instance()->DrawArrays(GL_TRIANGLE_STRIP, 0, ribbon_points.size() * 2);
     graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
-
-    /*glEnableVertexAttribArray(vert_attrib_id);
-    vbo->Bind();
-    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 0, 0);
-
-    Graphics::Instance()->DrawArrays(GL_TRIANGLES, 0, vbo->size() / (sizeof(float)*3));
-
-    glDisableVertexAttribArray(vert_attrib_id);*/
 }
 
 DebugDrawRibbon::DebugDrawRibbon(const vec3 &start, const vec3 &end, const vec4 &start_color, const vec4 &end_color, const float start_width, const float end_width, const DDFlag &flags)

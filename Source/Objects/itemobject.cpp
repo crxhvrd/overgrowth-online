@@ -1343,7 +1343,7 @@ void ItemObject::DrawItem(const mat4& proj_view_matrix, Object::DrawType type) {
         }
         shaders->SetUniformMat4Array("shadow_matrix", shadow_matrix);
 
-        if (scenegraph_->light_probe_collection.light_probe_buffer_object_id != -1) {
+        if (scenegraph_->light_probe_collection.light_probe_texture_buffer.valid()) {
             shaders->SetUniformInt("num_tetrahedra", scenegraph_->light_probe_collection.ShaderNumTetrahedra());
             shaders->SetUniformInt("num_light_probes", scenegraph_->light_probe_collection.ShaderNumLightProbes());
             shaders->SetUniformVec3("grid_bounds_min", scenegraph_->light_probe_collection.grid_lookup.bounds[0]);
@@ -1353,7 +1353,6 @@ void ItemObject::DrawItem(const mat4& proj_view_matrix, Object::DrawType type) {
             shaders->SetUniformInt("subdivisions_z", scenegraph_->light_probe_collection.grid_lookup.subdivisions[2]);
             shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_COLOR_BUFFER), TEX_AMBIENT_COLOR_BUFFER);
             shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_GRID_DATA), TEX_AMBIENT_GRID_DATA);
-            glBindBuffer(GL_TEXTURE_BUFFER, scenegraph_->light_probe_collection.light_probe_buffer_object_id);
         }
         shaders->SetUniformInt("reflection_capture_num", scenegraph_->ref_cap_matrix.size());
         if (!scenegraph_->ref_cap_matrix.empty()) {

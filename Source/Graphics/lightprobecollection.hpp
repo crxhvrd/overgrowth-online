@@ -79,16 +79,13 @@ class LightProbeCollection {
     // Returns id of tetrahedron containing position,
     // and fills interpolated ambient cube color
     int GetTetrahedron(const vec3& position, vec3 ambient_cube_color[], int best_guess);
-    GLuint cube_map_fbo;
     TextureRef cube_map;
     TextureRef ambient_3d_tex;
     std::vector<LightProbe> light_probes;
     TetMesh tet_mesh;
     LightProbe* GetProbeFromID(int id);
-    int light_probe_texture_buffer_id;
-    int light_probe_buffer_object_id;
-    int grid_texture_buffer_id;
-    int grid_buffer_object_id;
+    TextureRef light_probe_texture_buffer;  // (stage 5.0: Textures' buffer textures; was GL names)
+    TextureRef grid_texture_buffer;
     void UpdateTextureBuffer(BulletWorld& bw);
     std::queue<LightProbeUpdateEntry> to_process;
     GridLookup grid_lookup;

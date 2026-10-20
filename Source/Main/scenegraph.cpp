@@ -479,7 +479,7 @@ static void UpdateShaderSuffix(SceneGraph* scenegraph, Object::DrawType object_d
             std::swap(shader_str[0], shader_str[1]);
         }
         if (scenegraph->light_probe_collection.probe_lighting_enabled &&
-            scenegraph->light_probe_collection.light_probe_buffer_object_id != -1 &&
+            scenegraph->light_probe_collection.light_probe_texture_buffer.valid() &&
             !scenegraph->light_probe_collection.light_probes.empty()) {
             FormatString(shader_str[1], kShaderStrSize, "%s #CAN_USE_LIGHT_PROBES", shader_str[0]);
             std::swap(shader_str[0], shader_str[1]);
@@ -521,7 +521,7 @@ static void UpdateShaderSuffix(SceneGraph* scenegraph, Object::DrawType object_d
         static int ubo_batch_size_multiplier = 1;
         static GLint max_ubo_size = -1;
         if (max_ubo_size == -1) {
-            glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &max_ubo_size);
+            max_ubo_size = Graphics::Instance()->MaxUniformBlockSize();
 
             if (max_ubo_size >= 131072) {
                 ubo_batch_size_multiplier = 8;
@@ -603,14 +603,14 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
 
     graphics->setDepthFunc(GL_LEQUAL);
     if (nav_mesh_ && (nav_mesh_renderer_.IsNavMeshVisible() || nav_mesh_renderer_.IsCollisionMeshVisible())) {
-        glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
+        graphics->SetClearColor(vec4(0.4f, 0.4f, 0.4f, 1.0f));
         graphics->Clear(true);
 
         nav_mesh_renderer_.Draw();
     }
 
     if (graphics->queued_screenshot && graphics->screenshot_mode == Graphics::kTransparentGameplay) {
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        graphics->SetClearColor(vec4(0.0f, 0.0f, 0.0f, 0.0f));
         graphics->Clear(true);
     }
 
@@ -705,10 +705,10 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
                         }
                     }
                 } else {
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                    graphics->SetWireframe(true);
                     static_meshes_to_draw[i - 1]->DrawInstances(&static_meshes_to_draw[batch_start], i - batch_start, proj_view_mat, prev_proj_view_mat, &shadow_matrix, cam_pos, Object::kWireframe);
                     // Intentionally not drawing detail object surfaces
-                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                    graphics->SetWireframe(false);
                 }
                 batch_start = i;
             }
@@ -753,8 +753,7 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
                 PROFILER_GPU_ZONE(g_profiler_ctx, "%s %d draw", CStringFromEntityType(obj.GetType()), obj.GetID());
                 bool output_velocity_buffer = (graphics->config_.motion_blur_amount_ > 0.01f) && ((obj_type == _movement_object) || (obj_type == _item_object));
                 if (output_velocity_buffer) {
-                    GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT};
-                    glDrawBuffers(2, buffers);
+                    graphics->SetDrawBuffers(2);  // (Overgrowth Online stage 5.0: colour + velocity)
                 }
                 // We want to hide the terrain if we're rendering the navmesh.
                 if (obj_type == _terrain_type && nav_mesh_renderer_.IsCollisionMeshVisible()) {
@@ -762,8 +761,7 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
                 }
                 obj.ReceiveObjectMessage(OBJECT_MSG::DRAW);
                 if (output_velocity_buffer) {
-                    GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT};
-                    glDrawBuffers(1, buffers);
+                    graphics->SetDrawBuffers(1);
                 }
             }
         }
@@ -787,10 +785,10 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
                 PROFILER_ZONE(g_profiler_ctx, "Update depth/color textures");
                 if (graphics->multisample_framebuffer_exists) {
                     PROFILER_ZONE(g_profiler_ctx, "Blit from MSAA buffers");
-                    graphics->PushFramebuffer();
+                    graphics->PushRenderTarget();
                     graphics->BlitColorBuffer();
                     graphics->BlitDepthBuffer();
-                    graphics->PopFramebuffer();
+                    graphics->PopRenderTarget();
                 }
 
                 {
@@ -806,7 +804,7 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
                     Textures* textures = Textures::Instance();
 
                     graphics->PushViewport();
-                    graphics->PushFramebuffer();
+                    graphics->PushRenderTarget();
 
                     graphics->setViewport(0, 0, graphics->render_dims[0], graphics->render_dims[1]);
 
@@ -819,7 +817,7 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
                     graphics->BindRenderTarget(graphics->post_effects.temp_screen_tex);  // Overgrowth Online (GL 4.6 stage 2.5)
                     DrawQuad(shader_id, quad_vert_vbo, quad_index_vbo);
 
-                    graphics->PopFramebuffer();
+                    graphics->PopRenderTarget();
                     graphics->PopViewport();
                 }
             }
@@ -2645,11 +2643,11 @@ void SceneGraph::PrepareLightsAndDecals(vec2 active_screen_start, vec2 active_sc
         if (kBandwidthDisplay) {
             static GLint max_tbo_size = -1;
             if (max_tbo_size == -1) {
-                glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &max_tbo_size);
+                max_tbo_size = graphics->MaxTextureBufferSize();
             }
             static GLint max_ubo_size = -1;
             if (max_ubo_size == -1) {
-                glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &max_ubo_size);
+                max_ubo_size = graphics->MaxUniformBlockSize();
             }
             const int kBufSize = 512;
             char buf[kBufSize];
@@ -2726,10 +2724,9 @@ void SceneGraph::BindLights(int the_shader) {
                 // frame ring keeps a write for its own frame only
                 uniform_ring_buffer.Fill(sizeof(ShaderClusterInfo), &last_cluster_info);
             }
-            glBindBufferBase(GL_UNIFORM_BUFFER, UBO_CLUSTER_DATA, uniform_ring_buffer.gl_id);
-            glBindBufferRange(GL_UNIFORM_BUFFER, UBO_CLUSTER_DATA, uniform_ring_buffer.gl_id, uniform_ring_buffer.offset, uniform_ring_buffer.next_offset - uniform_ring_buffer.offset);
+            Graphics::Instance()->BindUniformRing(UBO_CLUSTER_DATA, uniform_ring_buffer);
         }
-        glUniformBlockBinding(shaders->programs[the_shader].gl_program, cluster_block_index, UBO_CLUSTER_DATA);
+        // (Overgrowth Online stage 5.0: ClusterInfo gets UBO_CLUSTER_DATA at link)
         PROFILER_LEAVE(g_profiler_ctx);
     }
 

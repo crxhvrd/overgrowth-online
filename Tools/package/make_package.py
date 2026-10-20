@@ -35,6 +35,11 @@ online = out + "/OvergrowthOnline"
 # The exe and its runtime files
 for f in ["OvergrowthOnline.exe", "steam_appid.txt"] + [os.path.basename(p) for p in glob.glob(build + "/*.dll")]:
     shutil.copy2(f"{build}/{f}", online)
+# The Vulkan renderer's run-time shader compiler (loaded only when a program isn't in a
+# SPIR-V build: on Vulkan, all of them), from the Vulkan SDK
+sdk_bin = (os.environ.get("VULKAN_SDK") or "R:/CoreFXProject/VulkanSDK") + "/Bin"
+for f in ["glslang.dll", "glslang-default-resource-limits.dll"]:
+    shutil.copy2(f"{sdk_bin}/{f}", online)
 crt = sorted(glob.glob("R:/vs/VC/Redist/MSVC/*/x64/Microsoft.VC143.CRT"))[-1]
 for f in ["msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll"]:
     shutil.copy2(f"{crt}/{f}", online)
@@ -46,13 +51,23 @@ for f in os.listdir(ROOT + "/Data"):
     if os.path.isfile(f"{ROOT}/Data/{f}"):
         shutil.copy2(f"{ROOT}/Data/{f}", f"{online}/Data/{f}")
 
-# Licences: the engine (Apache-2.0) and the libraries shipped as DLLs
+# Licences: the engine (Apache-2.0), the libraries shipped as DLLs and the ones compiled in
 os.makedirs(online + "/licenses")
 shutil.copy2(ROOT + "/LICENSE", online + "/LICENSE.txt")
 for lib, src in [("SDL2", "SDL2-2.0.20/COPYING.txt"), ("SDL2_net", "SDL2_net-2.0.1/COPYING.txt"),
                  ("OpenAL-soft", "openal-soft-1.18.2-bin/COPYING"), ("libogg", "libogg-1.3.3/COPYING"),
-                 ("libvorbis", "libvorbis-1.3.6/COPYING"), ("openvr", "openvr-master/LICENSE")]:
+                 ("libvorbis", "libvorbis-1.3.6/COPYING"), ("openvr", "openvr-master/LICENSE"),
+                 # (compiled in: the Vulkan renderer's loader and allocator, MIT)
+                 ("volk", "volk-1.4.350/LICENSE.md"), ("VulkanMemoryAllocator", "vma-3.3.0/LICENSE.txt"),
+                 # (compiled in: the rest whose licences want their notice in binary copies)
+                 ("imgui", "imgui-1.85/LICENSE.txt"), ("FreeType", "freetype-2.12.1/docs/FTL.TXT"),
+                 ("FreeType-BDF", "freetype-2.12.1/src/bdf/README"), ("FreeType-PCF", "freetype-2.12.1/src/pcf/README"),
+                 ("glm", "glm-0.9.4.2/copying.txt"), ("jsoncpp", "jsoncpp-0.y.z/LICENSE"),
+                 ("tut-framework", "tut-framework/LICENSE"), ("OculusSDK", "ovr_sdk_win_1.12.0_public/OculusSDK/LICENSE.txt")]:
     shutil.copy2(f"{ROOT}/Libraries/{src}", f"{online}/licenses/{lib}.txt")
+# (compiled in, notices kept here: their text is only in a source header, or zstd's LICENSE is empty in the tree)
+for lib in ["implot", "tclap", "zstd", "tween", "FastQuadricMeshSimplification", "Triangle", "glslang"]:
+    shutil.copy2(f"{HERE}/licenses/{lib}.txt", f"{online}/licenses/{lib}.txt")
 shutil.copy2(HERE + "/THIRD_PARTY.txt", online + "/licenses/THIRD_PARTY.txt")
 
 # The launcher, the mod, the installer

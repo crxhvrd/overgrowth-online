@@ -24,6 +24,8 @@
 #include "vboringcontainer.h"
 
 #include <Graphics/graphics.h>
+#include <Graphics/render_backend.h>
+#include <Graphics/Vulkan/vk_gl.h>
 #include <Logging/logdata.h>
 #include <Utility/assert.h>
 #include <Internal/profiler.h>
@@ -118,7 +120,7 @@ void VBORingContainer::Fill(GLuint size, void* data) {
         int old_gl_VBO = gl_VBO;
         if (gl_VBO == -1) {
             GLuint val;
-            glGenBuffers(1, &val);
+            GLVK(GenBuffers)(1, &val);
             gl_VBO = val;
         }
 
@@ -151,19 +153,33 @@ void VBORingContainer::Fill(GLuint size, void* data) {
                 PROFILER_ENTER(g_profiler_ctx, "Create VBORingContainer buffer");
             }
             storage_size = storage_size_hint;
-            glBufferData(target, storage_size, NULL, hint);
+            if (UseVulkan()) {
+                vkgl::NamedBufferData(gl_VBO, storage_size, NULL, hint);
+            } else {
+                glBufferData(target, storage_size, NULL, hint);
+            }
             next_offset = 0;
             PROFILER_LEAVE(g_profiler_ctx);
         }
 
         const bool kUseMapBufferRange = false;
         if (kUseMapBufferRange) {
-            void* mapped = glMapBufferRange(target, next_offset, used_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-            memcpy(mapped, data, used_size);
-            glUnmapBuffer(target);
+            if (UseVulkan()) {
+                void* mapped = vkgl::MapNamedBufferRange(gl_VBO, next_offset, used_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+                memcpy(mapped, data, used_size);
+                vkgl::UnmapNamedBuffer(gl_VBO);
+            } else {
+                void* mapped = glMapBufferRange(target, next_offset, used_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+                memcpy(mapped, data, used_size);
+                glUnmapBuffer(target);
+            }
         } else {
             PROFILER_ZONE(g_profiler_ctx, "glBufferSubData");
-            glBufferSubData(target, next_offset, used_size, data);
+            if (UseVulkan()) {
+                vkgl::NamedBufferSubData(gl_VBO, next_offset, used_size, data);
+            } else {
+                glBufferSubData(target, next_offset, used_size, data);
+            }
         }
 
         current_offset = next_offset;
@@ -197,7 +213,7 @@ void VBORingContainer::Dispose() {
     LogSystem::Flush();
     graphics->UnbindVBO(target, gl_VBO);
     GLuint val = gl_VBO;
-    glDeleteBuffers(1, &val);
+    GLVK(DeleteBuffers)(1, &val);
     gl_VBO = -1;
     next_offset = storage_size;
     current_offset = 0;
@@ -274,15 +290,15 @@ void CreateRing(size_t size) {
     if (ring_buffer != 0) {
         ring_retired.push_back(ring_buffer);
         for (FrameMark& m : ring_marks) {
-            glDeleteSync(m.fence);
+            GLVK(DeleteSync)(m.fence);
         }
         ring_marks.clear();
         LOGI << "Frame ring grown to " << size / V_MIBIBYTE << " MiB" << std::endl;
     }
     const GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
-    glCreateBuffers(1, &ring_buffer);
-    glNamedBufferStorage(ring_buffer, size, NULL, flags);
-    ring_ptr = (char*)glMapNamedBufferRange(ring_buffer, 0, size, flags);
+    GLVK(CreateBuffers)(1, &ring_buffer);
+    GLVK(NamedBufferStorage)(ring_buffer, size, NULL, flags);
+    ring_ptr = (char*)GLVK(MapNamedBufferRange)(ring_buffer, 0, size, flags);
     if (ring_ptr == NULL) {
         FatalError("Error", "Could not map the frame ring buffer");
     }
@@ -298,12 +314,12 @@ bool ReleaseOldest() {
         return false;
     }
     FrameMark& m = ring_marks.front();
-    if (glClientWaitSync(m.fence, 0, 0) == GL_TIMEOUT_EXPIRED) {
+    if (GLVK(ClientWaitSync)(m.fence, 0, 0) == GL_TIMEOUT_EXPIRED) {
         PROFILER_ZONE_STALL(g_profiler_ctx, "Frame ring: wait for the GPU");
-        while (glClientWaitSync(m.fence, GL_SYNC_FLUSH_COMMANDS_BIT, 100000000ull) == GL_TIMEOUT_EXPIRED) {
+        while (GLVK(ClientWaitSync)(m.fence, GL_SYNC_FLUSH_COMMANDS_BIT, 100000000ull) == GL_TIMEOUT_EXPIRED) {
         }
     }
-    glDeleteSync(m.fence);
+    GLVK(DeleteSync)(m.fence);
     ring_marks.pop_front();
     return true;
 }
@@ -311,7 +327,7 @@ bool ReleaseOldest() {
 // This frame's writes so far as a frame of their own (the ring is at its largest
 // and one frame fills it: the next write waits for these)
 void SplitFrame() {
-    ring_marks.push_back({ring_frame, ring_frame_start, glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0)});
+    ring_marks.push_back({ring_frame, ring_frame_start, GLVK(FenceSync)(GL_SYNC_GPU_COMMANDS_COMPLETE, 0)});
     ring_frame_start = ring_head;
 }
 }  // namespace
@@ -376,7 +392,7 @@ void FrameRing::EndFrame() {
         // it, as GL may hand the name out again)
         Graphics::Instance()->UnbindVBO(GL_ARRAY_BUFFER, id);
         Graphics::Instance()->UnbindVBO(GL_ELEMENT_ARRAY_BUFFER, id);
-        glDeleteBuffers(1, &id);
+        GLVK(DeleteBuffers)(1, &id);
     }
     ring_retired.clear();
     ++ring_frame;
@@ -393,10 +409,10 @@ GLuint FrameRing::BufferTexture() {
         return texture;
     }
     if (texture != 0) {
-        glDeleteTextures(1, &texture);  // (the ring grew: a new buffer)
+        GLVK(DeleteTextures)(1, &texture);  // (the ring grew: a new buffer)
     }
-    glCreateTextures(GL_TEXTURE_BUFFER, 1, &texture);
-    glTextureBuffer(texture, GL_RGBA32F, ring_buffer);
+    GLVK(CreateTextures)(GL_TEXTURE_BUFFER, 1, &texture);
+    GLVK(TextureBuffer)(texture, GL_RGBA32F, ring_buffer);
     texture_buffer = ring_buffer;
     return texture;
 }
@@ -406,8 +422,8 @@ static GLint ubo_alignment = -1;
 
 void UniformRingBuffer::Create(int desired_size) {
     if (max_ubo_size == -1) {
-        glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &max_ubo_size);
-        glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &ubo_alignment);
+        GLVK(GetIntegerv)(GL_MAX_UNIFORM_BLOCK_SIZE, &max_ubo_size);
+        GLVK(GetIntegerv)(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &ubo_alignment);
     }
     size = desired_size;  // (the most one fill may write)
     gl_id = 0;

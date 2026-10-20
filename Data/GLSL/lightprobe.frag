@@ -19,7 +19,7 @@
 
 const int kMaxInstances = 128;
 
-uniform LightProbeInfo {
+layout(std140) uniform LightProbeInfo {  // (Overgrowth Online stage 5.0: std140, the C++ fills it by these offsets)
     vec4 center[kMaxInstances];
     mat4 view_mat;
     mat4 proj_mat;

@@ -72,7 +72,6 @@ static const float kUniformScale = 2.0f;
 static const float kVerticalScale = 0.1f;
 
 Terrain::Terrain() : model_id(-1),
-                     framebuffer(INVALID_FRAMEBUFFER),
                      shader("secondterrain") {}
 
 // Dispose of terrain
@@ -119,14 +118,6 @@ void Terrain::GLInit(Sky *sky) {
     if (minimal)
         return;
 
-    // Create framebuffer object
-    Graphics *graphics = Graphics::Instance();
-    if (framebuffer == INVALID_FRAMEBUFFER) {
-        graphics->PushFramebuffer();
-        graphics->genFramebuffers(&framebuffer, "sky");
-        graphics->bindFramebuffer(framebuffer);
-        graphics->PopFramebuffer();
-    }
     if (!normal_map_ref.valid()) {
         CHECK_GL_ERROR();
 
@@ -214,7 +205,7 @@ void Terrain::GLInit(Sky *sky) {
                 baked_texture_asset = Engine::Instance()->GetAssetManager()->LoadSync<TextureAsset>(heightmap_.path() + "_" + level_name + "_baked.png", PX_SRGB, 0x0);
                 baked_texture_ref = baked_texture_asset->GetTextureRef();
             } else {  // Otherwise calculate it
-                BakeTerrainTexture(framebuffer, sky->GetSpecularCubeMapTexture());
+                BakeTerrainTexture(sky->GetSpecularCubeMapTexture());
             }
             CHECK_GL_ERROR();
         }
@@ -538,7 +529,7 @@ Model &Terrain::GetModel() const {
 }
 const float _light_offset = 0.002f;
 
-void Terrain::BakeTerrainTexture(GLuint framebuffer, const TextureRef &light_cube) {
+void Terrain::BakeTerrainTexture(const TextureRef &light_cube) {
     if (minimal)
         return;
 
@@ -551,8 +542,8 @@ void Terrain::BakeTerrainTexture(GLuint framebuffer, const TextureRef &light_cub
         baked_texture_ref = textures->makeTexture(terrain_texture_size, terrain_texture_size, GL_RGBA, GL_RGBA, true);
         textures->SetTextureName(baked_texture_ref, "Terrain Baked Texture");
     }
-    graphics->PushFramebuffer();
-    graphics->RenderFramebufferToTexture(framebuffer, baked_texture_ref);
+    graphics->PushRenderTarget();
+    graphics->BindRenderTarget(baked_texture_ref);  // (Overgrowth Online stage 5.0: level 0)
     graphics->PushViewport();
     graphics->setViewport(0, 0, terrain_texture_size, terrain_texture_size);
 
@@ -563,8 +554,8 @@ void Terrain::BakeTerrainTexture(GLuint framebuffer, const TextureRef &light_cub
     gl_state.depth_write = false;
     graphics->setGLState(gl_state);
 
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    graphics->SetClearColor(vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    graphics->ClearColorOnly();  // (Overgrowth Online stage 5.0)
 
     int prepare_shader_id = shaders->returnProgram(shader);
     shaders->setProgram(prepare_shader_id);
@@ -601,7 +592,7 @@ void Terrain::BakeTerrainTexture(GLuint framebuffer, const TextureRef &light_cub
     }
 
     graphics->PopViewport();
-    graphics->PopFramebuffer();
+    graphics->PopRenderTarget();
 
     Textures::Instance()->GenerateMipmap(baked_texture_ref);
 }

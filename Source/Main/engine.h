@@ -318,7 +318,7 @@ class Engine : public ModLoadingCallback {
 
     void UpdateControls(float timestep, bool loading_screen);
 
-    void DrawCubeMap(TextureRef cube_map, const vec3& pos, GLuint cube_map_fbo, SceneGraph::SceneDrawType scene_draw_type);
+    void DrawCubeMap(TextureRef cube_map, const vec3& pos, SceneGraph::SceneDrawType scene_draw_type);
 
     void ModActivationChange(const ModInstance* mod) override;
 

@@ -71,8 +71,6 @@ BloodSurface::BloodSurface(TransformedVertexGetter *transformed_vertex_getter) :
                                                                                  ignite_id(0),
                                                                                  extinguish_id(0),
                                                                                  blood_tex_mipmap_dirty(false),
-                                                                                 blood_framebuffer(INVALID_FRAMEBUFFER),
-                                                                                 blood_work_framebuffer(INVALID_FRAMEBUFFER),
                                                                                  simple_2d("simple_2d"),
                                                                                  simple_2d_stab_texture("simple_2d #STAB #TEXTURE"),
                                                                                  character_accumulate_dry("character_accumulate #DRY"),
@@ -83,21 +81,11 @@ BloodSurface::BloodSurface(TransformedVertexGetter *transformed_vertex_getter) :
 BloodSurface::~BloodSurface() {
     LOG_ASSERT(!blood_tex.valid());
     LOG_ASSERT(!blood_work_tex.valid());
-    LOG_ASSERT(blood_framebuffer == INVALID_FRAMEBUFFER);
-    LOG_ASSERT(blood_work_framebuffer == INVALID_FRAMEBUFFER);
 }
 
 void BloodSurface::Dispose() {
     blood_tex.clear();
     blood_work_tex.clear();
-    if (blood_framebuffer != INVALID_FRAMEBUFFER) {
-        Graphics::Instance()->deleteFramebuffer(&blood_framebuffer);
-        blood_framebuffer = -1;
-    }
-    if (blood_work_framebuffer != INVALID_FRAMEBUFFER) {
-        Graphics::Instance()->deleteFramebuffer(&blood_work_framebuffer);
-        blood_work_framebuffer = -1;
-    }
 }
 
 void BloodSurface::InitShaders() {
@@ -149,22 +137,8 @@ void BloodSurface::PreDrawFrame(int width, int height) {
         blood_work_tex = textures->makeTextureColor(width, height, GL_RGBA, GL_RGBA, 0.0f, 0.0f, 0.0f, 0.0f, true);
         textures->SetTextureName(blood_work_tex, "Blood Surface - Work");
         CHECK_GL_ERROR();
-        Graphics *graphics = Graphics::Instance();
-        graphics->PushFramebuffer();
-        CHECK_GL_ERROR();
-        graphics->genFramebuffers(&blood_framebuffer, "blood_framebuffer");
-        CHECK_GL_ERROR();
-        graphics->bindFramebuffer(blood_framebuffer);
-        graphics->framebufferColorTexture2D(blood_tex);
-        CHECK_FBO_ERROR();
-        CHECK_GL_ERROR();
-        graphics->genFramebuffers(&blood_work_framebuffer, "blood_work_framebuffer");
-        CHECK_GL_ERROR();
-        graphics->bindFramebuffer(blood_work_framebuffer);
-        graphics->framebufferColorTexture2D(blood_work_tex);
-        CHECK_FBO_ERROR();
-        CHECK_GL_ERROR();
-        graphics->PopFramebuffer();
+        // (Overgrowth Online stage 5.0: no framebuffers of our own; each pass draws
+        // into blood_tex through BindRenderTarget)
         framebuffer_created = true;
         CHECK_GL_ERROR();
 
@@ -385,7 +359,6 @@ void BloodSurface::Update(SceneGraph *scenegraph, float timestep, bool force_upd
     if ((framebuffer_created /* && blood_dry_steps > 0 */ && dry_delay <= 0) || force_update) {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Update dry");
         std::swap(blood_tex, blood_work_tex);
-        std::swap(blood_framebuffer, blood_work_framebuffer);
         StartDrawingToBloodTexture();
 
         const bool kCheckForWetnessDrips = false;
@@ -393,7 +366,7 @@ void BloodSurface::Update(SceneGraph *scenegraph, float timestep, bool force_upd
             int dims[2] = {Textures::Instance()->getWidth(blood_tex), Textures::Instance()->getHeight(blood_tex)};
             std::vector<GLubyte> bytes(dims[0] * dims[1] * 4);
             PROFILER_ENTER(g_profiler_ctx, "Read pixels in Update dry");
-            glReadPixels(0, 0, dims[0], dims[1], GL_RGBA, GL_UNSIGNED_BYTE, &bytes[0]);
+            Graphics::Instance()->ReadPixels(PixelRect(0, 0, dims[0], dims[1]), GL_RGBA, GL_UNSIGNED_BYTE, &bytes[0]);
             PROFILER_LEAVE(g_profiler_ctx);
             int total_wet = 0;
             int total_possible = 0;
@@ -583,68 +556,68 @@ void BloodSurface::CreateBloodDripNearestPointTransformed(const vec3 &bone_pos,
 
 void BloodSurface::CleanBlood() {
     if (framebuffer_created) {
-        Graphics::Instance()->PushFramebuffer();
+        Graphics::Instance()->PushRenderTarget();
         int width = Textures::Instance()->getWidth(blood_tex);
         int height = Textures::Instance()->getHeight(blood_tex);
-        Graphics::Instance()->bindFramebuffer(blood_framebuffer);
+        Graphics::Instance()->BindRenderTarget(blood_tex);
         Graphics::Instance()->StartTextureSpaceRenderingCustom(0, 0, width, height);
         CHECK_FBO_ERROR();
 
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        Graphics::Instance()->SetClearColor(vec4(0.0f, 0.0f, 0.0f, 0.0f));
         Graphics::Instance()->setColorMask(true, false, false, false);
-        glClear(GL_COLOR_BUFFER_BIT);
+        Graphics::Instance()->ClearColorOnly();  // (Overgrowth Online stage 5.0)
         Graphics::Instance()->setColorMask(true, true, true, true);
         surface_walkers.clear();
         dry_steps = 0;
 
         Graphics::Instance()->EndTextureSpaceRendering();
-        Graphics::Instance()->PopFramebuffer();
+        Graphics::Instance()->PopRenderTarget();
         blood_tex_mipmap_dirty = true;
     }
 }
 
 void BloodSurface::SetFire(float fire) {
     if (framebuffer_created) {
-        Graphics::Instance()->PushFramebuffer();
+        Graphics::Instance()->PushRenderTarget();
         int width = Textures::Instance()->getWidth(blood_tex);
         int height = Textures::Instance()->getHeight(blood_tex);
-        Graphics::Instance()->bindFramebuffer(blood_framebuffer);
+        Graphics::Instance()->BindRenderTarget(blood_tex);
         Graphics::Instance()->StartTextureSpaceRenderingCustom(0, 0, width, height);
         CHECK_FBO_ERROR();
 
-        glClearColor(0.0f,
-                     0.0f,
-                     fire,
-                     0.0f);
+        Graphics::Instance()->SetClearColor(vec4(0.0f,
+                                                 0.0f,
+                                                 fire,
+                                                 0.0f));
         Graphics::Instance()->setColorMask(false, false, true, false);
-        glClear(GL_COLOR_BUFFER_BIT);
+        Graphics::Instance()->ClearColorOnly();
         Graphics::Instance()->setColorMask(true, true, true, true);
 
         Graphics::Instance()->EndTextureSpaceRendering();
-        Graphics::Instance()->PopFramebuffer();
+        Graphics::Instance()->PopRenderTarget();
         blood_tex_mipmap_dirty = true;
     }
 }
 
 void BloodSurface::SetWet(float wet) {
     if (framebuffer_created) {
-        Graphics::Instance()->PushFramebuffer();
+        Graphics::Instance()->PushRenderTarget();
         int width = Textures::Instance()->getWidth(blood_tex);
         int height = Textures::Instance()->getHeight(blood_tex);
-        Graphics::Instance()->bindFramebuffer(blood_framebuffer);
+        Graphics::Instance()->BindRenderTarget(blood_tex);
         Graphics::Instance()->StartTextureSpaceRenderingCustom(0, 0, width, height);
         CHECK_FBO_ERROR();
 
-        glClearColor(0.0f,
-                     wet,
-                     0.0f,
-                     0.0f);
+        Graphics::Instance()->SetClearColor(vec4(0.0f,
+                                                 wet,
+                                                 0.0f,
+                                                 0.0f));
         Graphics::Instance()->setColorMask(false, true, false, false);
-        glClear(GL_COLOR_BUFFER_BIT);
+        Graphics::Instance()->ClearColorOnly();
         Graphics::Instance()->setColorMask(true, true, true, true);
 
         Graphics::Instance()->EndTextureSpaceRendering();
-        Graphics::Instance()->PopFramebuffer();
+        Graphics::Instance()->PopRenderTarget();
         blood_tex_mipmap_dirty = true;
     }
 }
@@ -758,12 +731,13 @@ void BloodSurface::AddDecalToTriangles(const std::vector<int> &hit_list, vec3 po
 
 void BloodSurface::StartDrawingToBloodTexture() {
     PROFILER_ZONE(g_profiler_ctx, "BloodSurface::StartDrawingToBloodTexture");
-    PROFILER_ENTER(g_profiler_ctx, "Push framebuffer");
+    PROFILER_ENTER(g_profiler_ctx, "Push render target");
     Graphics *graphics = Graphics::Instance();
-    graphics->PushFramebuffer();
+    graphics->PushRenderTarget();
     PROFILER_LEAVE(g_profiler_ctx);
-    PROFILER_ENTER(g_profiler_ctx, "bindFramebuffer");
-    Graphics::Instance()->bindFramebuffer(blood_framebuffer);
+    PROFILER_ENTER(g_profiler_ctx, "BindRenderTarget");
+    // (Overgrowth Online stage 5.0: after a ping-pong swap, the new blood_tex)
+    graphics->BindRenderTarget(blood_tex);
     PROFILER_LEAVE(g_profiler_ctx);
     PROFILER_ENTER(g_profiler_ctx, "StartTextureSpaceRenderingCustom");
     int width = Textures::Instance()->getWidth(blood_tex);
@@ -786,7 +760,7 @@ void BloodSurface::EndDrawingToBloodTexture() {
     CHECK_GL_ERROR();
     Graphics::Instance()->EndTextureSpaceRendering();
     CHECK_GL_ERROR();
-    Graphics::Instance()->PopFramebuffer();
+    Graphics::Instance()->PopRenderTarget();
 }
 
 void BloodSurface::Ignite() {
@@ -794,7 +768,6 @@ void BloodSurface::Ignite() {
     if (framebuffer_created) {
         CHECK_GL_ERROR();
         std::swap(blood_tex, blood_work_tex);
-        std::swap(blood_framebuffer, blood_work_framebuffer);
         StartDrawingToBloodTexture();
         Graphics::Instance()->setBlend(false);
         Graphics::Instance()->SetBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -831,7 +804,6 @@ void BloodSurface::Extinguish() {
     PROFILER_GPU_ZONE(g_profiler_ctx, "BloodSurface::Extinguish");
     if (framebuffer_created) {
         std::swap(blood_tex, blood_work_tex);
-        std::swap(blood_framebuffer, blood_work_framebuffer);
         StartDrawingToBloodTexture();
         Graphics::Instance()->setBlend(false);
         Graphics::Instance()->SetBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

@@ -526,11 +526,10 @@ void DetailObjectSurface::Draw(const mat4& transform, DetailObjectShaderType sha
     // over path and blood decals has always looked. Samplers get their own unit at
     // link now (an empty one here: grass went dark), so it's pointed back at 0
     shaders->SetUniformInt(shaders->GetTexUniform(TEX_DECAL_COLOR), 0);
-    if (light_probe_collection->light_probe_buffer_object_id != -1) {
+    if (light_probe_collection->light_probe_texture_buffer.valid()) {
         shaders->SetUniformInt("num_tetrahedra", light_probe_collection->ShaderNumTetrahedra());
         shaders->SetUniformInt("num_light_probes", light_probe_collection->ShaderNumLightProbes());
         shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_COLOR_BUFFER), TEX_AMBIENT_COLOR_BUFFER);
-        glBindBuffer(GL_TEXTURE_BUFFER, light_probe_collection->light_probe_buffer_object_id);
     }
 
     scenegraph_->BindLights(batch.shader_id);
@@ -621,7 +620,7 @@ void DetailObjectSurface::Draw(const mat4& transform, DetailObjectShaderType sha
         static int ubo_batch_size_multiplier = 1;
         static GLint max_ubo_size = -1;
         if (max_ubo_size == -1) {
-            glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &max_ubo_size);
+            max_ubo_size = graphics->MaxUniformBlockSize();
 
             if (max_ubo_size >= 131072) {
                 ubo_batch_size_multiplier = 8;
@@ -641,7 +640,6 @@ void DetailObjectSurface::Draw(const mat4& transform, DetailObjectShaderType sha
         {
             PROFILER_ZONE(g_profiler_ctx, "Issue draw calls");
             for (int i = 0, len = draw_detail_instances.size(); i < len; i += kBatchSize) {
-                glUniformBlockBinding(shaders->programs[shader_id].gl_program, instance_block_index, 0);
                 int to_draw = min(kBatchSize, len - i);
                 if (indices[0] != GL_INVALID_INDEX) {
                     memcpy(&transforms[0], &draw_detail_instance_transforms[i], to_draw * sizeof(mat4));
@@ -652,7 +650,8 @@ void DetailObjectSurface::Draw(const mat4& transform, DetailObjectShaderType sha
 
                 // Copying over the whole block because fields aren't contiguous (struct of arrays), so at best can only save the final field's gap until the end of the buffer
                 detail_object_instance_buffer.Fill(block_size, blockBuffer);
-                glBindBufferRange(GL_UNIFORM_BUFFER, 0, detail_object_instance_buffer.gl_id, detail_object_instance_buffer.offset, detail_object_instance_buffer.next_offset - detail_object_instance_buffer.offset);
+                // (Overgrowth Online stage 5.0: InstanceInfo gets UBO_INSTANCE_INFO at link)
+                graphics->BindUniformRing(UBO_INSTANCE_INFO, detail_object_instance_buffer);
 
                 CHECK_GL_ERROR();
                 graphics->DrawElementsInstanced(GL_TRIANGLES, bm.instance_num_faces, GL_UNSIGNED_INT, 0, to_draw);

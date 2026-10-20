@@ -438,9 +438,7 @@ void PushGPUProfileRange(const char* cstr) {
 #endif
 
 #ifdef GLDEBUG
-    if (GLAD_GL_KHR_debug) {
-        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, cstr);
-    }
+    Graphics::Instance()->PushDebugGroup(cstr);
 #endif  // GLDEBUG
 }
 
@@ -450,9 +448,7 @@ void PopGPUProfileRange() {
 #endif
 
 #ifdef GLDEBUG
-    if (GLAD_GL_KHR_debug) {
-        glPopDebugGroup();
-    }
+    Graphics::Instance()->PopDebugGroup();
 #endif  // GLDEBUG
 }
 
@@ -2349,31 +2345,17 @@ static const int kHistogramBuckets = 256;
 static const int kHistogramRes = 128;
 static const bool kDrawHistogram = false;
 
-struct FramebufferObject {
-    GLuint id;
-    TextureRef bound_tex;
-};
-
 static void CreateHistogram(const TextureRef& color_tex) {
     Shaders* shaders = Shaders::Instance();
     Textures* textures = Textures::Instance();
     Graphics* graphics = Graphics::Instance();
 
-    static FramebufferObject framebuffer;
     static int shader_id;
     // static int buckets_uniform_id;
     static VBOContainer pixel_vbo;
     if (!histogram_tex.valid()) {
         histogram_tex = textures->makeTexture(kHistogramBuckets, 1, GL_RGBA16F, GL_RGBA);
         textures->SetTextureName(histogram_tex, "Histogram");
-        graphics->genFramebuffers(&framebuffer.id, "histogram");
-        CHECK_GL_ERROR();
-        graphics->PushFramebuffer();
-        graphics->RenderFramebufferToTexture(framebuffer.id, histogram_tex);
-        CHECK_GL_ERROR();
-        framebuffer.bound_tex = histogram_tex;
-        graphics->PopFramebuffer();
-        CHECK_GL_ERROR();
         shader_id = shaders->returnProgram("histogram_create");
         shaders->setProgram(shader_id);
         CHECK_GL_ERROR();
@@ -2402,15 +2384,15 @@ static void CreateHistogram(const TextureRef& color_tex) {
     gl_state.blend_dst = GL_ONE;
     graphics->setGLState(gl_state);
     CHECK_GL_ERROR();
-    graphics->PushFramebuffer();
+    graphics->PushRenderTarget();
     CHECK_GL_ERROR();
-    graphics->bindFramebuffer(framebuffer.id);
+    graphics->BindRenderTarget(histogram_tex);
     CHECK_GL_ERROR();
     shaders->setProgram(shader_id);
     textures->bindTexture(color_tex);
 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    graphics->SetClearColor(vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    graphics->ClearColorOnly();
     CHECK_GL_ERROR();
     // Overgrowth Online (GL 4.6 stage 2.4): one texel uv per point
     static VertexLayout layout;
@@ -2420,14 +2402,14 @@ static void CreateHistogram(const TextureRef& color_tex) {
     VBOContainer* vbos[1] = {&pixel_vbo};
     graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
     CHECK_GL_ERROR();
-    glPointSize(1);
+    graphics->SetPointSize(1.0f);
     graphics->DrawArrays(GL_POINTS, 0, kHistogramRes * kHistogramRes);
     graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
     CHECK_GL_ERROR();
 
     graphics->BindArrayVBO(0);
-    graphics->PopFramebuffer();
+    graphics->PopRenderTarget();
     graphics->PopViewport();
 }
 
@@ -2476,7 +2458,7 @@ static void DrawHistogram() {
     }
     VBOContainer* vbos[1] = {&vbo};
     graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
-    glLineWidth(1);
+    graphics->SetLineWidth(1);
     graphics->DrawArrays(GL_LINES, 0, kHistogramBuckets * 2);
     graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
@@ -2513,7 +2495,7 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
     Camera* camera = ActiveCameras::Get();
 
     PROFILER_GPU_ZONE(g_profiler_ctx, "Apply post effects");
-    graphics->PopFramebuffer();
+    graphics->PopRenderTarget();
 
     if (graphics->multisample_framebuffer_exists) {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Blit MSAA color buffer");
@@ -2542,7 +2524,7 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
         if (drawing_viewport != Engine::kViewport) {
             graphics->setViewport(0, 0, graphics->window_dims[0], graphics->window_dims[1]);
         } else {
-            glViewport(0, 0, graphics->window_dims[0], graphics->window_dims[1]);
+            graphics->SetViewportOnly(0, 0, graphics->window_dims[0], graphics->window_dims[1]);
         }
         shaders->setProgram(shader_id);
         textures->bindTexture(graphics->screen_color_tex);
@@ -2569,7 +2551,7 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
         static const GLbitfield all_buffers = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
         static const GLenum all_attachments[3] = {GL_COLOR_ATTACHMENT0, GL_DEPTH_ATTACHMENT, GL_STENCIL_ATTACHMENT};
         graphics->PushViewport();
-        graphics->PushFramebuffer();
+        graphics->PushRenderTarget();
 
         graphics->setViewport(0, 0, graphics->render_dims[0], graphics->render_dims[1]);
 
@@ -2825,13 +2807,14 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
             {
                 int shader_id = shaders->returnProgram(post_shader + " #ADD");
                 shaders->setProgram(shader_id);
+                // (Overgrowth Online stage 5.0: into the bloom texture's level 0, its blur
+                // read through a view of levels 1-4: nothing reads what it writes)
                 textures->bindTexture(final_texture, TEX_TONE_MAPPED);
-                textures->bindTexture(temp_texture, TEX_INTERMEDIATE);
-                graphics->BindRenderTarget(final_texture);
-                glTextureBarrier();  // (each pixel reads the texel it writes: defined after a barrier)
+                textures->bindTexture(textures->GetMipView(temp_texture, 1, 4), TEX_INTERMEDIATE);
+                graphics->BindRenderTarget(temp_texture);
                 draw_quad();
             }
-            // final_texture = temp_texture;
+            final_texture = temp_texture;
         }
         const bool kMinZDepth = false;
         if (kMinZDepth) {
@@ -2862,7 +2845,7 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
             graphics->setDepthFunc(GL_LEQUAL);
         }
 
-        graphics->PopFramebuffer();
+        graphics->PopRenderTarget();
         graphics->PopViewport();
 
         // glEnable(GL_SCISSOR_TEST);
@@ -2883,7 +2866,7 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
             memcpy(temp_viewport_dims, graphics->viewport_dim, sizeof(temp_viewport_dims));
             graphics->setViewport((GLint)0.0f, (GLint)0.0f, (GLint)graphics->window_dims[0], (GLint)graphics->window_dims[1]);
             Graphics::Instance()->setScissorTest(true);
-            glScissor(temp_viewport_dims[0], temp_viewport_dims[1], temp_viewport_dims[2], temp_viewport_dims[3]);
+            graphics->SetScissorRect(temp_viewport_dims[0], temp_viewport_dims[1], temp_viewport_dims[2], temp_viewport_dims[3]);
             shaders->SetUniformInt("screen_width", graphics->config_.screen_width());
             shaders->SetUniformInt("screen_height", graphics->config_.screen_height());
             if (g_albedo_only) {
@@ -2930,15 +2913,14 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
     PROFILER_GPU_ZONE(g_profiler_ctx, "Draw scene")
     Graphics* graphics = Graphics::Instance();
     PushGPUProfileRange(__FUNCTION__);
-    GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT};
 
     {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Setup Post Effects")
-        graphics->PushFramebuffer();
+        graphics->PushRenderTarget();
         if (graphics->multisample_framebuffer_exists) {
-            graphics->bindFramebuffer(graphics->multisample_framebuffer);
+            graphics->BindRenderTarget(graphics->multisample_target);
         } else {
-            graphics->bindFramebuffer(graphics->framebuffer);
+            graphics->BindRenderTarget(graphics->scene_target);
         }
         graphics->PushViewport();
     }
@@ -2946,11 +2928,11 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
     // Prepare for drawing
     {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Clear screen");
-        glDrawBuffers(2, buffers);
-        glClearColor(0.0f, 0.0f, 0.0f, 0);
+        graphics->SetDrawBuffers(2);  // (colour and velocity cleared; velocity then written by what moves)
+        graphics->SetClearColor(vec4(0.0f));
         graphics->drawing_shadow = false;
         graphics->Clear(true);
-        glDrawBuffers(1, buffers);
+        graphics->SetDrawBuffers(1);
     }
 
     {
@@ -2995,7 +2977,8 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
     // Draw everything
     {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Draw scenegraph");
-        if (graphics->depth_prepass) {
+        static const bool no_depth_prepass = config["debug_no_depth_prepass"].toNumber<bool>();  // (diagnostics)
+        if (graphics->depth_prepass && !no_depth_prepass) {
             PROFILER_GPU_ZONE(g_profiler_ctx, "Draw depth-only pass");
             mat4 proj = ActiveCameras::Get()->GetProjMatrix();
             mat4 view = ActiveCameras::Get()->GetViewMatrix();
@@ -3007,7 +2990,8 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
 
     if (graphics->multisample_framebuffer_exists) {
         graphics->BlitDepthBuffer();
-        graphics->bindFramebuffer(graphics->multisample_framebuffer);
+        graphics->BindRenderTarget(graphics->multisample_target);
+        graphics->SetDrawBuffers(1);
     }
 
     {
@@ -3028,8 +3012,7 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
         }
         {
             PROFILER_GPU_ZONE(g_profiler_ctx, "Draw debug geometry");
-            GLenum buffers[] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT};
-            glDrawBuffers(2, buffers);
+            graphics->SetDrawBuffers(2);
             DebugDraw::Instance()->Draw();
         }
     }
@@ -3102,7 +3085,7 @@ void Engine::DrawLoadScreen(bool loading_in_progress) {
     CHECK_GL_ERROR();
     graphics->setViewport(0, 0, graphics->window_dims[0], graphics->window_dims[1]);
 
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    graphics->SetClearColor(vec4(0.0f));
     graphics->Clear(true);
 
     vec3 base_color = vec3(min(1.0f, (SDL_TS_GetTicks() - started_loading_time) / 1000.0f));
@@ -3340,8 +3323,7 @@ void Engine::SetViewportForCamera(int which_cam, int num_screens, Graphics::Scre
     graphics->startDraw(active_screen_start, active_screen_end, screen_type);
 }
 
-void Engine::DrawCubeMap(TextureRef cube_map, const vec3& pos, GLuint cube_map_fbo, SceneGraph::SceneDrawType scene_draw_type) {
-    GLuint cube_map_tex_id = Textures::Instance()->returnTexture(cube_map);
+void Engine::DrawCubeMap(TextureRef cube_map, const vec3& pos, SceneGraph::SceneDrawType scene_draw_type) {
     Graphics* graphics = Graphics::Instance();
     CHECK_GL_ERROR();
     // TODO: Why do we have to render the first one twice? Some state is messed up
@@ -3384,18 +3366,10 @@ void Engine::DrawCubeMap(TextureRef cube_map, const vec3& pos, GLuint cube_map_f
         CHECK_GL_ERROR();
         scenegraph_->level->Draw();
 
-        graphics->PushFramebuffer();
-        glBindFramebuffer(GL_FRAMEBUFFER, cube_map_fbo);
+        // (Overgrowth Online stage 5.0: the scene's colour into face i, BlitRenderTarget)
+        PixelRect face(0, 0, 128, 128);
+        graphics->BlitRenderTarget(graphics->scene_target, 0, face, RenderTarget().Color(cube_map, 0, i), 0, face);
         CHECK_GL_ERROR();
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cube_map_tex_id, 0);
-        CHECK_GL_ERROR();
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, graphics->framebuffer);
-        CHECK_GL_ERROR();
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cube_map_fbo);
-        CHECK_GL_ERROR();
-        glBlitFramebuffer(0, 0, 128, 128, 0, 0, 128, 128, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-        CHECK_GL_ERROR();
-        graphics->PopFramebuffer();
 
         camera->flexible_fov = true;
     }
@@ -3591,8 +3565,8 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
         CHECK_GL_ERROR();
         Graphics::Instance()->setColorMask(0, 0, 0, 0);
         graphics->drawing_shadow = true;
-        graphics->PushFramebuffer();
-        graphics->bindFramebuffer(graphics->static_shadow_fb);
+        graphics->PushRenderTarget();
+        graphics->BindRenderTarget(graphics->static_shadow_target);
         graphics->PushViewport();
         Graphics::Instance()->setScissorTest(true);
         float shadow_size = max(bounds[2] - bounds[0], bounds[3] - bounds[1]);
@@ -3625,7 +3599,7 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
         scenegraph->DrawDepthMap(proj_view_matrix, shadow_view_frustum_planes, num_shadow_view_frustum_planes, SceneGraph::kDepthShadow, SceneGraph::kStaticOnly);
         Graphics::Instance()->setScissorTest(false);
         graphics->PopViewport();
-        graphics->PopFramebuffer();
+        graphics->PopRenderTarget();
         graphics->drawing_shadow = false;
         Graphics::Instance()->setColorMask(1, 1, 1, 1);
     }
@@ -3639,24 +3613,20 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
         PROFILER_LEAVE(g_profiler_ctx);
         PROFILER_ENTER(g_profiler_ctx, "Render all cascade tiles");
         const int render_size = 2048;
-        graphics->PushFramebuffer();
+        graphics->PushRenderTarget();
         graphics->PushViewport();
         graphics->SetBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_DST_COLOR);  // Should be equivalent to Photoshop 'lighten' mode
         std::vector<bool> visible_gpu(shadow_cache_indices.size() / 3, false);
         int tri_visible_shader_id = shaders->returnProgram("tri_visible");
-        static GLuint cascade_tri_visible_fb = UINT_MAX;
         static TextureRef cascade_tri_visible_texture_ref;
-        // Make sure framebuffer exists for accumulating visible triangle ids
-        if (cascade_tri_visible_fb == UINT_MAX) {
-            graphics->genFramebuffers(&cascade_tri_visible_fb, "cascade_tri_visible_fb");
-            graphics->bindFramebuffer(cascade_tri_visible_fb);
+        // Make sure the target exists for accumulating visible triangle ids
+        if (!cascade_tri_visible_texture_ref.valid()) {
             cascade_tri_visible_texture_ref = textures->makeTextureColor(render_size, render_size);
             Textures::Instance()->SetTextureName(cascade_tri_visible_texture_ref, "Cascade Triangle Visible");
-            graphics->framebufferColorTexture2D(cascade_tri_visible_texture_ref);
         }
-        graphics->bindFramebuffer(cascade_tri_visible_fb);
+        graphics->BindRenderTarget(cascade_tri_visible_texture_ref);
         graphics->setViewport(0, 0, render_size, render_size);
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        graphics->SetClearColor(vec4(0.0f));
         graphics->Clear(true);
         // Create VBO that just sends one vec2 for each texel in a render_size*render_size image
         static VBOContainer pixel_vbo;
@@ -3672,7 +3642,7 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
             }
             pixel_vbo.Fill(kVBOFloat | kVBOStatic, pixel_data.size() * sizeof(GLfloat), &pixel_data[0]);
         }
-        glPointSize(1);
+        graphics->SetPointSize(1.0f);
         CHECK_GL_ERROR();
         float size[2] = {bounds[2] - bounds[0], bounds[3] - bounds[1]};
         for (int cascade = 0; cascade < 1; ++cascade) {
@@ -3689,7 +3659,7 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
             Camera* camera = ActiveCameras::Get();
             for (int x = 0; x < render_dim[0]; ++x) {
                 for (int y = 0; y < render_dim[1]; ++y) {
-                    graphics->bindFramebuffer(graphics->cascade_shadow_color_fb);
+                    graphics->BindRenderTarget(graphics->cascade_shadow_color_target);
                     graphics->setViewport(0, 0, render_size, render_size);
                     PROFILER_GPU_ZONE(g_profiler_ctx, "Cascade tile");
                     graphics->Clear(true);
@@ -3718,7 +3688,7 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
                     // Calculate visible tris on GPU
                     Graphics::Instance()->setColorMask(1, 1, 1, 1);
                     graphics->setBlend(true);
-                    graphics->bindFramebuffer(cascade_tri_visible_fb);
+                    graphics->BindRenderTarget(cascade_tri_visible_texture_ref);
                     graphics->setViewport(0, 0, render_size, render_size);
                     shaders->setProgram(tri_visible_shader_id);
                     shaders->SetUniformInt("output_width", render_size);
@@ -3742,8 +3712,7 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
                 ::memset(pixels, 0, size * 4);
                 {
                     PROFILER_ZONE_STALL(g_profiler_ctx, "glReadPixels");
-                    glReadPixels(0, 0, render_size, render_size,
-                                 GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, (GLvoid*)pixels);
+                    graphics->ReadPixels(PixelRect(0, 0, render_size, render_size), GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
                 }
                 // std::string path = ImageExport::FindEmptySequentialFile("Screenshots/TriVisible",".png");
                 // ImageExport::SavePNGTransparent(path.c_str(), pixels, render_size, render_size);
@@ -3786,7 +3755,7 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
         PROFILER_ENTER(g_profiler_ctx, "Finalize");
         graphics->setDepthFunc(GL_LEQUAL);
         graphics->PopViewport();
-        graphics->PopFramebuffer();
+        graphics->PopRenderTarget();
 
         if (shadow_cache_indices.empty()) {
             // Add degenerate triangle if shadow cache is empty, so
@@ -3898,8 +3867,8 @@ void GetShadowableTris(SceneGraph* scenegraph) {
     CHECK_GL_ERROR();
     Graphics::Instance()->setColorMask(1, 1, 1, 1);
     graphics->drawing_shadow = true;
-    graphics->PushFramebuffer();
-    graphics->bindFramebuffer(graphics->cascade_shadow_fb);
+    graphics->PushRenderTarget();
+    graphics->BindRenderTarget(graphics->cascade_shadow_target);
     graphics->PushViewport();
     graphics->setViewport(0, 0, graphics->cascade_shadow_res, graphics->cascade_shadow_res);
     Graphics::Instance()->setScissorTest(true);
@@ -3927,7 +3896,7 @@ void GetShadowableTris(SceneGraph* scenegraph) {
 
     Graphics::Instance()->setScissorTest(false);
     graphics->PopViewport();
-    graphics->PopFramebuffer();
+    graphics->PopRenderTarget();
     graphics->drawing_shadow = false;
     Graphics::Instance()->setColorMask(1, 1, 1, 1);
 }
@@ -4105,19 +4074,14 @@ static void UpdateShadowCascades(SceneGraph* scenegraph) {
     CHECK_GL_ERROR();
     Graphics::Instance()->setColorMask(0, 0, 0, 0);
     graphics->drawing_shadow = true;
-    graphics->PushFramebuffer();
-    graphics->bindFramebuffer(graphics->cascade_shadow_fb);
+    graphics->PushRenderTarget();
+    graphics->BindRenderTarget(graphics->cascade_shadow_target);
     graphics->PushViewport();
     graphics->setViewport(0, 0, graphics->cascade_shadow_res, graphics->cascade_shadow_res);
     Graphics::Instance()->setScissorTest(true);
 
     if (g_single_pass_shadow_cascade) {
-        static GLuint shadow_cascade_ubo_id = 0;
-        if (shadow_cascade_ubo_id == 0) {
-            glGenBuffers(1, &shadow_cascade_ubo_id);
-        }
-        glBindBufferBase(GL_UNIFORM_BUFFER, UBO_SHADOW_CASCADES, shadow_cascade_ubo_id);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(ShadowCascadeParams), &shadow_params, GL_DYNAMIC_DRAW);
+        graphics->BindUniformData(UBO_SHADOW_CASCADES, &shadow_params, sizeof(ShadowCascadeParams));  // (the frame ring)
 
         {  // Perform per-frame, per-camera functions, like character LOD and spawning grass
             PROFILER_GPU_ZONE(g_profiler_ctx, "Pre-draw camera");
@@ -4141,8 +4105,7 @@ static void UpdateShadowCascades(SceneGraph* scenegraph) {
             viewport_dim[1] = viewport.y;
             viewport_dim[2] = viewport.z - viewport.x;
             viewport_dim[3] = viewport.w - viewport.y;
-            glScissorIndexed(i, viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
-            glViewportIndexedf(i, (float)viewport_dim[0], (float)viewport_dim[1], (float)viewport_dim[2], (float)viewport_dim[3]);
+            graphics->SetViewportIndexed(i, viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
         }
 
         mat4 proj_view_matrix = shadow_params.proj_view_matrix[0];
@@ -4192,7 +4155,7 @@ static void UpdateShadowCascades(SceneGraph* scenegraph) {
 
     Graphics::Instance()->setScissorTest(false);
     graphics->PopViewport();
-    graphics->PopFramebuffer();
+    graphics->PopRenderTarget();
     graphics->drawing_shadow = false;
     Graphics::Instance()->setColorMask(1, 1, 1, 1);
 }
@@ -4200,30 +4163,22 @@ static void UpdateShadowCascades(SceneGraph* scenegraph) {
 void ReadAverageColorsFromCubemap(vec3* avg_color, TextureRef cubemap) {
     Graphics* graphics = Graphics::Instance();
     for (int i = 0; i < 6; ++i) {
-        static GLuint cube_map_read_fbo = UINT_MAX;
-        graphics->PushFramebuffer();
-        if (cube_map_read_fbo == UINT_MAX) {
-            graphics->genFramebuffers(&cube_map_read_fbo, "cube_map_read_fbo");
-        }
-        graphics->bindFramebuffer(cube_map_read_fbo);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, Textures::Instance()->returnTexture(cubemap), 5);
+        // (Overgrowth Online stage 5.0: face i at mip 5 bound as a target, ReadPixels)
+        graphics->PushRenderTarget();
+        graphics->BindRenderTarget(RenderTarget().Color(cubemap, 5, i));
         GLfloat pixels[4 * 4 * 3];
-        glReadBuffer(GL_COLOR_ATTACHMENT0);
         {
             PROFILER_ZONE_STALL(g_profiler_ctx, "Read pixels")
-            glReadPixels(0, 0, 4, 4, GL_RGB, GL_FLOAT, (GLfloat*)pixels);
+            graphics->ReadPixels(PixelRect(0, 0, 4, 4), GL_RGB, GL_FLOAT, pixels);
         }
         if (ISNAN(pixels[0])) {
             LOGE << "Light probe read fail" << std::endl;
-            LOGE << "cube_map_read_fbo: " << cube_map_read_fbo << std::endl;
             LOGE << "scenegraph_->light_probe_collection.cube_map.id: " << cubemap.id << std::endl;
             LOGE << "pixels[0]: " << pixels[0] << std::endl;
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, Textures::Instance()->returnTexture(cubemap), 5);
-            glReadBuffer(GL_COLOR_ATTACHMENT0);
             {
                 PROFILER_ZONE_STALL(g_profiler_ctx, "Read pixels")
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, Textures::Instance()->returnTexture(cubemap), 4);
-                glReadPixels(0, 0, 4, 4, GL_RGB, GL_FLOAT, (GLfloat*)pixels);
+                graphics->BindRenderTarget(RenderTarget().Color(cubemap, 4, i));
+                graphics->ReadPixels(PixelRect(0, 0, 4, 4), GL_RGB, GL_FLOAT, pixels);
             }
             LOGE << "pixels[0]: " << pixels[0] << std::endl;
         }
@@ -4235,7 +4190,7 @@ void ReadAverageColorsFromCubemap(vec3* avg_color, TextureRef cubemap) {
                 avg_color[i] += vec3(pixels[index + 0], pixels[index + 1], pixels[index + 2]) / 4.0f;
             }
         }
-        graphics->PopFramebuffer();
+        graphics->PopRenderTarget();
     }
 }
 
@@ -4419,7 +4374,7 @@ void Engine::Draw() {
     if (check_save_level_changes_dialog_is_showing || !scenegraph_) {
         // No level loaded, so draw menu instead
         graphics->setViewport(0, 0, graphics->window_dims[0], graphics->window_dims[1]);
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        graphics->SetClearColor(vec4(0.0f));
         graphics->Clear(true);
         if (scriptable_menu_) {
             PROFILER_GPU_ZONE(g_profiler_ctx, "Draw scriptable menu", draw_frame);
@@ -4555,14 +4510,7 @@ void Engine::Draw() {
                     }
 
                     Graphics* graphics = Graphics::Instance();
-                    graphics->PushFramebuffer();
-                    static bool initialized_framebuffers = false;
-                    static GLuint framebuffers[2] = {0, 0};
-                    if (initialized_framebuffers == false) {
-                        Graphics::Instance()->genFramebuffers(&framebuffers[0], "cubemap_1");
-                        Graphics::Instance()->genFramebuffers(&framebuffers[1], "cubemap_2");
-                        initialized_framebuffers = true;
-                    }
+                    graphics->PushRenderTarget();
                     Graphics::Instance()->setColorMask(true, true, true, true);
                     graphics->setViewport(0, 0, 128 * 6, 128);
                     for (size_t tex_index = 0, num_tex = textures.size(); tex_index < num_tex; ++tex_index) {
@@ -4572,25 +4520,10 @@ void Engine::Draw() {
                         int width = 128, height = 128, level = 0;
                         while (width >= 1 && height >= 1) {
                             for (int i = 0; i < 6; ++i) {
-                                glBindFramebuffer(GL_FRAMEBUFFER, framebuffers[0]);
-                                CHECK_GL_ERROR();
-                                int tex_id = Textures::Instance()->returnTexture(tex);
-                                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, tex_id, level);
-                                CHECK_GL_ERROR();
-                                glBindFramebuffer(GL_FRAMEBUFFER, framebuffers[1]);
-                                CHECK_GL_ERROR();
-                                tex_id = Textures::Instance()->returnTexture(scenegraph_->cubemaps);
-                                glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex_id, level, tex_index);
-                                CHECK_GL_ERROR();
-                                glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffers[0]);
-                                CHECK_GL_ERROR();
-                                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffers[1]);
-                                CHECK_GL_ERROR();
+                                // (Overgrowth Online stage 5.0: face i into the layer's i-th slot, BlitRenderTarget)
                                 Graphics::Instance()->setScissorTest(false);
-                                glBlitFramebuffer(0, 0, width, height, width * i, 0, width * i + width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-                                glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-                                CHECK_GL_ERROR();
-                                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+                                graphics->BlitRenderTarget(RenderTarget().Color(tex, level, i), 0, PixelRect(0, 0, width, height),
+                                                           RenderTarget().Color(scenegraph_->cubemaps, level, (int)tex_index), 0, PixelRect(width * i, 0, width, height));
                                 CHECK_GL_ERROR();
                             }
                             ++level;
@@ -4598,7 +4531,7 @@ void Engine::Draw() {
                             height /= 2;
                         }
                     }
-                    graphics->PopFramebuffer();
+                    graphics->PopRenderTarget();
                     scenegraph_->sub_cubemaps = textures;
                 }
             } else {
@@ -4631,16 +4564,14 @@ void Engine::Draw() {
                     bool media_mode = graphics->media_mode();
                     graphics->SetMediaMode(true);
                     static TextureRef cube_map;
-                    static GLuint cube_map_fbo;
                     if (!cube_map.valid()) {
                         CHECK_GL_ERROR();
                         cube_map = Textures::Instance()->makeCubemapTexture(128, 128, GL_RGBA16F, GL_RGBA, Textures::MIPMAPS);
                         Textures::Instance()->SetTextureName(cube_map, "Dynamic Character Cubemap");
-                        graphics->genFramebuffers(&cube_map_fbo, "cube_map_fbo");
                         CHECK_GL_ERROR();
                     }
                     player_obj->rigged_object()->cube_map = cube_map;
-                    DrawCubeMap(cube_map, player_obj->position, cube_map_fbo, SceneGraph::kStaticAndDynamic);
+                    DrawCubeMap(cube_map, player_obj->position, SceneGraph::kStaticAndDynamic);
                     CubemapMipChain(cube_map, Cubemap::SPHERE, NULL);
                     graphics->SetMediaMode(media_mode);
                     player_obj->visible = temp_visible;
@@ -4667,8 +4598,7 @@ void Engine::Draw() {
                     scenegraph_->primary_light.intensity = 1.5f;
                 }
                 // Draw scene from light probe perspective
-                DrawCubeMap(scenegraph_->light_probe_collection.cube_map, probe->pos,
-                            scenegraph_->light_probe_collection.cube_map_fbo, SceneGraph::kStaticOnly);
+                DrawCubeMap(scenegraph_->light_probe_collection.cube_map, probe->pos, SceneGraph::kStaticOnly);
                 // Blur cubemap to represent different levels of roughness
                 CubemapMipChain(scenegraph_->light_probe_collection.cube_map, Cubemap::SPHERE, NULL);
                 // Reset the light intensity
@@ -4704,7 +4634,7 @@ void Engine::Draw() {
         // completely cover everything
         if (num_screens > 1 || graphics->render_output_dims[0] != graphics->window_dims[0] || graphics->render_output_dims[1] != graphics->window_dims[1]) {
             graphics->startDraw(vec2(0.0f, 0.0f), vec2(1.0f, 1.0f), Graphics::kWindow);
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            graphics->SetClearColor(vec4(0.0f));
             graphics->Clear(true);
         }
 
@@ -4788,8 +4718,7 @@ void Engine::Draw() {
                             reflection_obj->cube_map_ref = Textures::Instance()->makeCubemapTexture(128, 128, GL_RGBA16F, GL_RGBA, Textures::MIPMAPS);
                             Textures::Instance()->SetTextureName(reflection_obj->cube_map_ref, "Reflection Capture Cubemap");
                         }
-                        DrawCubeMap(reflection_obj->cube_map_ref, object->GetTranslation(),
-                                    scenegraph_->light_probe_collection.cube_map_fbo, SceneGraph::kStaticOnly);
+                        DrawCubeMap(reflection_obj->cube_map_ref, object->GetTranslation(), SceneGraph::kStaticOnly);
                         // Blur cubemap to represent different levels of roughness
                         CubemapMipChain(reflection_obj->cube_map_ref, Cubemap::SPHERE, NULL);
                         graphics->SetMediaMode(media_mode);

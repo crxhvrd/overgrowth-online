@@ -115,7 +115,7 @@ void GetMipmapLevel(std::vector<GLubyte>& pixels, int target) {
     pixels = last_mipmap;
 }
 
-void ProcessCubeMap(TextureRef src_ref, TextureRef ref, GLuint framebuffer, GLuint framebuffer2) {
+void ProcessCubeMap(TextureRef src_ref, TextureRef ref) {
     Graphics* graphics = Graphics::Instance();
     PROFILER_GPU_ZONE(g_profiler_ctx, "Sky::ProcessCubeMap");
     // Read source cube map
@@ -126,44 +126,36 @@ void ProcessCubeMap(TextureRef src_ref, TextureRef ref, GLuint framebuffer, GLui
         ++mip;
         tex_width /= 2;
     }
-    graphics->PushFramebuffer();
+    graphics->PushRenderTarget();
     for (int i = 0; i < 6; ++i) {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
-        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, Textures::Instance()->returnTexture(src_ref), mip);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer2);
-        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, Textures::Instance()->returnTexture(ref), 0);
-
-        // LOG_ASSERT(glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
-        // LOG_ASSERT(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+        // (Overgrowth Online stage 5.0: face i of the source's mip into face i of the
+        // target's level 0, through BlitRenderTarget)
+        RenderTarget src_face = RenderTarget().Color(src_ref, mip, i);
+        RenderTarget dst_face = RenderTarget().Color(ref, 0, i);
+        graphics->BindRenderTarget(dst_face);
 
         // LOGE << "Process cubemap blit from " << Textures::Instance()->returnTexture(src_ref) << " to " <<  Textures::Instance()->returnTexture(ref) << std::endl;
-        // GLint viewport[4];
-        // glGetIntegerv(GL_VIEWPORT,viewport);
-        // LOGE << "CUrrent viewport " << viewport[0] << ", " << viewport[1] << ", "<< viewport[2] << ", "<< viewport[3] << std::endl;
+        // LOGE << "CUrrent viewport " << graphics->viewport_dim[0] << ", " << graphics->viewport_dim[1] << ", "<< graphics->viewport_dim[2] << ", "<< graphics->viewport_dim[3] << std::endl;
 
-        glClearColor(1, 0, 1, 1);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // (Overgrowth Online stage 5.0: the face has no depth attachment, so this is the
+        // colour-only clear the colour+depth one was)
+        graphics->SetClearColor(vec4(1.0f, 0.0f, 1.0f, 1.0f));
+        graphics->ClearColorOnly();
 
         // Intel actually cares about the scissor test flag in the blit, so we have to disable it.
         Graphics::Instance()->setScissorTest(false);
         // We set these incase someone in the future decides blit should care about these too.
-        glViewport(0, 0, kDiffuseBoxRes, kDiffuseBoxRes);
+        // (Overgrowth Online stage 5.0: through setViewport, so viewport_dim follows; its
+        // scissor rect is the viewport, the test off just above)
+        graphics->SetViewportOnly(0, 0, kDiffuseBoxRes, kDiffuseBoxRes);
         Graphics::Instance()->setDepthTest(false);  // (through the cache: a direct call left it wrong)
 
         CHECK_FBO_ERROR();
         CHECK_GL_ERROR();
-        // glReadBuffer(GL_COLOR_ATTACHMENT0);
-        // glDrawBuffer(GL_COLOR_ATTACHMENT0);
-        glBlitFramebuffer(0, 0, kDiffuseBoxRes, kDiffuseBoxRes, 0, 0, kDiffuseBoxRes, kDiffuseBoxRes, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        PixelRect face_rect(0, 0, kDiffuseBoxRes, kDiffuseBoxRes);
+        graphics->BlitRenderTarget(src_face, 0, face_rect, dst_face, 0, face_rect);
     }
-    graphics->PopFramebuffer();
+    graphics->PopRenderTarget();
     CubemapMipChain(ref, Cubemap::SPHERE, NULL);
     if (Graphics::Instance()->vendor == _intel) {
         CubemapMipChain(ref, Cubemap::SPHERE, NULL);  // This has to be called twice on the brix for some reason
@@ -222,11 +214,7 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
     // Set 90 degree projection matrix
     glm::mat4 proj_mat = ReverseZ(glm::perspective(90.0f, 1.0f, 0.01f, 100.0f));
     CHECK_GL_ERROR();
-    graphics->PushFramebuffer();
-    CHECK_GL_ERROR();
-    graphics->bindFramebuffer(framebuffer);
-    CHECK_GL_ERROR();
-    GLuint cube_map_texture = textures->returnTexture(cube_map_texture_ref);
+    graphics->PushRenderTarget();
     CHECK_GL_ERROR();
     // Overgrowth Online (GL 4.6 stage 2.4): the sky models' layout (dome, land,
     // horizon: position 3, tex coord 2, each in its own buffer)
@@ -240,9 +228,8 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
         CHECK_GL_ERROR();
         glm::mat4 view_mat = CubeFaceTransform(i);
         CHECK_GL_ERROR();
-        // Attach cube map face to framebuffer
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cube_map_texture, 0);
+        // Render into cube map face i (Overgrowth Online stage 5.0: through BindRenderTarget)
+        graphics->BindRenderTarget(RenderTarget().Color(cube_map_texture_ref, 0, i));
         // Set up shader
         int shader_id = shaders->returnProgram(simple_tex_3d_flipped);
         CHECK_GL_ERROR();
@@ -264,8 +251,8 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
         if (sky_texture_ref.valid()) {
             PROFILER_GPU_ZONE(g_profiler_ctx, "Draw skydome");
             CHECK_GL_ERROR();
-            glClearColor(0, 0, 0, 1);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            graphics->SetClearColor(vec4(0.0f, 0.0f, 0.0f, 1.0f));
+            graphics->ClearColorOnly();  // (Overgrowth Online stage 5.0: the face has no depth)
             CHECK_GL_ERROR();
 
             glm::mat4 model_mat(1.0f);
@@ -283,8 +270,8 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
             graphics->ResetVertexAttribArrays();
             CHECK_GL_ERROR();
         } else {
-            glClearColor(0.15f, 0.15f, 0.15f, 1);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            graphics->SetClearColor(vec4(0.15f, 0.15f, 0.15f, 1.0f));
+            graphics->ClearColorOnly();
         }
         CHECK_GL_ERROR();
 
@@ -339,12 +326,12 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
         }
     }
     // Restore old state
-    graphics->PopFramebuffer();
+    graphics->PopRenderTarget();
     graphics->PopViewport();
     Textures::Instance()->bindTexture(cube_map_texture_ref);
     {
         PROFILER_ZONE(g_profiler_ctx, "glGenerateMipmap");
-        glGenerateTextureMipmap(Textures::Instance()->returnTexture(cube_map_texture_ref));  // (DSA: binding doesn't set the active unit)
+        Textures::Instance()->GenerateMipmap(cube_map_texture_ref);  // (DSA: binding doesn't set the active unit)
     }
 }
 
@@ -430,15 +417,6 @@ void Sky::Dispose() {
     sky_land_model.Dispose();
     sky_box_model.Dispose();
     horizon_model.Dispose();
-
-    if (framebuffer != INVALID_FRAMEBUFFER) {
-        Graphics::Instance()->deleteFramebuffer(&framebuffer);
-        framebuffer = INVALID_FRAMEBUFFER;
-    }
-    if (framebuffer2 != INVALID_FRAMEBUFFER) {
-        Graphics::Instance()->deleteFramebuffer(&framebuffer2);
-        framebuffer2 = INVALID_FRAMEBUFFER;
-    }
 }
 
 void Sky::Reload() {
@@ -551,27 +529,18 @@ void Sky::BakeFirstPass() {
         load_resources_queued = false;
     }
     if (!cached) {
-        if (framebuffer == INVALID_FRAMEBUFFER) {
-            Graphics::Instance()->genFramebuffers(&framebuffer, "bake_sky_1");
-            Graphics::Instance()->genFramebuffers(&framebuffer2, "bake_sky_2");
-        }
         displaying_YCOCG_sky = false;
         RenderCubeMap(0, NULL);
-        ProcessCubeMap(cube_map_texture_ref, spec_cube_map_texture_ref, framebuffer, framebuffer2);
+        ProcessCubeMap(cube_map_texture_ref, spec_cube_map_texture_ref);
     }
 }
 
 void Sky::BakeSecondPass(const TextureRef* _land_texture_ref) {
     if (!cached) {
-        if (framebuffer == INVALID_FRAMEBUFFER) {
-            Graphics::Instance()->genFramebuffers(&framebuffer, "second_bake_sky_1");
-            Graphics::Instance()->genFramebuffers(&framebuffer2, "second_bake_sky_2");
-        }
-
         RenderCubeMap(DRAW_LAND, _land_texture_ref);
-        ProcessCubeMap(cube_map_texture_ref, spec_cube_map_texture_ref, framebuffer, framebuffer2);
+        ProcessCubeMap(cube_map_texture_ref, spec_cube_map_texture_ref);
         RenderCubeMap(DRAW_LAND | DRAW_HORIZON, _land_texture_ref);
-        ProcessCubeMap(cube_map_texture_ref, spec_cube_map_texture_ref, framebuffer, framebuffer2);
+        ProcessCubeMap(cube_map_texture_ref, spec_cube_map_texture_ref);
 
         if (!lighting_changed) {
             horizon_texture_ref.clear();
@@ -593,8 +562,6 @@ void Sky::BakeSecondPass(const TextureRef* _land_texture_ref) {
 }
 
 Sky::Sky() : lighting_changed(false),
-             framebuffer(INVALID_FRAMEBUFFER),
-             framebuffer2(INVALID_FRAMEBUFFER),
              sky_rotation(0.0f),
              live_updated(false),
              sky_tint(1.0f),

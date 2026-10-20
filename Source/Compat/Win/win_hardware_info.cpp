@@ -23,6 +23,7 @@
 #include <Compat/hardware_info.h>
 
 #include <Logging/logdata.h>
+#include <Graphics/render_backend.h>
 
 #include <nvapi.h>
 #include <opengl.h>
@@ -62,7 +63,7 @@ unsigned GetWindowsNvidiaDriverInfo() {
 unsigned GetDriverVersion(GLVendor vendor) {
     if (vendor == _nvidia) {
         return GetWindowsNvidiaDriverInfo();
-    } else if (vendor == _ati) {
+    } else if (vendor == _ati && !UseVulkan()) {  // (Vulkan: no GL_VERSION string)
         // ATI driver versions are the end of the GL_VERSION string, e.g.:
         // 2.1.8577 (8577 is the driver version)
         std::string driver_string = (const char*)glGetString(GL_VERSION);

@@ -83,9 +83,7 @@ class BloodSurface {
     int drip_update_delay;
     int dry_delay;
     int dry_steps;
-    bool framebuffer_created;
-    GLuint blood_framebuffer;
-    GLuint blood_work_framebuffer;
+    bool framebuffer_created;  // (the blood textures are made)
     typedef std::list<SurfaceWalker> SurfaceWalkerList;
     SurfaceWalkerList surface_walkers;
     std::vector<CutLine> cut_lines;

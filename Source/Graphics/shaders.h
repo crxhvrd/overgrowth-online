@@ -29,6 +29,7 @@
 #include <Math/vec2.h>
 
 #include <Graphics/textures.h>
+#include <Graphics/render_backend.h>
 #include <Internal/datemodified.h>
 #include <Utility/flat_hash_map.hpp>
 
@@ -205,14 +206,10 @@ class Program {
     void SetUniform(CommonShaderUniformIDs uniformID, const T& value) {
         SetUniform(commonShaderUniforms[uniformID], value);
     }
-    void SetUniform(GLint uniformID, const mat4& value) {
-        // note that this avoids all of the caching that would otherwise happen
-        glUniformMatrix4fv(uniformID, 1, GL_FALSE, value);
-    }
-    void SetUniform(GLint uniformID, const mat3& value) {
-        // note that this avoids all of the caching that would otherwise happen
-        glUniformMatrix3fv(uniformID, 1, GL_FALSE, value);
-    }
+    // (Overgrowth Online stage 5.4: a default-block member goes into the program's
+    // copy, Shaders::ShadowWrite; the program must be the bound one, as before)
+    void SetUniform(GLint uniformID, const mat4& value);
+    void SetUniform(GLint uniformID, const mat3& value);
 };
 
 class Shaders {

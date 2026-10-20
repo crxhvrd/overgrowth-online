@@ -840,7 +840,7 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
             size_t bytes = bones.size() * sizeof(mat4);
             FrameRing::Allocation a = FrameRing::Allocate(bytes, 16);
             memcpy(a.ptr, &bones[0].entries[0], bytes);
-            glBindTextureUnit(TEX_BONES, FrameRing::BufferTexture());
+            textures->BindFrameRingTexels(TEX_BONES);
             shaders->SetUniformInt("bone_base", (int)(a.offset / 16));
         }
 
@@ -884,7 +884,7 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
             }
             shaders->SetUniformVec3Array("ambient_cube_color", ambient_cube_color_vec);
             shaders->SetUniformVec3Array("tint_palette", palette_colors_srgb);
-            if (scenegraph_->light_probe_collection.probe_lighting_enabled && scenegraph_->light_probe_collection.light_probe_buffer_object_id != -1) {
+            if (scenegraph_->light_probe_collection.probe_lighting_enabled && scenegraph_->light_probe_collection.light_probe_texture_buffer.valid()) {
                 shaders->SetUniformInt("num_tetrahedra", scenegraph_->light_probe_collection.ShaderNumTetrahedra());
                 shaders->SetUniformInt("num_light_probes", scenegraph_->light_probe_collection.ShaderNumLightProbes());
                 shaders->SetUniformVec3("grid_bounds_min", scenegraph_->light_probe_collection.grid_lookup.bounds[0]);
@@ -894,7 +894,6 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
                 shaders->SetUniformInt("subdivisions_z", scenegraph_->light_probe_collection.grid_lookup.subdivisions[2]);
                 shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_COLOR_BUFFER), TEX_AMBIENT_COLOR_BUFFER);
                 shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_GRID_DATA), TEX_AMBIENT_GRID_DATA);
-                glBindBuffer(GL_TEXTURE_BUFFER, scenegraph_->light_probe_collection.light_probe_buffer_object_id);
             }
             shaders->SetUniformInt("reflection_capture_num", scenegraph_->ref_cap_matrix.size());
             if (!scenegraph_->ref_cap_matrix.empty()) {
@@ -3541,7 +3540,7 @@ void RiggedObject::AddWaterCube(const mat4& transform) {
         std::swap(blood_surface.blood_tex, blood_surface.blood_work_tex);
         blood_surface.StartDrawingToBloodTexture();
         Graphics::Instance()->setBlend(false);
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        Graphics::Instance()->SetClearColor(vec4(0.0f, 0.0f, 0.0f, 0.0f));
         Graphics::Instance()->Clear(true);
         Shaders* shaders = Shaders::Instance();
         int the_shader = shaders->returnProgram(water_cube);
@@ -3598,13 +3597,16 @@ void RiggedObject::AddWaterCube(const mat4& transform) {
             square_vbo.Fill(kVBOFloat | kVBOStatic, sizeof(data), (void*)data);
             index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(index), (void*)index);
         }
-        square_vbo.Bind();
-        index_vbo.Bind();
-
-        int vert_attrib_id = Shaders::Instance()->returnShaderAttrib("vert_coord", shader_id);
-        Graphics::Instance()->EnableVertexAttribArray(vert_attrib_id);
-        glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+        // Overgrowth Online (stage 5.0): the square through a VertexLayout (vert_coord
+        // only), as BloodSurface's square passes
+        static VertexLayout layout;
+        if (layout.Count() == 0) {
+            layout.Add("vert_coord", 0, 2);
+        }
+        VBOContainer* vbos[1] = {&square_vbo};
+        Graphics::Instance()->BeginVertexLayout(layout, shader_id, vbos, index_vbo.id());
         Graphics::Instance()->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        Graphics::Instance()->EndVertexLayout();
         Graphics::Instance()->ResetVertexAttribArrays();
 
         blood_surface.EndDrawingToBloodTexture();

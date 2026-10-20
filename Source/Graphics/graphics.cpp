@@ -25,6 +25,10 @@
 #include "graphics.h"
 
 #include <map>
+#include <set>
+#include <chrono>
+#include <deque>
+#include <sstream>
 
 #include <Internal/filesystem.h>
 #include <Internal/integer.h>
@@ -43,6 +47,11 @@
 #include <Graphics/frame_timers.h>
 #include <Graphics/models.h>
 #include <Graphics/flares.h>
+#include <Graphics/render_backend.h>
+#include <Graphics/Vulkan/vk_backend.h>
+#include <Graphics/Vulkan/vk_draw.h>
+#include <Graphics/Vulkan/vk_gl.h>
+#include <Graphics/Vulkan/vk_queries.h>
 
 #include <Utility/sdl_util.h>
 #include <Utility/assert.h>
@@ -97,6 +106,8 @@ bool g_s3tc_dxt5_support = false;
 bool g_s3tc_dxt5_textures = true;
 bool g_opengl_callback_error_dialog = true;
 bool g_perform_occlusion_query = false;
+std::string VulkanStartGuard();  // Overgrowth Online (stage 5.8; below)
+static void LogSlowFrame();      // (below)
 bool g_gamma_correct_final_output = true;
 bool g_attrib_envobj_instancing_support = false;
 bool g_attrib_envobj_instancing_enabled = true;
@@ -168,9 +179,36 @@ unsigned int Graphics::GetShadowSize(unsigned int target_shadow_size) {
     return shadow_size;
 }
 
+// Overgrowth Online (GL 4.6 stage 5.4): a render target's attachments by their
+// textures' GL-style names, for the Vulkan draws
+static VkDraw::Target VkTargetOf(const RenderTarget& target) {
+    VkDraw::Target out;
+    Textures* textures = Textures::Instance();
+    for (int i = 0; i < target.num_color && i < VkDraw::Target::kMaxColor; ++i) {
+        if (target.color[i].tex.valid()) {
+            textures->EnsureInVRAM(target.color[i].tex);
+            out.color[i].texture = textures->returnTexture(target.color[i].tex);
+        }
+        out.color[i].level = target.color[i].level;
+        out.color[i].layer = target.color[i].layer;
+    }
+    out.num_color = target.num_color;
+    if (target.depth.tex.valid()) {
+        textures->EnsureInVRAM(target.depth.tex);
+        out.depth.texture = textures->returnTexture(target.depth.tex);
+        out.depth.level = target.depth.level;
+        out.depth.layer = target.depth.layer;
+    }
+    return out;
+}
+
 // Clear the framebuffer
 void Graphics::Clear(const bool clear_color_b) {
     setDepthWrite(true);
+    if (UseVulkan()) {
+        VkDraw::Clear(clear_color_b, true, clear_color_, shadow_state_.scissor_test_, gl_scissor_);
+        return;
+    }
 
     // Only clear the color buffer if will not be overdrawn anyways
     if (clear_color_b)
@@ -182,26 +220,34 @@ void Graphics::Clear(const bool clear_color_b) {
 void Graphics::setPolygonOffset(bool new_polygon_offset) {
     if (new_polygon_offset == shadow_state_.polygon_offset_enable_) return;
     shadow_state_.polygon_offset_enable_ = new_polygon_offset;
-    shadow_state_.polygon_offset_enable_ ? glEnable(GL_POLYGON_OFFSET_FILL) : glDisable(GL_POLYGON_OFFSET_FILL);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+        shadow_state_.polygon_offset_enable_ ? glEnable(GL_POLYGON_OFFSET_FILL) : glDisable(GL_POLYGON_OFFSET_FILL);
+    }
 }
 
 void Graphics::setAlphaToCoverage(const bool alpha_to_coverage) {
     if (alpha_to_coverage == shadow_state_.alpha_to_coverage_) return;
     shadow_state_.alpha_to_coverage_ = alpha_to_coverage;
-    alpha_to_coverage ? glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE) : glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+        alpha_to_coverage ? glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE) : glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+    }
 }
 
 void Graphics::setScissorTest(const bool scissor_test) {
     if (scissor_test == shadow_state_.scissor_test_) return;
     shadow_state_.scissor_test_ = scissor_test;
-    scissor_test ? glEnable(GL_SCISSOR_TEST) : glDisable(GL_SCISSOR_TEST);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+        scissor_test ? glEnable(GL_SCISSOR_TEST) : glDisable(GL_SCISSOR_TEST);
+    }
 }
 
 void Graphics::setColorMask(const bool red, const bool green, const bool blue, const bool alpha) {
     unsigned char mask = (red ? 1 : 0) | (green ? 2 : 0) | (blue ? 4 : 0) | (alpha ? 8 : 0);
     if (mask == shadow_state_.color_mask_) return;
     shadow_state_.color_mask_ = mask;
-    glColorMask(red, green, blue, alpha);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+        glColorMask(red, green, blue, alpha);
+    }
 }
 
 void Graphics::setSimpleShadows(const bool val) {
@@ -237,37 +283,48 @@ void Graphics::PopViewport() {
     viewport_dims_stack.pop();
     for (int i = 0; i < 4; ++i) {
         viewport_dim[i] = dims.entries[i];
+        gl_viewport_[i] = gl_scissor_[i] = viewport_dim[i];
     }
-    glScissor(viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
-    glViewport(viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
+    if (!UseVulkan()) {  // (Vulkan: the draws read gl_viewport_/gl_scissor_)
+        glScissor(viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
+        glViewport(viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
+    }
 }
 
 void Graphics::setBlend(const bool new_blend) {
     GLState& gl_state_ = shadow_state_.gl_state_;
     if (new_blend == gl_state_.blend) return;
     gl_state_.blend = !gl_state_.blend;
-    gl_state_.blend ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+        gl_state_.blend ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
+    }
 }
 
 void Graphics::setDepthTest(const bool new_depth_test) {
     GLState& gl_state_ = shadow_state_.gl_state_;
     if (new_depth_test == gl_state_.depth_test) return;
     gl_state_.depth_test = !gl_state_.depth_test;
-    gl_state_.depth_test ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+        gl_state_.depth_test ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+    }
 }
 
 void Graphics::setCullFace(const bool new_cull_face) {
     GLState& gl_state_ = shadow_state_.gl_state_;
     if (new_cull_face == gl_state_.cull_face) return;
     gl_state_.cull_face = !gl_state_.cull_face;
-    gl_state_.cull_face ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+        gl_state_.cull_face ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
+    }
 }
 
 void Graphics::setDepthWrite(const bool new_depth_write) {
     GLState& gl_state_ = shadow_state_.gl_state_;
     if (new_depth_write == gl_state_.depth_write) return;
     gl_state_.depth_write = !gl_state_.depth_write;
-    gl_state_.depth_write ? glDepthMask(1) : glDepthMask(0);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+        gl_state_.depth_write ? glDepthMask(1) : glDepthMask(0);
+    }
 }
 
 void Graphics::setGLState(const GLState& state) {
@@ -276,15 +333,6 @@ void Graphics::setGLState(const GLState& state) {
     setBlend(state.blend);
     setDepthWrite(state.depth_write);
     SetBlendFunc(state.blend_src, state.blend_dst, state.blend_alpha_src, state.blend_alpha_dst);
-}
-
-void Graphics::RenderFramebufferToTexture(GLuint framebuffer, TextureRef texture_ref) {
-    PROFILER_ENTER(g_profiler_ctx, "bindFramebuffer");
-    bindFramebuffer(framebuffer);
-    PROFILER_LEAVE(g_profiler_ctx);
-    PROFILER_ENTER(g_profiler_ctx, "framebufferColorTexture2D");
-    framebufferColorTexture2D(texture_ref);
-    PROFILER_LEAVE(g_profiler_ctx);
 }
 
 void Graphics::StartTextureSpaceRenderingCustom(int x, int y, int width, int height) {
@@ -297,150 +345,479 @@ void Graphics::EndTextureSpaceRendering() {
     PopViewport();
 }
 
-// Framebuffer wrappers
-void Graphics::bindRenderbuffer(GLuint rb) {
-    CHECK_GL_ERROR();
-    glBindRenderbuffer(GL_RENDERBUFFER, rb);
-    CHECK_GL_ERROR();
-}
-
-void Graphics::PushFramebuffer() {
-    fbo_stack.push(curr_framebuffer);
-}
-
-void Graphics::PopFramebuffer() {
-    curr_framebuffer = fbo_stack.top();
-    fbo_stack.pop();
-    bindFramebuffer(curr_framebuffer);
-}
-
-void Graphics::bindFramebuffer(GLuint fb) {
-    curr_framebuffer = fb;
-    CHECK_GL_ERROR();
-    glBindFramebuffer(GL_FRAMEBUFFER, fb);
-    CHECK_GL_ERROR();
-}
-
-void Graphics::framebufferDepthTexture2D(TextureRef t, int mipmap_level) {
-    CHECK_GL_ERROR();
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, Textures::Instance()->returnTexture(t), mipmap_level);
-    CHECK_GL_ERROR();
-}
-
-// #pragma optimize("",off)
-void Graphics::framebufferColorTexture2D(TextureRef t, int mipmap_level) {
-    /*if(Textures::Instance()->IsCompressed(t)){
-        Textures::Instance()->Uncompress(t);
-    }*/
-    PROFILER_ENTER(g_profiler_ctx, "EnsureInVRAM");
-    Textures::Instance()->EnsureInVRAM(t);
-    PROFILER_LEAVE(g_profiler_ctx);
-    CHECK_GL_ERROR();
-    GLuint tex = Textures::Instance()->returnTexture(t);
-    LOGS << "Binding gl texture " << tex << " to framebuffer" << std::endl;
-    if (!t.valid()) {
-        LOGE << "Not valid..." << std::endl;
+// Overgrowth Online (GL 4.6 stages 2.5, 5.0): render targets (see graphics.h)
+bool Graphics::RenderTargetKey::operator==(const RenderTargetKey& o) const {
+    for (int i = 0; i <= RenderTarget::kMaxColor; ++i) {
+        if (names[i] != o.names[i] || levels[i] != o.levels[i] || layers[i] != o.layers[i]) {
+            return false;
+        }
     }
-    // if(!glIsTexture(tex)){
-    //     LOGE << "Not a texture..." << std::endl;
-    // }
-    PROFILER_ENTER(g_profiler_ctx, "glFramebufferTexture2D");
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, mipmap_level);
-    PROFILER_LEAVE(g_profiler_ctx);
-    CHECK_GL_ERROR();
+    return true;
 }
-// #pragma optimize("",on)
 
-void Graphics::BindRenderTarget(TextureRef color, int color_level, TextureRef depth, int depth_level) {
+static void SetDrawBuffersOf(GLuint fbo, int count) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.5)
+        return;
+    }
+    GLenum bufs[RenderTarget::kMaxColor];
+    for (int i = 0; i < RenderTarget::kMaxColor; ++i) {
+        bufs[i] = GL_COLOR_ATTACHMENT0 + i;
+    }
+    if (count > 0) {
+        glNamedFramebufferDrawBuffers(fbo, count, bufs);
+    } else {
+        glNamedFramebufferDrawBuffer(fbo, GL_NONE);
+    }
+}
+
+GLuint Graphics::FramebufferFor(const RenderTarget& target) {
+    if (target.IsWindow()) {
+        return 0;
+    }
     Textures* textures = Textures::Instance();
     RenderTargetKey key;
-    key.color = 0;
-    key.depth = 0;
+    for (int i = 0; i <= RenderTarget::kMaxColor; ++i) {
+        const RenderTarget::Attachment* a = i < RenderTarget::kMaxColor ? (i < target.num_color ? &target.color[i] : NULL) : &target.depth;
+        key.names[i] = 0;
+        key.levels[i] = 0;
+        key.layers[i] = -1;
+        if (a != NULL && a->tex.valid()) {
+            textures->EnsureInVRAM(a->tex);
+            key.names[i] = textures->returnTexture(a->tex);
+            key.levels[i] = a->level;
+            key.layers[i] = a->layer;
+        }
+    }
+    for (const CachedFramebuffer& c : render_targets_) {
+        if (c.key == key) {
+            return c.fbo;
+        }
+    }
+    GLuint fbo = 0;
+    if (UseVulkan()) {  // (Vulkan: stage 5.5)
+        fbo = VkStub::NewId();
+    } else {
+        glCreateFramebuffers(1, &fbo);
+        for (int i = 0; i <= RenderTarget::kMaxColor; ++i) {
+            if (key.names[i] == 0) {
+                continue;
+            }
+            GLenum attachment = i < RenderTarget::kMaxColor ? GL_COLOR_ATTACHMENT0 + i : GL_DEPTH_ATTACHMENT;
+            if (key.layers[i] < 0) {
+                glNamedFramebufferTexture(fbo, attachment, key.names[i], key.levels[i]);
+            } else {
+                glNamedFramebufferTextureLayer(fbo, attachment, key.names[i], key.levels[i], key.layers[i]);
+            }
+        }
+        SetDrawBuffersOf(fbo, target.num_color);
+        glNamedFramebufferReadBuffer(fbo, target.num_color > 0 ? GL_COLOR_ATTACHMENT0 : GL_NONE);
+        GLenum status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE) {
+            LOGE << "Render target incomplete (0x" << std::hex << status << std::dec << "), " << target.num_color << " colour attachment(s)" << std::endl;
+        }
+    }
+    CachedFramebuffer c;
+    c.key = key;
+    c.fbo = fbo;
+    c.draw_count = target.num_color;
+    render_targets_.push_back(c);
+    return fbo;
+}
+
+void Graphics::BindRenderTarget(const RenderTarget& target) {
+    current_target_ = target;
+    current_fbo_ = FramebufferFor(target);
+    if (UseVulkan()) {
+        VkDraw::SetTarget(VkTargetOf(target));
+        VkDraw::SetDrawCount(-1);
+    } else {
+        glBindFramebuffer(GL_FRAMEBUFFER, current_fbo_);
+    }
+    current_draw_count_ = -1;
+    SetDrawBuffers(target.num_color);
+}
+
+void Graphics::BindRenderTarget(TextureRef color, int color_level, TextureRef depth, int depth_level) {
+    RenderTarget target;
     if (color.valid()) {
-        textures->EnsureInVRAM(color);
-        key.color = textures->returnTexture(color);
+        target.Color(color, color_level);
     }
     if (depth.valid()) {
-        textures->EnsureInVRAM(depth);
-        key.depth = textures->returnTexture(depth);
+        target.Depth(depth, depth_level);
     }
-    key.color_level = key.color ? color_level : 0;
-    key.depth_level = key.depth ? depth_level : 0;
-    GLuint fb = 0;
-    for (const std::pair<RenderTargetKey, GLuint>& rt : render_targets_) {
-        if (rt.first == key) {
-            fb = rt.second;
+    BindRenderTarget(target);
+}
+
+void Graphics::BindWindow() {
+    BindRenderTarget(RenderTarget());
+}
+
+void Graphics::PushRenderTarget() {
+    RenderTargetState s;
+    s.target = current_target_;
+    s.draw_count = current_draw_count_;
+    render_target_stack.push(s);
+}
+
+void Graphics::PopRenderTarget() {
+    RenderTargetState s = render_target_stack.top();
+    render_target_stack.pop();
+    BindRenderTarget(s.target);
+    if (s.draw_count >= 0) {
+        SetDrawBuffers(s.draw_count);
+    }
+}
+
+void Graphics::SetDrawBuffers(int count) {
+    if (current_fbo_ == 0) {
+        return;  // (the window draws to its back buffer)
+    }
+    if (count == current_draw_count_) {
+        return;
+    }
+    if (UseVulkan()) {
+        VkDraw::SetDrawCount(count);
+    }
+    for (CachedFramebuffer& c : render_targets_) {
+        if (c.fbo == current_fbo_) {
+            if (c.draw_count != count) {
+                SetDrawBuffersOf(c.fbo, count);
+                c.draw_count = count;
+            }
             break;
         }
     }
-    if (fb == 0) {
-        glCreateFramebuffers(1, &fb);
-        if (key.color) {
-            glNamedFramebufferTexture(fb, GL_COLOR_ATTACHMENT0, key.color, key.color_level);
-        }
-        if (key.depth) {
-            glNamedFramebufferTexture(fb, GL_DEPTH_ATTACHMENT, key.depth, key.depth_level);
-        }
-        render_targets_.push_back(std::make_pair(key, fb));
+    current_draw_count_ = count;
+}
+
+void Graphics::SetClearColor(const vec4& color) {
+    for (int i = 0; i < 4; ++i) {
+        clear_color_[i] = color[i];
     }
-    bindFramebuffer(fb);
+    if (UseVulkan()) {
+        return;
+    }
+    glClearColor(color[0], color[1], color[2], color[3]);
+}
+
+void Graphics::BlitRenderTarget(const RenderTarget& src, int src_color, const PixelRect& s,
+                                const RenderTarget& dst, int dst_color, const PixelRect& d,
+                                bool depth, bool linear) {
+    GLuint src_fbo = FramebufferFor(src);
+    GLuint dst_fbo = FramebufferFor(dst);
+    GLbitfield mask = GL_DEPTH_BUFFER_BIT;
+    if (!depth) {
+        mask = GL_COLOR_BUFFER_BIT;
+        if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+            glNamedFramebufferReadBuffer(src_fbo, src_fbo != 0 ? GL_COLOR_ATTACHMENT0 + src_color : GL_BACK);
+            glNamedFramebufferDrawBuffer(dst_fbo, dst_fbo != 0 ? GL_COLOR_ATTACHMENT0 + dst_color : GL_BACK);
+        }
+        for (CachedFramebuffer& c : render_targets_) {
+            if (c.fbo == dst_fbo) {
+                c.draw_count = -1;  // (set again on its next bind)
+            }
+        }
+        if (dst_fbo == current_fbo_) {
+            current_draw_count_ = -1;
+        }
+    }
+    if (UseVulkan()) {
+        const int sr[4] = {s.x, s.y, s.x + s.w, s.y + s.h};
+        const int dr[4] = {d.x, d.y, d.x + d.w, d.y + d.h};
+        VkDraw::Blit(VkTargetOf(src), src_color, sr, VkTargetOf(dst), dst_color, dr, depth, linear);
+        return;
+    }
+    bool scissor = shadow_state_.scissor_test_;
+    setScissorTest(false);  // (a blit is clipped by the scissor box otherwise)
+    if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+        glBlitNamedFramebuffer(src_fbo, dst_fbo, s.x, s.y, s.x + s.w, s.y + s.h, d.x, d.y, d.x + d.w, d.y + d.h,
+                               mask, (linear && !depth) ? GL_LINEAR : GL_NEAREST);
+    }
+    setScissorTest(scissor);
+    if (!depth && src_fbo != 0 && !UseVulkan()) {  // (Vulkan: stage 5.5)
+        glNamedFramebufferReadBuffer(src_fbo, GL_COLOR_ATTACHMENT0);
+    }
+    if (dst_fbo == current_fbo_ && current_draw_count_ < 0) {
+        SetDrawBuffers(current_target_.num_color);
+    }
+}
+
+void Graphics::ResolveMultisample() {
+    BlitColorBuffer();
+    BlitDepthBuffer();
+}
+
+// The bytes glReadPixels writes per pixel (what the Vulkan stub zero-fills)
+static size_t ReadPixelBytes(GLenum format, GLenum type) {
+    switch (type) {
+        case GL_UNSIGNED_INT_8_8_8_8:
+        case GL_UNSIGNED_INT_8_8_8_8_REV:
+        case GL_UNSIGNED_INT_2_10_10_10_REV:
+        case GL_UNSIGNED_INT_10F_11F_11F_REV:
+        case GL_UNSIGNED_INT_5_9_9_9_REV:
+        case GL_UNSIGNED_INT_24_8:
+            return 4;
+        case GL_UNSIGNED_SHORT_5_6_5:
+        case GL_UNSIGNED_SHORT_4_4_4_4:
+        case GL_UNSIGNED_SHORT_4_4_4_4_REV:
+        case GL_UNSIGNED_SHORT_5_5_5_1:
+        case GL_UNSIGNED_SHORT_1_5_5_5_REV:
+            return 2;
+        case GL_FLOAT_32_UNSIGNED_INT_24_8_REV:
+            return 8;
+    }
+    size_t components = 4;
+    switch (format) {
+        case GL_RED:
+        case GL_GREEN:
+        case GL_BLUE:
+        case GL_RED_INTEGER:
+        case GL_DEPTH_COMPONENT:
+        case GL_STENCIL_INDEX:
+            components = 1;
+            break;
+        case GL_RG:
+        case GL_RG_INTEGER:
+            components = 2;
+            break;
+        case GL_RGB:
+        case GL_BGR:
+        case GL_RGB_INTEGER:
+        case GL_BGR_INTEGER:
+            components = 3;
+            break;
+    }
+    switch (type) {
+        case GL_UNSIGNED_BYTE:
+        case GL_BYTE:
+            return components;
+        case GL_UNSIGNED_SHORT:
+        case GL_SHORT:
+        case GL_HALF_FLOAT:
+            return components * 2;
+        default:
+            return components * 4;  // (GL_FLOAT, GL_INT, GL_UNSIGNED_INT)
+    }
+}
+
+void Graphics::ReadPixels(const PixelRect& r, GLenum format, GLenum type, void* out, int color) {
+    if (UseVulkan()) {
+        if (r.w > 0 && r.h > 0) {
+            size_t row = (size_t)r.w * ReadPixelBytes(format, type);
+            size_t stride = (row + 3) & ~(size_t)3;  // (GL_PACK_ALIGNMENT: 4, never changed)
+            VkDraw::ReadPixels(r.x, r.y, r.w, r.h, format, type, out, stride * (size_t)(r.h - 1) + row, color);
+        }
+        return;
+    }
+    glNamedFramebufferReadBuffer(current_fbo_, current_fbo_ != 0 ? GL_COLOR_ATTACHMENT0 + color : GL_BACK);
+    glReadPixels(r.x, r.y, r.w, r.h, format, type, out);
+}
+
+void Graphics::BindUniformRing(int binding, const UniformRingBuffer& ring) {
+    if (UseVulkan()) {
+        VkDraw::SetUniformBuffer(binding, ring.gl_id, ring.offset, ring.next_offset - ring.offset);
+        return;
+    }
+    glBindBufferRange(GL_UNIFORM_BUFFER, binding, ring.gl_id, ring.offset, ring.next_offset - ring.offset);
+}
+
+void Graphics::BindUniformData(int binding, const void* data, size_t size) {
+    GLint align = 256;
+    GLVK(GetIntegerv)(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
+    FrameRing::Allocation a = FrameRing::Allocate(size, (size_t)align);
+    memcpy(a.ptr, data, size);
+    if (UseVulkan()) {
+        VkDraw::SetUniformBuffer(binding, a.buffer, a.offset, size);
+    } else {
+        glBindBufferRange(GL_UNIFORM_BUFFER, binding, a.buffer, a.offset, size);
+    }
+}
+
+int Graphics::MaxUniformBlockSize() {
+    if (max_uniform_block_size_ <= 0) {
+        GLVK(GetIntegerv)(GL_MAX_UNIFORM_BLOCK_SIZE, &max_uniform_block_size_);
+    }
+    return max_uniform_block_size_;
+}
+
+int Graphics::MaxTextureBufferSize() {
+    if (max_texture_buffer_size_ <= 0) {
+        GLVK(GetIntegerv)(GL_MAX_TEXTURE_BUFFER_SIZE, &max_texture_buffer_size_);
+    }
+    return max_texture_buffer_size_;
+}
+
+GLuint Graphics::CreateQuery(QueryKind kind) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        return VkQueries::Create(kind == kTimestampQuery);
+    }
+    GLuint q = 0;
+    glCreateQueries(kind == kTimestampQuery ? GL_TIMESTAMP : GL_SAMPLES_PASSED, 1, &q);
+    return q;
+}
+
+void Graphics::DeleteQuery(GLuint query) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        VkQueries::Delete(query);
+        return;
+    }
+    glDeleteQueries(1, &query);
+}
+
+void Graphics::BeginOcclusionQuery(GLuint query) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        VkQueries::BeginOcclusion(query);
+        return;
+    }
+    glBeginQuery(GL_SAMPLES_PASSED, query);
+}
+
+void Graphics::EndOcclusionQuery() {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        VkQueries::EndOcclusion();
+        return;
+    }
+    glEndQuery(GL_SAMPLES_PASSED);
+}
+
+void Graphics::WriteTimestamp(GLuint query) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        VkQueries::WriteTimestamp(query);
+        return;
+    }
+    glQueryCounter(query, GL_TIMESTAMP);
+}
+
+bool Graphics::QueryAvailable(GLuint query) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        return VkQueries::Available(query);
+    }
+    GLuint available = 0;
+    glGetQueryObjectuiv(query, GL_QUERY_RESULT_AVAILABLE, &available);
+    return available != 0;
+}
+
+uint64_t Graphics::QueryResult(GLuint query) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        return VkQueries::Result(query);
+    }
+    GLuint64 result = 0;
+    glGetQueryObjectui64v(query, GL_QUERY_RESULT, &result);
+    return (uint64_t)result;
+}
+
+void Graphics::PushDebugGroup(const char* name) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        VkBackend::BeginLabel(name);
+        return;
+    }
+    if (GLAD_GL_VERSION_4_3 || GLAD_GL_KHR_debug) {
+        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, name);
+    }
+}
+
+void Graphics::PopDebugGroup() {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        VkBackend::EndLabel();
+        return;
+    }
+    if (GLAD_GL_VERSION_4_3 || GLAD_GL_KHR_debug) {
+        glPopDebugGroup();
+    }
+}
+
+void Graphics::SetWireframe(bool wireframe) {
+    if (wireframe != wireframe_) {
+        if (!UseVulkan()) {  // (Vulkan: the draw state's)
+            glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
+        }
+        wireframe_ = wireframe;
+    }
+}
+
+void Graphics::SetPointSize(float size) {
+    if (size != point_size_) {
+        if (!UseVulkan()) {  // (Vulkan: the shaders write gl_PointSize)
+            glPointSize(size);
+        }
+        point_size_ = size;
+    }
+}
+
+void Graphics::SetScissorRect(int x, int y, int width, int height) {
+    gl_scissor_[0] = x;
+    gl_scissor_[1] = y;
+    gl_scissor_[2] = width;
+    gl_scissor_[3] = height;
+    if (UseVulkan()) {
+        return;
+    }
+    glScissor(x, y, width, height);
+}
+
+void Graphics::SetViewportOnly(int x, int y, int width, int height) {
+    gl_viewport_[0] = x;
+    gl_viewport_[1] = y;
+    gl_viewport_[2] = width;
+    gl_viewport_[3] = height;
+    if (UseVulkan()) {
+        return;
+    }
+    glViewport(x, y, width, height);
+}
+
+void Graphics::SetViewportIndexed(int index, int x, int y, int width, int height) {
+    if (index == 0) {
+        gl_viewport_[0] = gl_scissor_[0] = x;
+        gl_viewport_[1] = gl_scissor_[1] = y;
+        gl_viewport_[2] = gl_scissor_[2] = width;
+        gl_viewport_[3] = gl_scissor_[3] = height;
+    }
+    if (UseVulkan()) {  // (Vulkan: viewport 0 only, stage 5.5)
+        return;
+    }
+    glScissorIndexed(index, x, y, width, height);
+    glViewportIndexedf(index, (float)x, (float)y, (float)width, (float)height);
+}
+
+void Graphics::ClearColorOnly() {
+    if (UseVulkan()) {
+        VkDraw::Clear(true, false, clear_color_, shadow_state_.scissor_test_, gl_scissor_);
+        return;
+    }
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void Graphics::Flush() {
+    if (UseVulkan()) {  // (Vulkan: stage 5.5)
+        return;
+    }
+    glFlush();
 }
 
 void Graphics::ForgetRenderTargets(GLuint texture_name) {
     for (size_t i = 0; i < render_targets_.size();) {
-        if (render_targets_[i].first.color == texture_name || render_targets_[i].first.depth == texture_name) {
-            if (curr_framebuffer == render_targets_[i].second) {
-                bindFramebuffer(0);
+        bool uses = false;
+        for (int a = 0; a <= RenderTarget::kMaxColor; ++a) {
+            uses = uses || render_targets_[i].key.names[a] == texture_name;
+        }
+        if (uses) {
+            if (current_fbo_ == render_targets_[i].fbo) {
+                if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                }
+                current_fbo_ = 0;
+                current_target_ = RenderTarget();
             }
-            glDeleteFramebuffers(1, &render_targets_[i].second);
+            if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+                glDeleteFramebuffers(1, &render_targets_[i].fbo);
+            }
             render_targets_[i] = render_targets_.back();
             render_targets_.pop_back();
         } else {
             ++i;
         }
     }
-}
-
-void Graphics::genRenderbuffers(GLuint* rb) {
-    CHECK_GL_ERROR();
-    glGenRenderbuffers(1, rb);
-    CHECK_GL_ERROR();
-}
-
-void Graphics::genFramebuffers(GLuint* fb, const char* human_name) {
-    CHECK_GL_ERROR();
-    glGenFramebuffers(1, fb);
-    framebuffernames[*fb] = std::string(human_name);
-
-    LOGI << "Created framebuffer: " << *fb << " " << framebuffernames[*fb] << std::endl;
-    CHECK_GL_ERROR();
-}
-
-void Graphics::deleteFramebuffer(GLuint* fb) {
-    if (*fb != (GLuint)INVALID_FRAMEBUFFER) {
-        CHECK_GL_ERROR();
-        glDeleteFramebuffers(1, fb);
-
-        LOGI << "Deleted framebuffer: " << *fb << " " << framebuffernames[*fb] << std::endl;
-        CHECK_GL_ERROR();
-        *fb = INVALID_FRAMEBUFFER;
-    }
-}
-
-void Graphics::renderbufferStorage(GLuint res) {
-    CHECK_GL_ERROR();
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, res, res);  // (float: reversed-Z)
-    CHECK_GL_ERROR();
-}
-
-void Graphics::framebufferRenderbuffer(GLuint rb) {
-    CHECK_GL_ERROR();
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rb);
-    CHECK_GL_ERROR();
-}
-
-GLenum Graphics::checkFramebufferStatus() {
-    return glCheckFramebufferStatus(GL_FRAMEBUFFER);
 }
 
 void Graphics::BindVBO(int target, int val) {
@@ -494,7 +871,9 @@ void Graphics::BindArrayVBO(int val) {
     LOGS << "Value " << val << std::endl;
     if (vbo_array_bound != val) {
         vbo_array_bound = val;
-        glBindBuffer(GL_ARRAY_BUFFER, val);
+        if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+            glBindBuffer(GL_ARRAY_BUFFER, val);
+        }
     } else {
         LOGS << "Tried to rebind " << val << std::endl;
     }
@@ -506,7 +885,9 @@ void Graphics::BindElementVBO(int val) {
     }
     if (vbo_element_bound != val) {
         vbo_element_bound = val;
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, val);
+        if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, val);
+        }
     }
 }
 
@@ -539,9 +920,11 @@ void Graphics::TakeScreenshot() {
     unsigned char* pixels = new unsigned char[size * 4];
     ::memset(pixels, 0, size * 4);
 
-    // glReadBuffer(GL_COLOR_ATTACHMENT0);
-    glReadPixels(0, 0, width, height,
-                 GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, (GLvoid*)pixels);
+    // (Overgrowth Online stage 5.0: the window's back buffer, through ReadPixels)
+    PushRenderTarget();
+    BindWindow();
+    ReadPixels(PixelRect(0, 0, (int)width, (int)height), GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
+    PopRenderTarget();
 
     if (screenshot_mode == kGameplay) {
         int index3 = 0;
@@ -588,11 +971,19 @@ void Graphics::SwapToScreen() {
         SetMediaMode(pre_screenshot_media_mode_state);
     }
 
-    {
+    if (UseVulkan()) {  // Overgrowth Online (GL 4.6 stage 5.2): the window's frame, flipped
+        PROFILER_ZONE_STALL(g_profiler_ctx, "Vulkan present");
+        VkDraw::Present();
+        LogSlowFrame();
+        if (VkBackend::FramesPresented() == 120) {
+            deletefile(VulkanStartGuard().c_str());  // (it started: see InitScreen)
+        }
+    } else {
         PROFILER_ZONE_STALL(g_profiler_ctx, "SDL_GL_SwapWindow");
         SDL_GL_SwapWindow(sdl_window_);
+        GL_SWAP();
+        LogSlowFrame();
     }
-    GL_SWAP();
     FrameRing::EndFrame();  // Overgrowth Online (GL 4.6 stage 2.3)
 
     if (queued_screenshot) {
@@ -608,8 +999,13 @@ void Graphics::setViewport(const GLint startx, const GLint starty, const GLint e
     viewport_dim[1] = starty;
     viewport_dim[2] = endx - startx;
     viewport_dim[3] = endy - starty;
-    glScissor(viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
-    glViewport(viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
+    for (int i = 0; i < 4; ++i) {
+        gl_viewport_[i] = gl_scissor_[i] = viewport_dim[i];
+    }
+    if (!UseVulkan()) {  // (Vulkan: the draws read gl_viewport_/gl_scissor_)
+        glScissor(viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
+        glViewport(viewport_dim[0], viewport_dim[1], viewport_dim[2], viewport_dim[3]);
+    }
 }
 
 void Graphics::setAdditiveBlend(const bool additive) {
@@ -623,7 +1019,9 @@ void Graphics::SetBlendFunc(const int src, const int dst, const int alpha_src, c
     GLState& gl_state_ = shadow_state_.gl_state_;
     if (src != gl_state_.blend_src || dst != gl_state_.blend_dst || alpha_src != gl_state_.blend_alpha_src || alpha_dst != gl_state_.blend_alpha_dst) {
         // glBlendFunc(src,dst);
-        glBlendFuncSeparate(src, dst, alpha_src, alpha_dst);
+        if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+            glBlendFuncSeparate(src, dst, alpha_src, alpha_dst);
+        }
         gl_state_.blend_src = src;
         gl_state_.blend_dst = dst;
         gl_state_.blend_alpha_src = alpha_src;
@@ -642,7 +1040,9 @@ void Graphics::setDepthFunc(const int type) {
             case GL_GREATER: reversed = GL_LESS; break;
             case GL_GEQUAL: reversed = GL_LEQUAL; break;
         }
-        glDepthFunc(reversed);
+        if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+            glDepthFunc(reversed);
+        }
         shadow_state_.depth_func_type_ = type;
         shadow_state_.depth_func_unset_ = false;
     }
@@ -667,9 +1067,12 @@ Graphics::Graphics() : gl_lib_loaded_(false),
                        active_vertex_attrib_arrays(0),
                        wanted_vertex_attrib_arrays(0),
                        max_vertex_attrib_arrays(0),
-                       cascade_shadow_fb((GLuint)INVALID_FRAMEBUFFER),
-                       static_shadow_fb((GLuint)INVALID_FRAMEBUFFER),
-                       cascade_shadow_color_fb((GLuint)INVALID_FRAMEBUFFER),
+                       current_fbo_(0),
+                       current_draw_count_(-1),
+                       point_size_(-1.0f),
+                       wireframe_(false),
+                       max_uniform_block_size_(0),
+                       max_texture_buffer_size_(0),
                        shader("post") {
     old_render_dims[0] = 0;
     old_render_dims[1] = 0;
@@ -720,6 +1123,9 @@ void Graphics::Dispose() {
     post_effects.temp_screen_tex.clear();
     post_effects.tone_mapped_tex.clear();
 
+    if (UseVulkan()) {
+        VkBackend::Shutdown();  // (before the window: its surface)
+    }
     if (gl_context) {
         SDL_GL_DeleteContext(gl_context);
         gl_context = NULL;
@@ -755,6 +1161,9 @@ const char* glErrorString(GLenum errCode) {
 }
 
 bool CheckGLError(int line, const char* file, const char* exterrmsg) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        return false;
+    }
     GLenum errCode;
     const char* errString;
     errCode = glGetError();
@@ -780,6 +1189,9 @@ bool CheckGLError(int line, const char* file, const char* exterrmsg) {
 }
 
 bool CheckGLErrorStr(char* output, unsigned length) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        return false;
+    }
     GLenum errCode;
     const char* errString;
     errCode = glGetError();
@@ -792,6 +1204,9 @@ bool CheckGLErrorStr(char* output, unsigned length) {
 }
 
 void CheckFBOError(int line, const char* file) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.5)
+        return;
+    }
     if (!glCheckFramebufferStatus) {
         return;
     }
@@ -847,31 +1262,17 @@ void Graphics::BlitDepthBuffer() {
     state.cull_face = false;
     setGLState(state);
     // The above code is here to fix a mysterious problem
-    GLint depth_attachment_object_type[2];
-    GLint depth_attachment_object_name[2];
-    bindFramebuffer(multisample_framebuffer);
-    glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &depth_attachment_object_type[0]);
-    glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &depth_attachment_object_name[0]);
-    bindFramebuffer(framebuffer);
-    glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &depth_attachment_object_type[1]);
-    glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &depth_attachment_object_name[1]);
-    CHECK_FBO_ERROR();
-    CHECK_GL_ERROR();
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, multisample_framebuffer);
-    CHECK_FBO_ERROR();
-    CHECK_GL_ERROR();
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-    CHECK_FBO_ERROR();
-    CHECK_GL_ERROR();
-    glBlitFramebuffer(0, 0, render_dims[0], render_dims[1], 0, 0, render_dims[0], render_dims[1], GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-    CHECK_FBO_ERROR();
-    CHECK_GL_ERROR();
-    glBindFramebuffer(GL_FRAMEBUFFER, curr_framebuffer);
-    CHECK_FBO_ERROR();
-    CHECK_GL_ERROR();
+    // (Overgrowth Online stage 5.0: through BlitRenderTarget)
+    PixelRect all(0, 0, render_dims[0], render_dims[1]);
+    BlitRenderTarget(multisample_target, 0, all, scene_target, 0, all, true);
+    Shaders::Instance()->noProgram();
 }
 
 static void ApplyVsync(bool val) {
+    if (UseVulkan()) {  // (a present mode: the swapchain is made again)
+        VkBackend::SetVsync(val);
+        return;
+    }
     // Set VSync
     if (val) {
         /* try late-swap-tearing first. If not supported, try normal vsync. */
@@ -884,16 +1285,25 @@ static void ApplyVsync(bool val) {
 }
 
 void Graphics::SetAnisotropy(float val) {
-    if (GLAD_GL_VERSION_4_6 || GLAD_GL_EXT_texture_filter_anisotropic) {
+    if (UseVulkan() || GLAD_GL_VERSION_4_6 || GLAD_GL_EXT_texture_filter_anisotropic) {
         static float max_anisotropy = -1.0f;
         if (max_anisotropy == -1.0f) {
-            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anisotropy);
+            GLVK(GetFloatv)(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anisotropy);
         }
         // (Textures::ApplyAnisotropy sets it on every texture; this used to also
         // set it on whichever texture happened to be bound)
         config_.SetAnisotropy(min(val, max_anisotropy));
     } else {
         config_.SetAnisotropy(0.0f);
+    }
+}
+
+// The window's size in pixels, on either renderer (Overgrowth Online stage 5.2)
+static void GetDrawableSize(SDL_Window* window, int* w, int* h) {
+    if (UseVulkan()) {
+        VkBackend::GetDrawableSize(window, w, h);
+    } else {
+        SDL_GL_GetDrawableSize(window, w, h);
     }
 }
 
@@ -1041,6 +1451,25 @@ void Graphics::InitScreen() {
         } else {
             LOGI << "Initialized video driver: " << SDL_GetCurrentVideoDriver() << std::endl;
         }
+        // Overgrowth Online (GL 4.6 stage 5): config "renderer" = vulkan (or auto) starts
+        // the Vulkan renderer, OpenGL when it can't start; anything else is OpenGL. (The
+        // GL attributes are set either way: a failed Vulkan start makes a GL window.) A
+        // Vulkan start that never reached its first frames (the game or the driver died
+        // there) makes the next start OpenGL's, saved in the config (stage 5.8)
+        const std::string renderer = config["renderer"].str();
+        bool want_vulkan = renderer == "vulkan" || renderer == "auto";
+        if (want_vulkan && fileexists(VulkanStartGuard().c_str()) == 0) {
+            LOGE << "The last Vulkan start didn't reach its first frames: OpenGL from now on (Settings, Graphics, Renderer)" << std::endl;
+            deletefile(VulkanStartGuard().c_str());
+            config.GetRef("renderer") = std::string("gl");
+            config.Save(GetConfigPath());
+            want_vulkan = false;
+        }
+        if (want_vulkan) {
+            createfile(VulkanStartGuard().c_str());
+        }
+        g_render_backend = want_vulkan && VkBackend::LoadVulkan() ? RenderBackend::kVulkan : RenderBackend::kGL;
+
         // Set GL attributes
         SDL_GL_SetAttributeErrCheck(SDL_GL_RED_SIZE, 8);
         SDL_GL_SetAttributeErrCheck(SDL_GL_GREEN_SIZE, 8);
@@ -1071,7 +1500,7 @@ void Graphics::InitScreen() {
 
         // Create window
         const char* window_title = "Overgrowth Online";
-        uint32_t window_flags = SDL_WINDOW_OPENGL;
+        uint32_t window_flags = 0;  // (and SDL_WINDOW_VULKAN or SDL_WINDOW_OPENGL, below)
 
         int target_monitor = config_.target_monitor();
         if (target_monitor >= config.GetMonitorCount()) {
@@ -1148,11 +1577,39 @@ void Graphics::InitScreen() {
             }
         }
 
-        sdl_window_ = SDL_CreateWindow(
-            window_title,
-            SDL_WINDOWPOS_UNDEFINED_DISPLAY(target_monitor), SDL_WINDOWPOS_UNDEFINED_DISPLAY(target_monitor),
-            window_dims[0], window_dims[1],
-            window_flags);
+        sdl_window_ = NULL;
+        if (UseVulkan()) {
+            sdl_window_ = SDL_CreateWindow(
+                window_title,
+                SDL_WINDOWPOS_UNDEFINED_DISPLAY(target_monitor), SDL_WINDOWPOS_UNDEFINED_DISPLAY(target_monitor),
+                window_dims[0], window_dims[1],
+                window_flags | SDL_WINDOW_VULKAN);
+            // ("vk_validation": 1 the validation layer, 2 with synchronization checks; test runs)
+            if (sdl_window_ == NULL || !VkBackend::Init(sdl_window_, config_.vSync(), config["vk_validation"].toNumber<int>())) {
+                LOGE << "The Vulkan renderer didn't start" << (sdl_window_ ? "" : std::string(" (window: ") + SDL_GetError() + ")") << ": using OpenGL" << std::endl;
+                if (sdl_window_) {
+                    SDL_DestroyWindow(sdl_window_);
+                    sdl_window_ = NULL;
+                }
+                g_render_backend = RenderBackend::kGL;
+            }
+        }
+        if (!UseVulkan()) {
+            if (want_vulkan) {
+                deletefile(VulkanStartGuard().c_str());  // (a clean fallback to GL isn't a crash)
+            }
+            sdl_window_ = SDL_CreateWindow(
+                window_title,
+                SDL_WINDOWPOS_UNDEFINED_DISPLAY(target_monitor), SDL_WINDOWPOS_UNDEFINED_DISPLAY(target_monitor),
+                window_dims[0], window_dims[1],
+                window_flags | SDL_WINDOW_OPENGL);
+        } else {
+            // (the GPU lost or out of reach later: the next start is OpenGL's, stage 5.8)
+            VkBackend::OnFatal([] {
+                config.GetRef("renderer") = std::string("gl");
+                config.Save(GetConfigPath());
+            });
+        }
 
         if (!sdl_window_) {
             const char* sdl_error = SDL_GetError();
@@ -1179,63 +1636,67 @@ void Graphics::InitScreen() {
         }
         LOGI << "Set display mode" << std::endl;
 
-        gl_context = SDL_GL_CreateContext(sdl_window_);
-        if (gl_context == NULL) {
-            LOGE << "OpenGL 4.6 context: " << SDL_GetError() << std::endl;
-            FatalError("Error", "Overgrowth Online needs OpenGL 4.6, which this graphics driver doesn't offer. Update the graphics driver (every GPU since about 2012 has OpenGL 4.6), or hold Shift when starting Overgrowth for the normal game.");
-        }
-        LOGI << "Created OpenGL Context" << std::endl;
-        SDL_GL_GetDrawableSize(sdl_window_, &window_dims[0], &window_dims[1]);
-        // Check what GL context we actually received
-        int data[5];
-        SDL_GL_GetAttribute(SDL_GL_RED_SIZE, &data[0]);
-        SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE, &data[1]);
-        SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE, &data[2]);
-        SDL_GL_GetAttribute(SDL_GL_ALPHA_SIZE, &data[3]);
-        SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE, &data[4]);
-        LOGI << "RGBA bits, depth: " << data[0] << " " << data[1] << " " << data[2] << " " << data[3] << " " << data[4] << std::endl;
-        SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &data[0]);
-        SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &data[1]);
-        SDL_GL_GetAttribute(SDL_GL_MULTISAMPLESAMPLES, &data[2]);
-        if (!data[0]) {
-            FatalError("Error", "Could not create double-buffered OpenGL context");
-        }
-        LOGI << "Anti-aliasing samples: " << data[2] << std::endl;
-        int sdl_gl_major, sdl_gl_minor, sdl_gl_profile_mask;
-        SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &sdl_gl_profile_mask);
-        SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &sdl_gl_major);
-        SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &sdl_gl_minor);
-
-        LOGI << "SDL OpenGL Context Result: " << sdl_gl_major << "." << sdl_gl_minor << " With a " << SDL_GLprofile_string((SDL_GLprofile)sdl_gl_profile_mask) << " profile context" << std::endl;
-
-        // Initialize GLAD
-        if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
-            FatalError("Error", "GLAD error: failed to load OpenGL functions");
-        }
-        LOGI << "GLAD loaded succesfully" << std::endl;
-
-        GL_PERF_INIT();
-
-        GLint gl_major = 0, gl_minor = 0;
-        if (sdl_gl_major >= 3) {
-            glGetIntegerv(GL_MAJOR_VERSION, &gl_major);
-            glGetIntegerv(GL_MINOR_VERSION, &gl_minor);
-
-            LOGI << "OpenGL Self Reported version string: " << glGetString(GL_VERSION) << std::endl;
-            LOGI << "OpenGL Self Reported version values: " << gl_major << "." << gl_minor << std::endl;
-            LOGI << "OpenGL renderer: " << glGetString(GL_RENDERER) << ", vendor: " << glGetString(GL_VENDOR)
-                 << ", GLSL " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
-            LogGPUMemory("at start");
-        } else if (sdl_gl_major >= 2) {
-            LOGI << "OpenGL Self Reported version: " << glGetString(GL_VERSION) << std::endl;
+        if (UseVulkan()) {  // (no GL context)
+            GetDrawableSize(sdl_window_, &window_dims[0], &window_dims[1]);
         } else {
-            LOGI << "OpenGL has no self reporting routine for 1.x contexts." << std::endl;
-        }
+            gl_context = SDL_GL_CreateContext(sdl_window_);
+            if (gl_context == NULL) {
+                LOGE << "OpenGL 4.6 context: " << SDL_GetError() << std::endl;
+                FatalError("Error", "Overgrowth Online needs OpenGL 4.6, which this graphics driver doesn't offer. Update the graphics driver (every GPU since about 2012 has OpenGL 4.6), or hold Shift when starting Overgrowth for the normal game.");
+            }
+            LOGI << "Created OpenGL Context" << std::endl;
+            GetDrawableSize(sdl_window_, &window_dims[0], &window_dims[1]);
+            // Check what GL context we actually received
+            int data[5];
+            SDL_GL_GetAttribute(SDL_GL_RED_SIZE, &data[0]);
+            SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE, &data[1]);
+            SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE, &data[2]);
+            SDL_GL_GetAttribute(SDL_GL_ALPHA_SIZE, &data[3]);
+            SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE, &data[4]);
+            LOGI << "RGBA bits, depth: " << data[0] << " " << data[1] << " " << data[2] << " " << data[3] << " " << data[4] << std::endl;
+            SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &data[0]);
+            SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &data[1]);
+            SDL_GL_GetAttribute(SDL_GL_MULTISAMPLESAMPLES, &data[2]);
+            if (!data[0]) {
+                FatalError("Error", "Could not create double-buffered OpenGL context");
+            }
+            LOGI << "Anti-aliasing samples: " << data[2] << std::endl;
+            int sdl_gl_major, sdl_gl_minor, sdl_gl_profile_mask;
+            SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &sdl_gl_profile_mask);
+            SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &sdl_gl_major);
+            SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &sdl_gl_minor);
 
-        if (GLAD_GL_VERSION_4_6) {
-            LOGI << "Context seems acceptable for running the application, continuing." << std::endl;
-        } else {
-            FatalError("Error", "Overgrowth Online needs OpenGL 4.6, which this graphics driver doesn't offer. Update the graphics driver (every GPU since about 2012 has OpenGL 4.6), or hold Shift when starting Overgrowth for the normal game.");
+            LOGI << "SDL OpenGL Context Result: " << sdl_gl_major << "." << sdl_gl_minor << " With a " << SDL_GLprofile_string((SDL_GLprofile)sdl_gl_profile_mask) << " profile context" << std::endl;
+
+            // Initialize GLAD
+            if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+                FatalError("Error", "GLAD error: failed to load OpenGL functions");
+            }
+            LOGI << "GLAD loaded succesfully" << std::endl;
+
+            GL_PERF_INIT();
+
+            GLint gl_major = 0, gl_minor = 0;
+            if (sdl_gl_major >= 3) {
+                glGetIntegerv(GL_MAJOR_VERSION, &gl_major);
+                glGetIntegerv(GL_MINOR_VERSION, &gl_minor);
+
+                LOGI << "OpenGL Self Reported version string: " << glGetString(GL_VERSION) << std::endl;
+                LOGI << "OpenGL Self Reported version values: " << gl_major << "." << gl_minor << std::endl;
+                LOGI << "OpenGL renderer: " << glGetString(GL_RENDERER) << ", vendor: " << glGetString(GL_VENDOR)
+                     << ", GLSL " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+                LogGPUMemory("at start");
+            } else if (sdl_gl_major >= 2) {
+                LOGI << "OpenGL Self Reported version: " << glGetString(GL_VERSION) << std::endl;
+            } else {
+                LOGI << "OpenGL has no self reporting routine for 1.x contexts." << std::endl;
+            }
+
+            if (GLAD_GL_VERSION_4_6) {
+                LOGI << "Context seems acceptable for running the application, continuing." << std::endl;
+            } else {
+                FatalError("Error", "Overgrowth Online needs OpenGL 4.6, which this graphics driver doesn't offer. Update the graphics driver (every GPU since about 2012 has OpenGL 4.6), or hold Shift when starting Overgrowth for the normal game.");
+            }
         }
 
         DetectAndSetOpenGLFeatureRestrictions();
@@ -1246,64 +1707,71 @@ void Graphics::InitScreen() {
             FatalError("Error", "No support for S3TC DXT5 textures detected. This means either your GPU is too old to run the game, or your drivers are out-of-date");
         }
 
-        // (this was a local of the same name: the setting never reached the callback)
-        const bool gl_debug = config["gl_debug"].toNumber<bool>();
-        g_opengl_callback_error_dialog = config["opengl_callback_error_dialog"].toNumber<bool>() && !gl_debug;
+        if (!UseVulkan()) {  // (Vulkan: the validation layer, "vk_validation")
+            // (this was a local of the same name: the setting never reached the callback)
+            const bool gl_debug = config["gl_debug"].toNumber<bool>();
+            g_opengl_callback_error_dialog = config["opengl_callback_error_dialog"].toNumber<bool>() && !gl_debug;
 
-        if (config["opengl_callback_errors"].toNumber<bool>() || gl_debug) {
-            LOGI << "Activating OpenGL callback errors, [opengl_callback_errors]" << std::endl;
-            if (GLAD_GL_KHR_debug) {
-                // Overgrowth Online: KHR_debug, with debug output on (it never was)
-                glDebugMessageCallback(&arb_debug_callback, NULL);
-                glEnable(GL_DEBUG_OUTPUT);
-                glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-                // A marker of ours, to know the output reaches the callback at all
-                glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, 0x4F4F, GL_DEBUG_SEVERITY_HIGH, -1, "Overgrowth Online: GL debug output check");
-            } else if (GLAD_GL_ARB_debug_output) {
-                glDebugMessageCallbackARB(&arb_debug_callback, NULL);
-                glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-            } else if (GLAD_GL_AMD_debug_output) {
-                glDebugMessageEnableAMD(0, 0, 0, NULL, true);
-                glDebugMessageCallbackAMD(&amd_debug_callback, NULL);
-                // GL_DEBUG_OUTPUT_SYNCHRONOUS is part of the KHR and ARB
-                // extension, but not the AMD one
-                // glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+            if (config["opengl_callback_errors"].toNumber<bool>() || gl_debug) {
+                LOGI << "Activating OpenGL callback errors, [opengl_callback_errors]" << std::endl;
+                if (GLAD_GL_KHR_debug) {
+                    // Overgrowth Online: KHR_debug, with debug output on (it never was)
+                    glDebugMessageCallback(&arb_debug_callback, NULL);
+                    glEnable(GL_DEBUG_OUTPUT);
+                    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+                    // A marker of ours, to know the output reaches the callback at all
+                    glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, 0x4F4F, GL_DEBUG_SEVERITY_HIGH, -1, "Overgrowth Online: GL debug output check");
+                } else if (GLAD_GL_ARB_debug_output) {
+                    glDebugMessageCallbackARB(&arb_debug_callback, NULL);
+                    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+                } else if (GLAD_GL_AMD_debug_output) {
+                    glDebugMessageEnableAMD(0, 0, 0, NULL, true);
+                    glDebugMessageCallbackAMD(&amd_debug_callback, NULL);
+                    // GL_DEBUG_OUTPUT_SYNCHRONOUS is part of the KHR and ARB
+                    // extension, but not the AMD one
+                    // glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+                }
+            } else {
+                LOGI << "Deactivating OpenGL callback errors, [opengl_callback_errors]" << std::endl;
             }
-        } else {
-            LOGI << "Deactivating OpenGL callback errors, [opengl_callback_errors]" << std::endl;
         }
 
         FrameTimers::Init();  // Overgrowth Online: "frame_timers", "gl_debug_groups"
 
-        while (glGetError() != GL_NO_ERROR) {
-            // Throw away GL errors from SDL/GLEW init
-        }
-        CHECK_GL_ERROR();
-        // Determine what framebuffer features are supported
-        if (GLAD_GL_VERSION_3_0 || GLAD_GL_EXT_framebuffer_object || GLAD_GL_ARB_framebuffer_object) {
-        } else {
-            FatalError("Error", "No support for Framebuffer Objects detected");
-        }
-        features_.SetFrameBufferFSAAEnabled(GLAD_GL_VERSION_3_0 || GLAD_GL_EXT_framebuffer_multisample != 0);
-        CHECK_GL_ERROR();
-        // Determine what instanced array features are supported
-        if (GLAD_GL_VERSION_3_3 || GLAD_GL_ARB_instanced_arrays) {
+        if (UseVulkan()) {  // (Vulkan 1.3 has these; vsync and reversed-Z's [0, 1] depth are the backend's)
+            features_.SetFrameBufferFSAAEnabled(true);
             g_attrib_envobj_instancing_support = true;
         } else {
-            g_attrib_envobj_instancing_support = false;
+            while (glGetError() != GL_NO_ERROR) {
+                // Throw away GL errors from SDL/GLEW init
+            }
+            CHECK_GL_ERROR();
+            // Determine what framebuffer features are supported
+            if (GLAD_GL_VERSION_3_0 || GLAD_GL_EXT_framebuffer_object || GLAD_GL_ARB_framebuffer_object) {
+            } else {
+                FatalError("Error", "No support for Framebuffer Objects detected");
+            }
+            features_.SetFrameBufferFSAAEnabled(GLAD_GL_VERSION_3_0 || GLAD_GL_EXT_framebuffer_multisample != 0);
+            CHECK_GL_ERROR();
+            // Determine what instanced array features are supported
+            if (GLAD_GL_VERSION_3_3 || GLAD_GL_ARB_instanced_arrays) {
+                g_attrib_envobj_instancing_support = true;
+            } else {
+                g_attrib_envobj_instancing_support = false;
+            }
+            ApplyVsync(config_.vSync());
+            // Overgrowth Online (GL 4.6 stage 4a): reversed-Z in Vulkan's [0, 1] clip range,
+            // depth 1 at the near plane, cleared to 0 (far), tested GREATER (see reversez.h)
+            glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+            glClearDepth(0.0);
+            glDepthFunc(GL_GREATER);
+            // Clear screen
+            SetClearColor(vec4(0.5f, 0.5f, 0.5f, 0.0f));
+            setViewport(0, 0, window_dims[0], window_dims[1]);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            SDL_GL_SwapWindow(sdl_window_);
+            CHECK_GL_ERROR();
         }
-        ApplyVsync(config_.vSync());
-        // Overgrowth Online (GL 4.6 stage 4a): reversed-Z in Vulkan's [0, 1] clip range,
-        // depth 1 at the near plane, cleared to 0 (far), tested GREATER (see reversez.h)
-        glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
-        glClearDepth(0.0);
-        glDepthFunc(GL_GREATER);
-        // Clear screen
-        glClearColor(0.5f, 0.5f, 0.5f, 0);
-        setViewport(0, 0, window_dims[0], window_dims[1]);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        SDL_GL_SwapWindow(sdl_window_);
-        CHECK_GL_ERROR();
         PROFILER_LEAVE(g_profiler_ctx);
 
         textures->ResetVRAM();
@@ -1313,14 +1781,16 @@ void Graphics::InitScreen() {
         vendor = GetGLVendor();
         SetAnisotropy(config_.anisotropy());
 
-        features_.SetHDREnable(GLAD_GL_VERSION_3_0 || GLAD_GL_ARB_texture_float);
+        features_.SetHDREnable(UseVulkan() || GLAD_GL_VERSION_3_0 || GLAD_GL_ARB_texture_float);
 
         // Set initial GL state so it is in sync with shadow state
-        glDisable(GL_DEPTH_TEST);
-        glDisable(GL_CULL_FACE);
-        glDisable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        if (!UseVulkan()) {
+            glDisable(GL_DEPTH_TEST);
+            glDisable(GL_CULL_FACE);
+            glDisable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        }
 
         shadow_state_.gl_state_.depth_test = false;
         shadow_state_.gl_state_.cull_face = false;
@@ -1331,7 +1801,9 @@ void Graphics::InitScreen() {
         shadow_state_.gl_state_.blend_alpha_dst = GL_ONE_MINUS_SRC_ALPHA;
         shadow_state_.polygon_offset_enable_ = false;
 
-        curr_framebuffer = 0;
+        current_fbo_ = 0;
+        current_target_ = RenderTarget();
+        current_draw_count_ = -1;
 
         drawing_shadow = false;
 
@@ -1341,7 +1813,7 @@ void Graphics::InitScreen() {
 #ifndef __APPLE__  // Why does this not work on Mac OS 10.7.5 core profile?
         int assumed_floats = 32;
         int max_varying_floats;
-        glGetIntegerv(GL_MAX_VARYING_FLOATS, &max_varying_floats);
+        GLVK(GetIntegerv)(GL_MAX_VARYING_FLOATS, &max_varying_floats);
         if (max_varying_floats < assumed_floats) {
             std::ostringstream oss;
             oss << "Only " << max_varying_floats << " varying floats supported, "
@@ -1375,60 +1847,40 @@ void Graphics::InitScreen() {
 
     if (render_dims[0] != old_render_dims[0] || render_dims[1] != old_render_dims[1] || config_.FSAA_samples() != old_FSAA_samples) {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Setting up framebuffers for post effects");
-        PushFramebuffer();
+        PushRenderTarget();
 
+        // (Overgrowth Online stage 5.0: render targets of textures; MSAA as multisample
+        // textures, resolved into the screen textures)
         if (multisample_framebuffer_exists) {
-            deleteFramebuffer(&multisample_framebuffer);
-            glDeleteRenderbuffers(1, &multisample_color);
-            glDeleteRenderbuffers(1, &multisample_depth);
-            glDeleteRenderbuffers(1, &multisample_vel);
-            deleteFramebuffer(&multisample_framebuffer);
+            multisample_target = RenderTarget();
+            multisample_color_tex.clear();
+            multisample_vel_tex.clear();
+            multisample_depth_tex.clear();
             multisample_framebuffer_exists = false;
         }
         if (features_.frame_buffer_fsaa_enabled() && config_.FSAA_samples() > 1) {
-            CHECK_GL_ERROR();
-            genFramebuffers(&multisample_framebuffer, "multisample");
-            bindFramebuffer(multisample_framebuffer);
-
-            CHECK_GL_ERROR();
             int samples = config_.FSAA_samples();
-            glGenRenderbuffers(1, &multisample_color);
-            CHECK_GL_ERROR();
-            glBindRenderbuffer(GL_RENDERBUFFER, multisample_color);
-            CHECK_GL_ERROR();
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, features_.HDR_enable() ? GL_RGBA16F : GL_RGBA, render_dims[0], render_dims[1]);
-            CHECK_GL_ERROR();
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, multisample_color);
-            CHECK_GL_ERROR();
-
-            glGenRenderbuffers(1, &multisample_vel);
-            CHECK_GL_ERROR();
-            glBindRenderbuffer(GL_RENDERBUFFER, multisample_vel);
-            CHECK_GL_ERROR();
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, features_.HDR_enable() ? GL_RGBA16F : GL_RGBA, render_dims[0], render_dims[1]);
-            CHECK_GL_ERROR();
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_RENDERBUFFER, multisample_vel);
-            CHECK_GL_ERROR();
-
-            glGenRenderbuffers(1, &multisample_depth);
-            glBindRenderbuffer(GL_RENDERBUFFER, multisample_depth);
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH_COMPONENT32F, render_dims[0], render_dims[1]);  // (float: reversed-Z)
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, multisample_depth);
+            GLint color_format = features_.HDR_enable() ? GL_RGBA16F : GL_RGBA8;
+            multisample_color_tex = textures->makeMultisampleTexture(render_dims[0], render_dims[1], samples, color_format);
+            textures->SetTextureName(multisample_color_tex, "Post::Multisample Color");
+            multisample_vel_tex = textures->makeMultisampleTexture(render_dims[0], render_dims[1], samples, color_format);
+            textures->SetTextureName(multisample_vel_tex, "Post::Multisample Velocity");
+            multisample_depth_tex = textures->makeMultisampleTexture(render_dims[0], render_dims[1], samples, GL_DEPTH_COMPONENT32F);  // (float: reversed-Z)
+            textures->SetTextureName(multisample_depth_tex, "Post::Multisample Depth");
+            multisample_target = RenderTarget().Color(multisample_color_tex).Color(multisample_vel_tex).Depth(multisample_depth_tex);
+            BindRenderTarget(multisample_target);
             CHECK_GL_ERROR();
             multisample_framebuffer_exists = true;
         }
         if (framebuffer_exists) {
-            deleteFramebuffer(&framebuffer);
+            scene_target = RenderTarget();
             screen_color_tex.clear();
+            screen_vel_tex.clear();
             screen_depth_tex.clear();
-            deleteFramebuffer(&post_effects.post_framebuffer);
             post_effects.temp_screen_tex.clear();
             post_effects.tone_mapped_tex.clear();
-            textures->DeleteUnusedTextures();
         }
-
-        genFramebuffers(&framebuffer, "generic");
-        bindFramebuffer(framebuffer);
+        textures->DeleteUnusedTextures();
 
         screen_color_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], features_.HDR_enable() ? GL_RGBA16F : GL_RGBA, GL_RGBA);
         textures->SetTextureName(screen_color_tex, "Post::Screen Color");
@@ -1437,7 +1889,6 @@ void Graphics::InitScreen() {
         screen_depth_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT);  // (float: reversed-Z)
         textures->SetTextureName(screen_depth_tex, "Post::Screen Depth");
 
-        genFramebuffers(&post_effects.post_framebuffer, "post_effects");
         post_effects.temp_screen_tex = textures->makeRectangularTexture(
             render_dims[0], render_dims[1],
             features().HDR_enable() ? GL_RGBA16F : GL_RGBA, GL_RGBA);
@@ -1448,27 +1899,12 @@ void Graphics::InitScreen() {
             features().HDR_enable() ? GL_RGBA16F : GL_RGBA, GL_RGBA);
         textures->SetTextureName(post_effects.tone_mapped_tex, "Post::Tone-Mapped");
 
-        framebufferColorTexture2D(screen_color_tex);
-        {
-            TextureRef t = screen_vel_tex;
-            Textures::Instance()->EnsureInVRAM(t);
-            CHECK_GL_ERROR();
-            GLuint tex = Textures::Instance()->returnTexture(t);
-            LOGS << "Binding gl texture " << tex << " to framebuffer" << std::endl;
-            if (!t.valid()) {
-                LOGE << "Not valid..." << std::endl;
-            }
-            if (!glIsTexture(tex)) {
-                LOGE << "Not a texture..." << std::endl;
-            }
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, tex, 0);
-        }
-        CHECK_FBO_ERROR();
-        framebufferDepthTexture2D(screen_depth_tex);
+        scene_target = RenderTarget().Color(screen_color_tex).Color(screen_vel_tex).Depth(screen_depth_tex);
+        BindRenderTarget(scene_target);
         CHECK_FBO_ERROR();
         framebuffer_exists = true;
 
-        PopFramebuffer();
+        PopRenderTarget();
     }
 
     SetUpShadowTextures();
@@ -1478,7 +1914,7 @@ void Graphics::InitScreen() {
         noise_ref = Engine::Instance()->GetAssetManager()->LoadSync<TextureAsset>("Data/Textures/noise.tga", PX_NOREDUCE | PX_NOCONVERT, 0x0);
         pure_noise_ref = Engine::Instance()->GetAssetManager()->LoadSync<TextureAsset>("Data/Textures/purenoise_nocompress.tga", PX_NOREDUCE | PX_NOCONVERT, 0x0);
 
-        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_units);
+        GLVK(GetIntegerv)(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_units);
         LOGI << max_texture_units << " texture units supported." << std::endl;
         if (max_texture_units < 16) {
             DisplayError("Warning", "Fewer than 16 texture units supported!");
@@ -1494,11 +1930,11 @@ void Graphics::InitScreen() {
 #endif
 
         GLint param;
-        glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &param);
+        GLVK(GetIntegerv)(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &param);
         LOGI << "GL_MAX_VERTEX_UNIFORM_COMPONENTS: " << param << std::endl;
     }
 
-    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_vertex_attrib_arrays);
+    GLVK(GetIntegerv)(GL_MAX_VERTEX_ATTRIBS, &max_vertex_attrib_arrays);
     old_render_dims[0] = render_dims[0];
     old_render_dims[1] = render_dims[1];
     old_FSAA_samples = config_.FSAA_samples();
@@ -1507,32 +1943,34 @@ void Graphics::InitScreen() {
     settings_changed = true;
     SetSeamlessCubemaps(config_.seamless_cubemaps_);
 
-    if (!glGenVertexArrays) {
-        FatalError("Error", "No support detected for vertex array objects");
-    }
-    // Needed for a core context. Overgrowth Online: one per context; a new one
-    // has every attribute off, so the cache starts over with it
-    if (vao_ == 0 || vao_context_ != gl_context) {
-        glGenVertexArrays(1, &vao_);
-        vao_context_ = gl_context;
-        active_vertex_attrib_arrays = 0;
-        wanted_vertex_attrib_arrays = 0;
-    }
-    glBindVertexArray(vao_);
-    CHECK_GL_ERROR();
+    if (!UseVulkan()) {  // (Vulkan: vertex layouts, stage 5.5)
+        if (!glGenVertexArrays) {
+            FatalError("Error", "No support detected for vertex array objects");
+        }
+        // Needed for a core context. Overgrowth Online: one per context; a new one
+        // has every attribute off, so the cache starts over with it
+        if (vao_ == 0 || vao_context_ != gl_context) {
+            glGenVertexArrays(1, &vao_);
+            vao_context_ = gl_context;
+            active_vertex_attrib_arrays = 0;
+            wanted_vertex_attrib_arrays = 0;
+        }
+        glBindVertexArray(vao_);
+        CHECK_GL_ERROR();
 
-    if (GLAD_GL_VERSION_4_0 || GLAD_GL_ARB_texture_cube_map_array) {
-        LOGI << "GLAD_ARB_texture_cube_map_array is available" << std::endl;
-    } else {
-        LOGI << "GLAD_ARB_texture_cube_map_array is NOT available" << std::endl;
-    }
+        if (GLAD_GL_VERSION_4_0 || GLAD_GL_ARB_texture_cube_map_array) {
+            LOGI << "GLAD_ARB_texture_cube_map_array is available" << std::endl;
+        } else {
+            LOGI << "GLAD_ARB_texture_cube_map_array is NOT available" << std::endl;
+        }
 
-    if (!GLAD_GL_EXT_texture_compression_s3tc) {
-        LOGF << "Missing necessary GL extension: EXT_texture_compression_s3tc" << std::endl;
-    }
+        if (!GLAD_GL_EXT_texture_compression_s3tc) {
+            LOGF << "Missing necessary GL extension: EXT_texture_compression_s3tc" << std::endl;
+        }
 
-    if (!GLAD_GL_EXT_texture_sRGB) {
-        LOGF << "Missing necessary GL extension: EXT_texture_sRGB" << std::endl;
+        if (!GLAD_GL_EXT_texture_sRGB) {
+            LOGF << "Missing necessary GL extension: EXT_texture_sRGB" << std::endl;
+        }
     }
 
     // Assume that the bindings in the state aren't valid anymore.
@@ -1566,19 +2004,10 @@ void Graphics::SetSimpleLineDrawState() {
 }
 
 void Graphics::BlitColorBuffer() {
-    CHECK_FBO_ERROR();
-    CHECK_GL_ERROR();
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, multisample_framebuffer);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-    glReadBuffer(GL_COLOR_ATTACHMENT0);
-    glDrawBuffer(GL_COLOR_ATTACHMENT0);
-    glBlitFramebuffer(0, 0, render_dims[0], render_dims[1], 0, 0, render_dims[0], render_dims[1], GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    glReadBuffer(GL_COLOR_ATTACHMENT1);
-    glDrawBuffer(GL_COLOR_ATTACHMENT1);
-    glBlitFramebuffer(0, 0, render_dims[0], render_dims[1], 0, 0, render_dims[0], render_dims[1], GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    glBindFramebuffer(GL_FRAMEBUFFER, curr_framebuffer);
-    CHECK_FBO_ERROR();
-    CHECK_GL_ERROR();
+    // (Overgrowth Online stage 5.0: colour and velocity, through BlitRenderTarget)
+    PixelRect all(0, 0, render_dims[0], render_dims[1]);
+    BlitRenderTarget(multisample_target, 0, all, scene_target, 0, all);
+    BlitRenderTarget(multisample_target, 1, all, scene_target, 1, all);
 }
 
 void Graphics::SetFromConfig(const Config& config, bool dynamic) {
@@ -1630,12 +2059,18 @@ void Graphics::SetLineWidth(int val) {
     if (line_width != val) {
         line_width = val;
 #ifndef PLATFORM_MACOSX
-        glLineWidth((float)val);
+        if (!UseVulkan()) {  // (Vulkan: the draw state's)
+            glLineWidth((float)val);
+        }
 #endif
     }
 }
 
 void Graphics::LogGPUMemory(const char* when) {
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        LOGI << "GPU memory " << when << ": " << VkBackend::MemoryDescription() << std::endl;
+        return;
+    }
     if (GLAD_GL_NVX_gpu_memory_info) {
         GLint dedicated = 0, available = 0, evictions = 0, evicted = 0;
         glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &dedicated);
@@ -1679,7 +2114,7 @@ void Graphics::ResizeWindow(int& w, int& h) {
         SDL_SetWindowPosition(sdl_window_, SDL_WINDOWPOS_CENTERED_DISPLAY(targetMonitor), SDL_WINDOWPOS_CENTERED_DISPLAY(targetMonitor));
     }
 
-    SDL_GL_GetDrawableSize(sdl_window_, &window_dims[0], &window_dims[1]);
+    GetDrawableSize(sdl_window_, &window_dims[0], &window_dims[1]);
 }
 
 void Graphics::SetUpWindowDims(int& w, int& h) {
@@ -1752,7 +2187,7 @@ void Graphics::SetTargetMonitor(int targetMonitor) {
 
 void Graphics::CheckForWindowResize() {
     int test[2];
-    SDL_GL_GetDrawableSize(sdl_window_, &test[0], &test[1]);
+    GetDrawableSize(sdl_window_, &test[0], &test[1]);
     if (test[0] != window_dims[0] || test[1] != window_dims[1]) {
         SetResolution(test[0], test[1], true);
     }
@@ -1824,7 +2259,7 @@ void Graphics::SetFullscreen(FullscreenMode::Mode val) {
         SDL_SetWindowPosition(sdl_window_, SDL_WINDOWPOS_CENTERED_DISPLAY(config_.target_monitor()), SDL_WINDOWPOS_CENTERED_DISPLAY(config_.target_monitor()));
     }
 
-    SDL_GL_GetDrawableSize(sdl_window_, &window_dims[0], &window_dims[1]);
+    GetDrawableSize(sdl_window_, &window_dims[0], &window_dims[1]);
     currentFullscreenType = val;
 }
 
@@ -1884,6 +2319,10 @@ void Graphics::SetDetailObjectShadows(bool val) {
 }
 
 void Graphics::SetSeamlessCubemaps(bool val) {
+    if (UseVulkan()) {  // (Vulkan: cube maps are always seamless)
+        config_.seamless_cubemaps_ = val;
+        return;
+    }
     if (GLAD_GL_VERSION_3_2 || GLAD_GL_ARB_seamless_cube_map || GLAD_GL_ARB_seamless_cubemap_per_texture) {
         if (val) {
             glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
@@ -1894,33 +2333,173 @@ void Graphics::SetSeamlessCubemaps(bool val) {
     }
 }
 
+// Overgrowth Online (GL 4.6 stage 5.4): GL's state for a Vulkan draw
+static int ReversedDepthFunc(const GraphicsShadowState& s) {
+    if (s.depth_func_unset_) {
+        return GL_GREATER;  // (InitScreen's glDepthFunc)
+    }
+    switch (s.depth_func_type_) {
+        case GL_LESS: return GL_GREATER;
+        case GL_LEQUAL: return GL_GEQUAL;
+        case GL_GREATER: return GL_LESS;
+        case GL_GEQUAL: return GL_LEQUAL;
+        default: return s.depth_func_type_;
+    }
+}
+
+void Graphics::VkDrawCall(GLenum mode, unsigned int first, unsigned int count, bool indexed, GLenum type, const void* indices, unsigned int instances) {
+    VkDraw::State st;
+    const GLState& g = shadow_state_.gl_state_;
+    st.blend = g.blend;
+    st.blend_src = g.blend_src;
+    st.blend_dst = g.blend_dst;
+    st.blend_alpha_src = g.blend_alpha_src;
+    st.blend_alpha_dst = g.blend_alpha_dst;
+    st.depth_test = g.depth_test;
+    st.depth_write = g.depth_write;
+    st.depth_func = ReversedDepthFunc(shadow_state_);
+    st.cull = g.cull_face;
+    st.polygon_offset = shadow_state_.polygon_offset_enable_;
+    st.alpha_to_coverage = shadow_state_.alpha_to_coverage_;
+    st.color_mask = shadow_state_.color_mask_;
+    st.wireframe = wireframe_;
+    st.line_width = line_width > 0 ? (float)line_width : 1.0f;
+    st.scissor_test = shadow_state_.scissor_test_;
+    for (int i = 0; i < 4; ++i) {
+        st.scissor[i] = gl_scissor_[i];
+        st.viewport[i] = gl_viewport_[i];
+    }
+    Shaders* shaders = Shaders::Instance();
+    const GLuint program = shaders->bound_program >= 0 ? shaders->programs[shaders->bound_program].gl_program : 0;
+    VkDraw::Draw(st, program, mode, first, count, indexed, type, (size_t)(uintptr_t)indices, instances);
+}
+
+// (diagnostics, both renderers: config debug_skip_program skips the draws of programs
+// whose name has it; debug_log_programs logs each program's first draw)
+// (diagnostics, both renderers: config debug_frame_log logs each frame much slower than
+// the last 120's median; on Vulkan, where it waited)
+static void LogSlowFrame() {
+    static const bool on = config["debug_frame_log"].toNumber<bool>();
+    if (!on) {
+        return;
+    }
+    static std::chrono::steady_clock::time_point last;
+    static bool have_last = false;
+    static std::deque<double> times;
+    static uint64_t frames = 0, last_pipelines = 0;
+    const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    ++frames;
+    uint64_t pipelines = 0;
+    if (UseVulkan()) {
+        pipelines = VkDraw::GetStats().pipelines;
+    }
+    if (have_last) {
+        const double ms = std::chrono::duration<double, std::milli>(now - last).count();
+        if (times.size() >= 60) {
+            std::vector<double> sorted(times.begin(), times.end());
+            std::nth_element(sorted.begin(), sorted.begin() + sorted.size() / 2, sorted.end());
+            const double median = sorted[sorted.size() / 2];
+            if (ms > std::max(median * 1.6, median + 2.0)) {
+                std::ostringstream oss;
+                oss << "Slow frame " << frames << ": " << ms << " ms (median " << median << ")";
+                if (UseVulkan()) {
+                    const VkBackend::FrameDiag d = VkBackend::LastFrameDiag();
+                    oss << ": slot wait " << d.slot_wait_ms << " ms, submits " << d.submits << ", GPU waits " << d.waits << " (" << d.wait_ms
+                        << " ms), pipelines +" << (pipelines - last_pipelines);
+                }
+                LOGI << oss.str() << std::endl;
+            }
+        }
+        times.push_back(ms);
+        if (times.size() > 120) {
+            times.pop_front();
+        }
+    }
+    last = now;
+    have_last = true;
+    last_pipelines = pipelines;
+}
+
+// Overgrowth Online (GL 4.6 stage 5.8): there from a Vulkan start until its first frames
+std::string VulkanStartGuard() {
+    return GetWritePath(CoreGameModID) + "vulkan_starting.txt";
+}
+
+static bool SkipDrawForDebug() {
+    static const std::string skip = config["debug_skip_program"].str();
+    static const bool log_programs = config["debug_log_programs"].toNumber<bool>();
+    if (skip.empty() && !log_programs) {
+        return false;
+    }
+    Shaders* shaders = Shaders::Instance();
+    if (shaders->bound_program < 0) {
+        return false;
+    }
+    const std::string& name = shaders->programs[shaders->bound_program].name;
+    if (log_programs) {
+        static std::set<std::string> logged;
+        if (logged.insert(name).second) {
+            LOGI << "Draw program: " << name << std::endl;
+        }
+    }
+    return !skip.empty() && name.find(skip) != std::string::npos;
+}
+
 void Graphics::DrawArrays(GLenum mode, int first, unsigned int count) {
+    if (SkipDrawForDebug()) {
+        return;
+    }
     Shaders::Instance()->FlushShadowBlock();  // Overgrowth Online (GL 4.6 stage 3.4)
     SetVertexAttribArrays();
+    if (UseVulkan()) {
+        VkDrawCall(mode, (unsigned)first, count, false, GL_NONE, NULL, 1);
+        return;
+    }
     GL_PERF_START();
     glDrawArrays(mode, first, count);
     GL_PERF_END();
 }
 
 void Graphics::DrawElements(GLenum mode, unsigned int count, GLenum type, const void* indices) {
+    if (SkipDrawForDebug()) {
+        return;
+    }
     Shaders::Instance()->FlushShadowBlock();  // Overgrowth Online (GL 4.6 stage 3.4)
     SetVertexAttribArrays();
+    if (UseVulkan()) {
+        VkDrawCall(mode, 0, count, true, type, indices, 1);
+        return;
+    }
     GL_PERF_START();
     glDrawElements(mode, count, type, indices);
     GL_PERF_END();
 }
 
 void Graphics::DrawElementsInstanced(GLenum mode, unsigned int count, GLenum type, const void* indices, unsigned int primcount) {
+    if (SkipDrawForDebug()) {
+        return;
+    }
     Shaders::Instance()->FlushShadowBlock();  // Overgrowth Online (GL 4.6 stage 3.4)
     SetVertexAttribArrays();
+    if (UseVulkan()) {
+        VkDrawCall(mode, 0, count, true, type, indices, primcount);
+        return;
+    }
     GL_PERF_START();
     glDrawElementsInstanced(mode, count, type, indices, primcount);
     GL_PERF_END();
 }
 
 void Graphics::DrawRangeElements(GLenum mode, unsigned int start, unsigned int end, unsigned int count, GLenum type, const void* indices) {
+    if (SkipDrawForDebug()) {
+        return;
+    }
     Shaders::Instance()->FlushShadowBlock();  // Overgrowth Online (GL 4.6 stage 3.4)
     SetVertexAttribArrays();
+    if (UseVulkan()) {
+        VkDrawCall(mode, 0, count, true, type, indices, 1);
+        return;
+    }
     GL_PERF_START();
     glDrawRangeElements(mode, start, end, count, type, indices);
     GL_PERF_END();
@@ -1970,17 +2549,21 @@ void Graphics::BeginVertexLayout(VertexLayout& layout, int program, uint32_t ena
         }
         if (index == -1) {
             VertexLayout::Vao v;
-            glCreateVertexArrays(1, &v.vao);
-            for (size_t i = 0; i < layout.attribs.size(); ++i) {
-                if (locations[i] == -1) {
-                    continue;
+            if (UseVulkan()) {  // (Vulkan: stage 5.5)
+                v.vao = VkStub::NewId();
+            } else {
+                glCreateVertexArrays(1, &v.vao);
+                for (size_t i = 0; i < layout.attribs.size(); ++i) {
+                    if (locations[i] == -1) {
+                        continue;
+                    }
+                    const VertexLayout::Attrib& a = layout.attribs[i];
+                    glVertexArrayAttribFormat(v.vao, locations[i], a.size, a.type, a.normalized, a.offset);
+                    glVertexArrayAttribBinding(v.vao, locations[i], a.binding);
                 }
-                const VertexLayout::Attrib& a = layout.attribs[i];
-                glVertexArrayAttribFormat(v.vao, locations[i], a.size, a.type, a.normalized, a.offset);
-                glVertexArrayAttribBinding(v.vao, locations[i], a.binding);
-            }
-            for (size_t b = 0; b < layout.divisors.size(); ++b) {
-                glVertexArrayBindingDivisor(v.vao, (GLuint)b, layout.divisors[b]);
+                for (size_t b = 0; b < layout.divisors.size(); ++b) {
+                    glVertexArrayBindingDivisor(v.vao, (GLuint)b, layout.divisors[b]);
+                }
             }
             v.locations = locations;
             v.enabled = 0;
@@ -1992,7 +2575,9 @@ void Graphics::BeginVertexLayout(VertexLayout& layout, int program, uint32_t ena
     VertexLayout::Vao& v = layout.vaos[index];
     g_layout_label = layout.attribs.empty() ? "" : layout.attribs.back().name.c_str();
     if (!vertex_layout_bound_ || layout_vao_bound_ != v.vao) {
-        glBindVertexArray(v.vao);
+        if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+            glBindVertexArray(v.vao);
+        }
         layout_vao_bound_ = v.vao;
     }
     vertex_layout_bound_ = true;
@@ -2001,8 +2586,41 @@ void Graphics::BeginVertexLayout(VertexLayout& layout, int program, uint32_t ena
     for (size_t i = 0; i < layout.attribs.size(); ++i) {
         if ((enabled & (1u << i)) && v.locations[i] != -1) {
             on |= 1u << i;
-            glVertexArrayVertexBuffer(v.vao, layout.attribs[i].binding, buffers[i], offsets[i], strides[i]);
+            if (!UseVulkan()) {  // (Vulkan: stage 5.5)
+                glVertexArrayVertexBuffer(v.vao, layout.attribs[i].binding, buffers[i], offsets[i], strides[i]);
+            }
         }
+    }
+    if (UseVulkan()) {
+        // (the attributes on, each at its input's location; a binding's buffer is its
+        // last attribute's, as glVertexArrayVertexBuffer leaves it)
+        VkDraw::VertexInput in;
+        for (size_t i = 0; i < layout.attribs.size(); ++i) {
+            if (!(on & (1u << i))) {
+                continue;
+            }
+            const VertexLayout::Attrib& a = layout.attribs[i];
+            VkDraw::VertexAttrib va;
+            va.location = (uint32_t)v.locations[i];
+            va.binding = a.binding;
+            va.size = a.size;
+            va.type = a.type;
+            va.normalized = a.normalized != GL_FALSE;
+            va.offset = a.offset;
+            in.attribs.push_back(va);
+            if (a.binding < (GLuint)VkDraw::VertexInput::kMaxBindings) {
+                in.buffers[a.binding] = buffers[i];
+                in.offsets[a.binding] = (uint64_t)offsets[i];
+                in.strides[a.binding] = (uint64_t)strides[i];
+            }
+        }
+        for (size_t b = 0; b < layout.divisors.size() && b < (size_t)VkDraw::VertexInput::kMaxBindings; ++b) {
+            in.divisors[b] = layout.divisors[b];
+        }
+        in.element_buffer = element_buffer;
+        VkDraw::SetVertexInput(in);
+        v.enabled = on;
+        return;
     }
     uint32_t changed = on ^ v.enabled;
     for (size_t i = 0; changed != 0; ++i, changed >>= 1) {
@@ -2036,7 +2654,11 @@ void Graphics::BeginVertexLayout(VertexLayout& layout, int program, VBOContainer
 
 void Graphics::EndVertexLayout() {
     if (vertex_layout_bound_) {
-        glBindVertexArray(vao_);
+        if (UseVulkan()) {
+            VkDraw::ClearVertexInput();
+        } else {
+            glBindVertexArray(vao_);
+        }
         vertex_layout_bound_ = false;
         layout_vao_bound_ = 0;
     }
@@ -2087,6 +2709,10 @@ void Graphics::SetVertexAttribArrays() {
     if (vertex_layout_bound_) {
         return;  // (a layout's VAO has its own)
     }
+    if (UseVulkan()) {  // (Vulkan: stage 5.5)
+        active_vertex_attrib_arrays = wanted_vertex_attrib_arrays;
+        return;
+    }
     uint32_t changed_vertex_attrib_arrays = active_vertex_attrib_arrays ^ wanted_vertex_attrib_arrays;
 
     while (changed_vertex_attrib_arrays != 0) {
@@ -2121,6 +2747,9 @@ void Graphics::ClearGLState() {
     // reset everything in case someone else has changed these
     active_vertex_attrib_arrays = 0;
     wanted_vertex_attrib_arrays = 0;
+    if (UseVulkan()) {  // (Vulkan: stage 5.5)
+        return;
+    }
     for (int i = 0; i < max_vertex_attrib_arrays; i++) {
         glDisableVertexAttribArray(i);
     }
@@ -2130,24 +2759,23 @@ void Graphics::SetUpShadowTextures() {
     PROFILER_GPU_ZONE(g_profiler_ctx, "Set up shadow textures");
     Textures* textures = Textures::Instance();
 
-    PushFramebuffer();
+    PushRenderTarget();
 
     if (first_load) {
         static_shadow_depth_ref = textures->makeTexture(cascade_shadow_res, cascade_shadow_res, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT);
         textures->SetTextureName(static_shadow_depth_ref, "Static Shadow Depth");
 
         textures->setFilters(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
-        genFramebuffers(&static_shadow_fb, "static_shadow_fb");
-        bindFramebuffer(static_shadow_fb);
-        framebufferDepthTexture2D(static_shadow_depth_ref);
+        static_shadow_target = RenderTarget().Depth(static_shadow_depth_ref);
+        BindRenderTarget(static_shadow_target);
 
         textures->SetSamplingParameter(static_shadow_depth_ref, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
         textures->SetSamplingParameter(static_shadow_depth_ref, GL_TEXTURE_COMPARE_FUNC, GL_GEQUAL);  // (reversed-Z: lit when nearer or level)
         CHECK_FBO_ERROR();
     }
 
-    deleteFramebuffer(&cascade_shadow_fb);
-    deleteFramebuffer(&cascade_shadow_color_fb);
+    cascade_shadow_target = RenderTarget();
+    cascade_shadow_color_target = RenderTarget();
 
     cascade_shadow_depth_ref = TextureRef();
     cascade_shadow_color_ref = TextureRef();
@@ -2161,26 +2789,25 @@ void Graphics::SetUpShadowTextures() {
         textures->SetTextureName(cascade_shadow_color_ref, "Cascade Shadow Color");
 
         textures->setFilters(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
-        genFramebuffers(&cascade_shadow_fb, "cascade_shadow_fb");
-        bindFramebuffer(cascade_shadow_fb);
-        framebufferDepthTexture2D(cascade_shadow_depth_ref);
-
-        genFramebuffers(&cascade_shadow_color_fb, "cascade_shadow_color_fb");
-        bindFramebuffer(cascade_shadow_color_fb);
-        framebufferColorTexture2D(cascade_shadow_color_ref);
-        framebufferDepthTexture2D(cascade_shadow_depth_ref);
+        cascade_shadow_target = RenderTarget().Depth(cascade_shadow_depth_ref);
+        cascade_shadow_color_target = RenderTarget().Color(cascade_shadow_color_ref).Depth(cascade_shadow_depth_ref);
+        BindRenderTarget(cascade_shadow_target);
 
         textures->SetSamplingParameter(cascade_shadow_depth_ref, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
         textures->SetSamplingParameter(cascade_shadow_depth_ref, GL_TEXTURE_COMPARE_FUNC, GL_GEQUAL);  // (reversed-Z: lit when nearer or level)
     }
 
-    PopFramebuffer();
+    PopRenderTarget();
 
     Textures::Instance()->InvalidateBindCache();
 }
 
 void Graphics::DebugTracePrint(const char* message) {
 #if GPU_MARKERS
+    if (UseVulkan()) {  // (Vulkan: stage 5.6)
+        VkBackend::InsertLabel(message);
+        return;
+    }
     if (GLAD_GL_KHR_debug) {
         glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, 0, GL_DEBUG_SEVERITY_NOTIFICATION, -1, message);
     }

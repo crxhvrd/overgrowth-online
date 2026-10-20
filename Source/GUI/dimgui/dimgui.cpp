@@ -1486,7 +1486,7 @@ static bool IsCharacterSelceted(SpawnerItem* item) {
             ImGui::PushTextWrapPos(450.0f);
 
             Textures::Instance()->EnsureInVRAM(Engine::Instance()->spawner_thumbnail);
-            ImGui::Image((ImTextureID)Textures::Instance()->returnTexture(Engine::Instance()->spawner_thumbnail), ImVec2(128, 128), ImVec2(0, 0), ImVec2(1, 1));
+            ImGui::Image((ImTextureID)Textures::Instance()->ImGuiTextureID(Engine::Instance()->spawner_thumbnail), ImVec2(128, 128), ImVec2(0, 0), ImVec2(1, 1));
 
             ImGui::PopTextWrapPos();
             ImGui::EndTooltip();
@@ -1523,7 +1523,7 @@ static bool AddSpawnerItem(SpawnerItem* item, SceneGraph* scenegraph) {
             ImGui::PushTextWrapPos(450.0f);
 
             Textures::Instance()->EnsureInVRAM(Engine::Instance()->spawner_thumbnail);
-            ImGui::Image((ImTextureID)Textures::Instance()->returnTexture(Engine::Instance()->spawner_thumbnail), ImVec2(128, 128), ImVec2(0, 0), ImVec2(1, 1));
+            ImGui::Image((ImTextureID)Textures::Instance()->ImGuiTextureID(Engine::Instance()->spawner_thumbnail), ImVec2(128, 128), ImVec2(0, 0), ImVec2(1, 1));
 
             ImGui::PopTextWrapPos();
             ImGui::EndTooltip();
@@ -1856,7 +1856,7 @@ void DrawImGuiCameraPreview(Engine* engine, SceneGraph* scenegraph_, Graphics* g
                     ImVec2 size(bottom_right[0] - top_left[0], bottom_right[1] - top_left[1]);
                     ImVec2 uv0(top_left[0] / graphics->render_dims[0], 1.0f - top_left[1] / graphics->render_dims[1]);
                     ImVec2 uv1(bottom_right[0] / graphics->render_dims[0], 1.0f - bottom_right[1] / graphics->render_dims[1]);
-                    ImGui::Image((ImTextureID)Textures::Instance()->returnTexture(Graphics::Instance()->post_effects.temp_screen_tex), size, uv0, uv1);
+                    ImGui::Image((ImTextureID)Textures::Instance()->ImGuiTextureID(Graphics::Instance()->post_effects.temp_screen_tex), size, uv0, uv1);
                 }
 
                 top_left[0] /= graphics->window_dims[0];
@@ -1918,17 +1918,13 @@ void DrawImGuiCameraPreview(Engine* engine, SceneGraph* scenegraph_, Graphics* g
                     camera->DrawSafeZone();
                 }
 
-                graphics->bindFramebuffer(graphics->post_effects.post_framebuffer);
-                graphics->framebufferColorTexture2D(Graphics::Instance()->post_effects.temp_screen_tex);
-                graphics->bindFramebuffer(0);
+                // (Overgrowth Online stage 5.0: the window's back buffer into temp_screen_tex
+                // through BlitRenderTarget; the window stays bound)
+                graphics->BindWindow();
                 CHECK_FBO_ERROR();
                 CHECK_GL_ERROR();
-                glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, graphics->post_effects.post_framebuffer);
-                glReadBuffer(GL_BACK);
-                glDrawBuffer(GL_COLOR_ATTACHMENT0);
-                glBlitFramebuffer(0, 0, graphics->window_dims[0], graphics->window_dims[1], 0, 0, graphics->render_dims[0], graphics->render_dims[1], GL_COLOR_BUFFER_BIT, GL_NEAREST);
-                glBindFramebuffer(GL_FRAMEBUFFER, graphics->curr_framebuffer);
+                graphics->BlitRenderTarget(RenderTarget(), 0, PixelRect(0, 0, graphics->window_dims[0], graphics->window_dims[1]),
+                                           RenderTarget().Color(graphics->post_effects.temp_screen_tex), 0, PixelRect(0, 0, graphics->render_dims[0], graphics->render_dims[1]));
                 CHECK_FBO_ERROR();
                 CHECK_GL_ERROR();
 

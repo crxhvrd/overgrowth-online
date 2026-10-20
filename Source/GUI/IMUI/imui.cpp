@@ -471,10 +471,10 @@ void IMUIContext::render() {
         proj_mat = ReverseZ(glm::translate(glm::ortho(0.0f, winWidth, 0.0f, winHeight), glm::vec3(xOffset, 0.0f, 0.0f)));
 
         if (renderable->enableClip) {
-            glScissor((GLint)(renderable->clipPosition[0] + xOffset),
-                      (GLint)(winHeight - (renderable->clipPosition[1] + renderable->clipSize[1])),
-                      (GLsizei)(renderable->clipSize[0]),
-                      (GLsizei)(renderable->clipSize[1]));
+            Graphics::Instance()->SetScissorRect((GLint)(renderable->clipPosition[0] + xOffset),
+                                                 (GLint)(winHeight - (renderable->clipPosition[1] + renderable->clipSize[1])),
+                                                 (GLsizei)(renderable->clipSize[0]),
+                                                 (GLsizei)(renderable->clipSize[1]));
 
             Graphics::Instance()->setScissorTest(true);
         }
@@ -692,9 +692,7 @@ void IMUIContext::render() {
                 character_data_vbo->Fill(sizeof(verts) * num_characters / kMaxCharacters, verts);
                 character_index_vbo->Fill(sizeof(indices) * num_characters / kMaxCharacters, indices);
 
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, atlas->tex);
-                glBindSampler(0, 0);  // Overgrowth Online: its own parameters, not a sampler left on the unit
+                Textures::Instance()->bindTexture(atlas->texture, 0);  // (its sampling state: nearest, clamped)
 
                 // Overgrowth Online (GL 4.6 stage 2.4): position then tex coord, interleaved
                 static VertexLayout layout;

@@ -23,6 +23,7 @@ uniform int output_height;
 in vec2 pixel_uv;
 
 void main() {
+    gl_PointSize = 1.0;  // (Overgrowth Online stage 5.0: Vulkan sizes points from here; GL from glPointSize, 1 too)
     vec4 color = textureLod(tex0, pixel_uv, 0.0);
 
     if(color[3] != 0.0){ // pixel represents a valid triangle

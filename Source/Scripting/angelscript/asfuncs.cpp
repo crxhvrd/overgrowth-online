@@ -3878,7 +3878,7 @@ void AS_ImGui_Image(const TextureAssetRef& user_texture_ref, const vec2& size, c
         ImVec4 tint_color_temp(tint_color[0], tint_color[1], tint_color[2], tint_color[3]);
         ImVec4 border_color_temp(border_color[0], border_color[1], border_color[2], border_color[3]);
         Textures::Instance()->EnsureInVRAM(user_texture_ref);
-        ImGui::Image(reinterpret_cast<ImTextureID>(Textures::Instance()->returnTexture(user_texture_ref)), size_temp, uv0_temp, uv1_temp, tint_color_temp, border_color_temp);
+        ImGui::Image(reinterpret_cast<ImTextureID>(Textures::Instance()->ImGuiTextureID(user_texture_ref)), size_temp, uv0_temp, uv1_temp, tint_color_temp, border_color_temp);
     }
 }
 
@@ -3890,7 +3890,7 @@ bool AS_ImGui_ImageButton(const TextureAssetRef& user_texture_ref, const vec2& s
         ImVec4 background_color_temp(background_color[0], background_color[1], background_color[2], background_color[3]);
         ImVec4 tint_color_temp(tint_color[0], tint_color[1], tint_color[2], tint_color[3]);
         Textures::Instance()->EnsureInVRAM(user_texture_ref);
-        return ImGui::ImageButton(reinterpret_cast<ImTextureID>(Textures::Instance()->returnTexture(user_texture_ref)), size_temp, uv0_temp, uv1_temp, frame_padding, background_color_temp, tint_color_temp);
+        return ImGui::ImageButton(reinterpret_cast<ImTextureID>(Textures::Instance()->ImGuiTextureID(user_texture_ref)), size_temp, uv0_temp, uv1_temp, frame_padding, background_color_temp, tint_color_temp);
     }
 
     return false;
@@ -4691,7 +4691,7 @@ void AS_ImDrawList_AddImage(const TextureAssetRef& user_texture_ref, const vec2&
     if (user_texture_ref.valid() && ImGui_TryGetWindowDrawList(&draw_list)) {
         Textures::Instance()->EnsureInVRAM(user_texture_ref);
         draw_list->AddImage(
-            reinterpret_cast<ImTextureID>(Textures::Instance()->returnTexture(user_texture_ref)),
+            reinterpret_cast<ImTextureID>(Textures::Instance()->ImGuiTextureID(user_texture_ref)),
             ImVec2(a[0], a[1]),
             ImVec2(b[0], b[1]),
             ImVec2(uv_a[0], uv_a[1]),
@@ -4706,7 +4706,7 @@ void AS_ImDrawList_AddImageQuad(const TextureAssetRef& user_texture_ref, const v
     if (user_texture_ref.valid() && ImGui_TryGetWindowDrawList(&draw_list)) {
         Textures::Instance()->EnsureInVRAM(user_texture_ref);
         draw_list->AddImageQuad(
-            reinterpret_cast<ImTextureID>(Textures::Instance()->returnTexture(user_texture_ref)),
+            reinterpret_cast<ImTextureID>(Textures::Instance()->ImGuiTextureID(user_texture_ref)),
             ImVec2(a[0], a[1]),
             ImVec2(b[0], b[1]),
             ImVec2(c[0], c[1]),
@@ -4725,7 +4725,7 @@ void AS_ImDrawList_AddImageRounded(const TextureAssetRef& user_texture_ref, cons
     if (user_texture_ref.valid() && ImGui_TryGetWindowDrawList(&draw_list)) {
         Textures::Instance()->EnsureInVRAM(user_texture_ref);
         draw_list->AddImageRounded(
-            reinterpret_cast<ImTextureID>(Textures::Instance()->returnTexture(user_texture_ref)),
+            reinterpret_cast<ImTextureID>(Textures::Instance()->ImGuiTextureID(user_texture_ref)),
             ImVec2(a[0], a[1]),
             ImVec2(b[0], b[1]),
             ImVec2(uv_a[0], uv_a[1]),

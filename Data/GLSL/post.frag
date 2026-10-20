@@ -311,7 +311,7 @@ void main(void)
 
     color.a = src_color.a;
 #elif defined(ADD)
-    vec4 bloom = mix(textureLod(tex3, tex, 2.0) , textureLod(tex3, tex, 4.0), 0.5);
+    vec4 bloom = mix(textureLod(tex3, tex, 1.0) , textureLod(tex3, tex, 3.0), 0.5);  // (levels 2 and 4: tex3 is a view from level 1)
     color = textureLod(tex2, tex, 0.0) + bloom;
     vec3 overbright = max(vec3(0.0), color.xyz - vec3(1.0));
     float avg = (overbright[0] + overbright[1] + overbright[2]) / 3.0;

@@ -337,7 +337,7 @@ static void DrawAdvancedModMenu(Engine* engine) {
         if (strlen(modi->thumbnail) > 0 && thumbnail_path.isValid()) {
             Engine::Instance()->spawner_thumbnail = Engine::Instance()->GetAssetManager()->LoadSync<TextureAsset>(thumbnail_path.GetFullPath(), PX_NOMIPMAP | PX_NOREDUCE | PX_NOCONVERT, 0x0);
             Textures::Instance()->EnsureInVRAM(Engine::Instance()->spawner_thumbnail->GetTextureRef());
-            ImGui::Image((ImTextureID)(uintptr_t)Textures::Instance()->returnTexture(Engine::Instance()->spawner_thumbnail), ImVec2(400, 225), ImVec2(0, 0), ImVec2(1, 1));
+            ImGui::Image((ImTextureID)Textures::Instance()->ImGuiTextureID(Engine::Instance()->spawner_thumbnail), ImVec2(400, 225), ImVec2(0, 0), ImVec2(1, 1));
             ImGui::Separator();
         }
 

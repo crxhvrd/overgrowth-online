@@ -28,6 +28,9 @@
 
 #include <Compat/fileio.h>
 #include <Graphics/graphics.h>
+#include <Graphics/render_backend.h>
+#include <Graphics/Vulkan/vk_backend.h>
+#include <Graphics/Vulkan/vk_gl.h>
 #include <Logging/logdata.h>
 #include <Memory/allocation.h>
 #include <Utility/strings.h>
@@ -45,6 +48,14 @@ const int TEMP_STRING_LENGTH = 256;
 
 #include <cctype>
 GLVendor GetGLVendor() {
+    if (UseVulkan()) {  // (Overgrowth Online stage 5.2: the Vulkan device's vendor)
+        switch (VkBackend::VendorID()) {
+            case 0x10DE: return _nvidia;
+            case 0x1002: return _ati;
+            case 0x8086: return _intel;
+            default: return _unknown;
+        }
+    }
     const GLubyte *vendor_cstring = glGetString(GL_VENDOR);
     if (vendor_cstring != NULL) {
         std::string vendor_string((const char *)vendor_cstring);
@@ -74,7 +85,10 @@ GLVendor GetGLVendor() {
 
 void QueryVRAM(std::string &total_string) {
     char temp_string[TEMP_STRING_LENGTH];
-    if (GLAD_GL_NVX_gpu_memory_info) {
+    if (UseVulkan()) {  // (GL queries)
+        FormatString(temp_string, TEMP_STRING_LENGTH, "VRAM query not supported.\n");
+        total_string += temp_string;
+    } else if (GLAD_GL_NVX_gpu_memory_info) {
         GLint param;
         glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &param);
         FormatString(temp_string, TEMP_STRING_LENGTH, "VRAM: %d MB\n", param / 1024);
@@ -151,6 +165,15 @@ static std::map<std::string, ivec2> ivec2_limits;
 static std::vector<std::string> extensions;
 
 static void LazyInit() {
+    if (initialized == false && UseVulkan()) {  // (the limits the engine asks for, from the device; no GL extensions)
+        GLint value = 0;
+        GLVK(GetIntegerv)(GL_MAX_TEXTURE_SIZE, &value);
+        max_texture_size = value;
+        GLVK(GetIntegerv)(GL_MAX_TEXTURE_IMAGE_UNITS, &value);
+        integer_limits["GL_MAX_TEXTURE_IMAGE_UNITS"] = value;  // (DetectAndSetSettings)
+        support_s3tc = true;  // (BC formats: Vulkan devices on Windows have them)
+        initialized = true;
+    }
     if (initialized == false) {
         for (auto i : GLQUERY_INFOS) {
             GLint values[2];
@@ -197,7 +220,7 @@ void PrintGPU(std::string &total_string, bool short_output) {
     CHECK_GL_ERROR();
     switch (vendor) {
         case _unknown:
-            FormatString(temp_string, TEMP_STRING_LENGTH, "GPU Vendor: %s\n", glGetString(GL_VENDOR));
+            FormatString(temp_string, TEMP_STRING_LENGTH, "GPU Vendor: %s\n", UseVulkan() ? "unknown" : (const char *)glGetString(GL_VENDOR));
             total_string += temp_string;
             break;
         case _ati:
@@ -214,6 +237,12 @@ void PrintGPU(std::string &total_string, bool short_output) {
             break;
     }
     CHECK_GL_ERROR();
+
+    if (UseVulkan()) {  // (Overgrowth Online stage 5.2)
+        total_string += "Renderer: Vulkan, " + VkBackend::DeviceDescription() + "\n";
+        QueryVRAM(total_string);
+        return;
+    }
 
     FormatString(temp_string, TEMP_STRING_LENGTH, "GL Renderer: %s\n", glGetString(GL_RENDERER));
     total_string += temp_string;

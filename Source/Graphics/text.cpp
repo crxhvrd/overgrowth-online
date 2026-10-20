@@ -187,7 +187,7 @@ void RenderCharacterToConsole(int face_id, uint32_t character) {
 
 TextureRef CreateTextureFromBGRABlock(const TextCanvas::MemoryBlock& bgra_block, int width, int height) {
     TextureRef texture_ref = Textures::Instance()->makeTexture(width, height, GL_RGBA, GL_RGBA, true);
-    glTextureSubImage2D(Textures::Instance()->returnTexture(texture_ref), 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &bgra_block[0]);
+    Textures::Instance()->UpdateRegion(texture_ref, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &bgra_block[0]);
     Textures::Instance()->GenerateMipmap(texture_ref);
     return texture_ref;
 }
@@ -215,7 +215,7 @@ void TextCanvasTexture::Create(int width, int height) {
 }
 
 void FillTextureFromBGRABlock(const TextureRef& texture_ref, const TextCanvas::MemoryBlock& bgra_block, int width, int height) {
-    glTextureSubImage2D(Textures::Instance()->returnTexture(texture_ref), 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &bgra_block[0]);
+    Textures::Instance()->UpdateRegion(texture_ref, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &bgra_block[0]);
     Textures::Instance()->GenerateMipmap(texture_ref);
 }
 
@@ -849,18 +849,14 @@ void TextAtlas::Create(const char* path, int _pixel_height, FontRenderer* font_r
         atlas_export[i + 3] = (unsigned char)(pixel * 255.0f);
     }
 
-    // TODO: do this using the Textures class instead of bare OpenGL calls
-    GLuint gl_tex;
-    glGenTextures(1, &gl_tex);
-    tex = gl_tex;
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                 atlas_dims[0], atlas_dims[1], 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, atlas_export);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    // (Overgrowth Online stage 5.0: through the Textures class: nearest, clamped)
+    Textures* textures = Textures::Instance();
+    texture = textures->makeTexture(atlas_dims[0], atlas_dims[1], GL_RGBA, GL_RGBA, false, atlas_export);
+    textures->SetTextureName(texture, "Text Atlas");
+    textures->SetSamplingParameter(texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    textures->SetSamplingParameter(texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    textures->SetSamplingParameter(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    textures->SetSamplingParameter(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // Export the atlas for debug purposes?
     static const bool kSaveAtlas = false;
@@ -875,14 +871,10 @@ void TextAtlas::Create(const char* path, int _pixel_height, FontRenderer* font_r
 }
 
 void TextAtlas::Dispose() {
-    if (tex != -1) {
-        const GLuint gl_tex = tex;
-        glDeleteTextures(1, &gl_tex);
-        tex = -1;
-    }
+    texture.clear();
 }
 
-TextAtlas::TextAtlas() : tex(-1) {
+TextAtlas::TextAtlas() {
     static const unsigned int kAsciiFirst = 0x20;
     static const unsigned int kAsciiLast = 0x7E;
     static const unsigned int kLatinBase2First = 0xA1;
@@ -915,7 +907,7 @@ TextAtlas::TextAtlas() : tex(-1) {
 }
 
 TextAtlas::~TextAtlas() {
-    LOG_ASSERT(tex == -1);  // We should already have disposed of the text atlas GL resources
+    LOG_ASSERT(!texture.valid());  // We should already have disposed of the text atlas GL resources
 }
 
 void TextAtlasRenderer::Init() {
@@ -1101,9 +1093,7 @@ void TextAtlasRenderer::Draw(TextAtlas* atlas, Graphics* graphics, char flags, c
     proj_mat = ReverseZ(glm::ortho(0.0f, (float)graphics->window_dims[0], (float)graphics->window_dims[1], 0.0f));
 
     CHECK_GL_ERROR();
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, atlas->tex);
-    glBindSampler(0, 0);  // Overgrowth Online: its own parameters, not a sampler left on the unit
+    Textures::Instance()->bindTexture(atlas->texture, 0);  // (its sampling state: nearest, clamped)
     // Overgrowth Online (GL 4.6 stage 2.4): position then tex coord, interleaved
     static VertexLayout layout;
     if (layout.Count() == 0) {

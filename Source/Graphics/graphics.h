@@ -45,8 +45,13 @@
 #include <climits>
 #include <stdint.h>  // cstdint would be more c++ but os x doesn't understand it
 
+#define UBO_INSTANCE_INFO 0
 #define UBO_CLUSTER_DATA 1
 #define UBO_SHADOW_CASCADES 2
+// (3: the default uniform block, Shaders::kDefaultBlockBinding)
+#define UBO_LIGHT_PROBE_INFO 4  // Overgrowth Online (stage 5.0): the uniform blocks get these at link
+
+class UniformRingBuffer;
 
 const GLuint INVALID_FRAMEBUFFER = UINT_MAX;
 
@@ -213,8 +218,46 @@ struct ViewportDims {
     int entries[4];
 };
 
+// Overgrowth Online (GL 4.6 stage 5.0): what a pass draws into, the backend-neutral
+// way (Vulkan: dynamic rendering). Up to four colour attachments and a depth one,
+// each a texture at a mip level and, for cube maps and texture arrays, a layer (a
+// cube face is layer 0-5); a multisample texture for MSAA. No attachments: the window
+struct RenderTarget {
+    static const int kMaxColor = 4;
+    struct Attachment {
+        TextureRef tex;
+        int level;
+        int layer;  // -1: the 2D texture itself
+        Attachment() : level(0), layer(-1) {}
+    };
+    Attachment color[kMaxColor];
+    int num_color;
+    Attachment depth;
+
+    RenderTarget() : num_color(0) {}
+    RenderTarget& Color(const TextureRef& t, int level = 0, int layer = -1) {
+        color[num_color].tex = t;
+        color[num_color].level = level;
+        color[num_color].layer = layer;
+        ++num_color;
+        return *this;
+    }
+    RenderTarget& Depth(const TextureRef& t, int level = 0, int layer = -1) {
+        depth.tex = t;
+        depth.level = level;
+        depth.layer = layer;
+        return *this;
+    }
+    bool IsWindow() const { return num_color == 0 && !depth.tex.valid(); }
+};
+
+struct PixelRect {
+    int x, y, w, h;
+    PixelRect() : x(0), y(0), w(0), h(0) {}
+    PixelRect(int x_, int y_, int w_, int h_) : x(x_), y(y_), w(w_), h(h_) {}
+};
+
 struct PostEffects {
-    GLuint post_framebuffer;
     TextureRef temp_screen_tex;
     TextureRef tone_mapped_tex;
 };
@@ -311,9 +354,9 @@ class Graphics {
     TextureRef cascade_shadow_depth_ref;
     TextureRef cascade_shadow_color_ref;
     GLuint cascade_shadow_res;
-    GLuint cascade_shadow_fb;
-    GLuint static_shadow_fb;
-    GLuint cascade_shadow_color_fb;
+    RenderTarget cascade_shadow_target;        // (depth only)
+    RenderTarget static_shadow_target;         // (depth only)
+    RenderTarget cascade_shadow_color_target;  // (colour + the cascades' depth)
     mat4 cascade_shadow_mat[4];
     mat4 simple_shadow_mat;
     float cascade_shadow_radius[4];
@@ -326,18 +369,25 @@ class Graphics {
     bool drawing_shadow;
     std::stack<ViewportDims> viewport_dims_stack;
     int viewport_dim[4];
+    // Overgrowth Online (GL 4.6 stage 5.4): GL's viewport and scissor box as GL has them
+    // (set wherever glViewport/glScissor are), and the clear colour: the Vulkan draws
+    int gl_viewport_[4] = {0, 0, 0, 0};
+    int gl_scissor_[4] = {0, 0, 0, 0};
+    float clear_color_[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
     int vbo_array_bound;
     int vbo_element_bound;
 
+    // Overgrowth Online (GL 4.6 stage 5.0): the scene's targets: colour, velocity and
+    // depth; with MSAA, multisample textures resolved into the screen textures
     bool multisample_framebuffer_exists;
-    GLuint multisample_framebuffer;
-    GLuint multisample_depth;
-    GLuint multisample_color;
-    GLuint multisample_vel;
+    RenderTarget multisample_target;
+    TextureRef multisample_color_tex;
+    TextureRef multisample_vel_tex;
+    TextureRef multisample_depth_tex;
 
     bool framebuffer_exists;
-    GLuint framebuffer;
+    RenderTarget scene_target;
     TextureRef screen_color_tex;
     TextureRef screen_vel_tex;
     TextureRef screen_depth_tex;
@@ -354,11 +404,23 @@ class Graphics {
     bool initialized;
     bool settings_changed;  // for detail objects
 
-    std::stack<GLuint> fbo_stack;
-    GLuint curr_framebuffer;
+    // Overgrowth Online (GL 4.6 stage 5.0): the render target stack (was framebuffer
+    // names): each entry keeps how many of its colour attachments were written
+    struct RenderTargetState {
+        RenderTarget target;
+        int draw_count;
+    };
+    std::stack<RenderTargetState> render_target_stack;
+    RenderTarget current_target_;
+    GLuint current_fbo_;
+    int current_draw_count_;
     bool nav_mesh_out_of_date;
     int nav_mesh_out_of_date_chunk;
     int line_width;
+    float point_size_;
+    bool wireframe_;
+    int max_uniform_block_size_;
+    int max_texture_buffer_size_;
 
     // The following allow us to render the game, UI, and window at different resolutions
     // E.g.
@@ -391,36 +453,77 @@ class Graphics {
     void TakeScreenshot();
 
     void setGLState(const GLState& state);
+    const GLState& CurrentGLState() const { return shadow_state_.gl_state_; }  // (Overgrowth Online: to restore it)
+    bool ScissorTestEnabled() const { return shadow_state_.scissor_test_; }
 
-    void RenderFramebufferToTexture(GLuint framebuffer, TextureRef texture_ref);
     void EndTextureSpaceRendering();
 
-    void PushFramebuffer();
-    void PopFramebuffer();
-    void bindRenderbuffer(GLuint rb);
-    void bindFramebuffer(GLuint fb);
-    void framebufferDepthTexture2D(TextureRef t, int mipmap_level = 0);
-    void framebufferColorTexture2D(TextureRef t, int mipmap_level = 0);
-    // Overgrowth Online (GL 4.6 stage 2.5): render targets. A framebuffer per set of
-    // attachments, made once (DSA) and kept, bound in place of one framebuffer whose
-    // attachments are swapped for every pass. A texture's are dropped when it is
-    // deleted (GL hands its name out again)
+    // Overgrowth Online (GL 4.6 stages 2.5, 5.0): render targets. A framebuffer per set
+    // of attachments, made once (DSA) and kept; a texture's are dropped when it is
+    // deleted (GL hands its name out again). Binding writes all its colour attachments
+    void BindRenderTarget(const RenderTarget& target);
     void BindRenderTarget(TextureRef color, int color_level = 0, TextureRef depth = TextureRef(), int depth_level = 0);
+    void BindWindow();  // (the window's back buffer)
+    const RenderTarget& CurrentRenderTarget() const { return current_target_; }
+    void PushRenderTarget();
+    void PopRenderTarget();  // (binds the pushed target again, its draw count too)
+    // Writes go to the bound target's first `count` colour attachments, the rest are kept
+    // (the scene's velocity is written only by what moves)
+    void SetDrawBuffers(int count);
+    void SetClearColor(const vec4& color);
+    // A rectangle of one target's colour attachment (or depth) into another's, scaled
+    // to fit; a multisample source is resolved. Scissor plays no part
+    void BlitRenderTarget(const RenderTarget& src, int src_color, const PixelRect& src_rect,
+                          const RenderTarget& dst, int dst_color, const PixelRect& dst_rect,
+                          bool depth = false, bool linear = false);
+    void ResolveMultisample();  // the multisample scene into the screen textures
+    // Pixels of the bound target's colour attachment (the window: its back buffer)
+    void ReadPixels(const PixelRect& rect, GLenum format, GLenum type, void* out, int color = 0);
     void ForgetRenderTargets(GLuint texture_name);
-    struct RenderTargetKey {
-        GLuint color, depth;
-        int color_level, depth_level;
-        bool operator==(const RenderTargetKey& o) const { return color == o.color && depth == o.depth && color_level == o.color_level && depth_level == o.depth_level; }
-    };
-    std::vector<std::pair<RenderTargetKey, GLuint> > render_targets_;
-    void genRenderbuffers(GLuint* rb);
 
-    std::map<GLuint, std::string> framebuffernames;
-    void genFramebuffers(GLuint* fb, const char* human_name);
-    void deleteFramebuffer(GLuint* fb);
-    void renderbufferStorage(GLuint res);
-    void framebufferRenderbuffer(GLuint rb);
-    GLenum checkFramebufferStatus();
+    // Overgrowth Online (GL 4.6 stage 5.0): the rest of what passes did with bare GL
+    // - a uniform block's data at its binding point (UBO_*): a region of the frame
+    //   ring a UniformRingBuffer filled, or data copied into the ring now
+    void BindUniformRing(int binding, const UniformRingBuffer& ring);
+    void BindUniformData(int binding, const void* data, size_t size);
+    // - device limits, read once
+    int MaxUniformBlockSize();
+    int MaxTextureBufferSize();
+    // - GPU queries: an occlusion query counts the samples its draws pass, a
+    //   timestamp marks the GPU's clock; results come a frame or more later
+    enum QueryKind { kOcclusionQuery,
+                     kTimestampQuery };
+    GLuint CreateQuery(QueryKind kind);
+    void DeleteQuery(GLuint query);
+    void BeginOcclusionQuery(GLuint query);
+    void EndOcclusionQuery();
+    void WriteTimestamp(GLuint query);
+    bool QueryAvailable(GLuint query);
+    uint64_t QueryResult(GLuint query);  // (waits when not available)
+    // - debug groups (GPU captures and debug output name the passes)
+    void PushDebugGroup(const char* name);
+    void PopDebugGroup();
+    // - state
+    void SetWireframe(bool wireframe);
+    void SetPointSize(float size);
+    void SetScissorRect(int x, int y, int width, int height);  // (setViewport sets it to the viewport)
+    void SetViewportOnly(int x, int y, int width, int height);  // (viewport_dim and the scissor box untouched)
+    void SetViewportIndexed(int index, int x, int y, int width, int height);  // (and its scissor box: one pass, many viewports)
+    void ClearColorOnly();  // the bound target's colour attachments; depth and its write state untouched
+    void Flush();
+    struct RenderTargetKey {
+        GLuint names[RenderTarget::kMaxColor + 1];  // (the colours, then depth; 0: none)
+        int levels[RenderTarget::kMaxColor + 1];
+        int layers[RenderTarget::kMaxColor + 1];
+        bool operator==(const RenderTargetKey& o) const;
+    };
+    struct CachedFramebuffer {
+        RenderTargetKey key;
+        GLuint fbo;
+        int draw_count;  // (-1: unknown, after a blit)
+    };
+    std::vector<CachedFramebuffer> render_targets_;
+    GLuint FramebufferFor(const RenderTarget& target);
 
     unsigned int GetShadowSize(unsigned int target_shadow_size);
     void startDraw(vec2 start = vec2(0.0f), vec2 end = vec2(1.0f), ScreenType screen_type = kRender);
@@ -487,6 +590,8 @@ class Graphics {
     // where it's valid
     void BeginVertexLayout(VertexLayout& layout, int program, VBOContainer* const* vbos, GLuint element_buffer);
     void EndVertexLayout();
+    // (Overgrowth Online stage 5.4: a draw on the Vulkan renderer, with GL's state)
+    void VkDrawCall(GLenum mode, unsigned int first, unsigned int count, bool indexed, GLenum type, const void* indices, unsigned int instances);
     bool vertex_layout_bound_ = false;
     GLuint layout_vao_bound_ = 0;
     void ClearGLState();

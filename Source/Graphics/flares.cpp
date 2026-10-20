@@ -224,15 +224,16 @@ void Flares::OcclusionQuery(int which) {
     }
     OccQuery& query = flare->query[active_cam_id];
     if (g_perform_occlusion_query) {
+        // (Overgrowth Online stage 5.0: the queries through Graphics)
         if (!query.created) {
-            glGenQueries(1, &query.id);
+            query.id = graphics->CreateQuery(Graphics::kOcclusionQuery);
             query.created = true;
         }
         CHECK_GL_ERROR();
         GLuint count = 0;
         if (query.started) {
             PROFILER_ZONE(g_profiler_ctx, "glGetQueryObjectuiv a");
-            glGetQueryObjectuiv(query.id, GL_QUERY_RESULT_AVAILABLE, &count);
+            count = graphics->QueryAvailable(query.id) ? 1 : 0;
         } else {
             count = 1;
         }
@@ -240,7 +241,7 @@ void Flares::OcclusionQuery(int which) {
         if (count) {
             if (query.started) {
                 PROFILER_ZONE(g_profiler_ctx, "glGetQueryObjectuiv b");
-                glGetQueryObjectuiv(query.id, GL_QUERY_RESULT, &count);
+                count = (GLuint)std::min<uint64_t>(graphics->QueryResult(query.id), UINT32_MAX);  // (clamped as the uint read did)
                 unsigned total = _occlusion_size * _occlusion_size *
                                  max(1, graphics->config_.FSAA_samples());
                 flare->visible = min(1.0f, max(0.0f, ((float)count) / ((float)total)));
@@ -252,7 +253,7 @@ void Flares::OcclusionQuery(int which) {
             {
                 PROFILER_ZONE(g_profiler_ctx, "glBeginQuery");
                 // LOGI << "flare_begin_query " << query.id << std::endl;
-                glBeginQuery(GL_SAMPLES_PASSED, query.id);
+                graphics->BeginOcclusionQuery(query.id);
             }
             if (flare->visible_mult > 0.0f) {
                 vec3 cam_to_flare;
@@ -299,7 +300,7 @@ void Flares::OcclusionQuery(int which) {
             {
                 PROFILER_ZONE(g_profiler_ctx, "glEndQuery");
                 // LOGI << "flare_end_query " << query.id << std::endl;
-                glEndQuery(GL_SAMPLES_PASSED);
+                graphics->EndOcclusionQuery();
             }
             CHECK_GL_ERROR();
         }
@@ -449,7 +450,7 @@ void Flares::DeleteFlare(Flare* flare) {
         Flare* flare = (*flare_iter);
         for (auto& i : flare->query) {
             if (i.created) {
-                glDeleteQueries(1, &i.id);
+                Graphics::Instance()->DeleteQuery(i.id);
             }
         }
         delete flare;
@@ -467,7 +468,7 @@ void Flares::CleanupFlares() {
         Flare* flare = (*it);
         for (auto& i : flare->query) {
             if (i.created) {
-                glDeleteQueries(1, &i.id);
+                Graphics::Instance()->DeleteQuery(i.id);
             }
         }
         delete (*it);

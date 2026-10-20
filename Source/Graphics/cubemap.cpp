@@ -63,21 +63,12 @@ mat4 GetCubeMapRotation(int i) {
     return mat4();
 }
 
-GLuint cube_map_fbo = UINT_MAX;
-
 void CubemapMipChain(TextureRef cube_map_tex_ref, Cubemap::HemisphereEnabled hemisphere_enabled, const vec3* hemisphere_vec) {
     PROFILER_GPU_ZONE(g_profiler_ctx, "CubemapMipChain");
-    int cube_map_tex_id = Textures::Instance()->returnTexture(cube_map_tex_ref);
     Graphics* graphics = Graphics::Instance();
     Shaders* shaders = Shaders::Instance();
     CHECK_GL_ERROR();
-    graphics->PushFramebuffer();
-    CHECK_GL_ERROR();
-    if (cube_map_fbo == UINT_MAX) {
-        graphics->genFramebuffers(&cube_map_fbo, "cube_map_fbo");
-        CHECK_GL_ERROR();
-    }
-    graphics->bindFramebuffer(cube_map_fbo);
+    graphics->PushRenderTarget();
     CHECK_GL_ERROR();
     int tex_width = 128;
     int level = 0;
@@ -88,10 +79,11 @@ void CubemapMipChain(TextureRef cube_map_tex_ref, Cubemap::HemisphereEnabled hem
         angle *= 2.0f;
         for (int i = 0; i < 6; ++i) {
             CHECK_GL_ERROR();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cube_map_tex_id, level);
+            // (Overgrowth Online stage 5.0: face i of this level, through BindRenderTarget)
+            graphics->BindRenderTarget(RenderTarget().Color(cube_map_tex_ref, level, i));
             CHECK_GL_ERROR();
             graphics->setViewport(0, 0, tex_width, tex_width);
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            graphics->SetClearColor(vec4(0.0f, 0.0f, 0.0f, 0.0f));
             graphics->Clear(true);
             CHECK_GL_ERROR();
             mat4 rot = GetCubeMapRotation(i);
@@ -110,9 +102,11 @@ void CubemapMipChain(TextureRef cube_map_tex_ref, Cubemap::HemisphereEnabled hem
             CHECK_GL_ERROR();
             shaders->SetUniformFloat("max_angle", angle);
             CHECK_GL_ERROR();
-            shaders->SetUniformFloat("src_mip", (float)(level - 1));
+            // The level above, through a view of that one level (it is read while
+            // this level of the same cube map is drawn into)
+            shaders->SetUniformFloat("src_mip", 0.0f);
             CHECK_GL_ERROR();
-            Textures::Instance()->bindTexture(cube_map_tex_ref);
+            Textures::Instance()->bindTexture(Textures::Instance()->GetMipView(cube_map_tex_ref, level - 1));
             CHECK_GL_ERROR();
             static const GLfloat data[] = {
                 -1, -1,
@@ -140,5 +134,5 @@ void CubemapMipChain(TextureRef cube_map_tex_ref, Cubemap::HemisphereEnabled hem
             CHECK_GL_ERROR();
         }
     }
-    graphics->PopFramebuffer();
+    graphics->PopRenderTarget();
 }

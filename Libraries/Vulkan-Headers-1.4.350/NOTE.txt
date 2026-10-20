@@ -1,0 +1,4 @@
+Khronos Vulkan-Headers as shipped in the LunarG Vulkan SDK 1.4.350.0 (include/vulkan, include/vk_video), the C headers only
+(the C++ bindings, vulkan*.hpp and the modules, are left out: the engine doesn't use them).
+License: Apache-2.0 (SPDX-License-Identifier in each file), the same as the engine (see LICENSE).
+Used by the Vulkan backend (stage 5) together with volk (loader, MIT) and VMA (allocator, MIT).

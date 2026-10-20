@@ -22,12 +22,16 @@
 //-----------------------------------------------------------------------------
 #include <Compat/hardware_info.h>
 #include <Memory/allocation.h>
+#include <Graphics/render_backend.h>
 
 #include <opengl.h>
 
 #include <string>
 
 unsigned GetDriverVersion(GLVendor vendor) {
+    if (UseVulkan()) {  // (no GL_VERSION string)
+        return 0;
+    }
     // Mac driver versions are at the end of the GL_VERSION string, e.g.:
     //"2.1 NVIDIA-1.6.6"
     std::string driver_string = (const char *)glGetString(GL_VERSION);

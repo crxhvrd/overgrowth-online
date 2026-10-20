@@ -18,8 +18,17 @@
 
 uniform vec4 primary_light_color;
 
+// Overgrowth Online (GL 4.6 stage 5.5): an integer hash of the pixel (PCG2D); the
+// fract(sin(x) * 43758.5453) one gave a different pattern on each API and vendor
 float rand(vec2 co){
-    return fract(sin(dot(vec2(floor(co.x),floor(co.y)) ,vec2(12.9898,78.233))) * 43758.5453);
+    uvec2 v = uvec2(ivec2(floor(co))) * 1664525u + 1013904223u;
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v = v ^ (v >> 16u);
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v = v ^ (v >> 16u);
+    return float(v.x >> 8u) * (1.0 / 16777216.0);
 }
 
 float GetDirectContribSimple( float amount ) {

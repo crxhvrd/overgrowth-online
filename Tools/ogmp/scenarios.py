@@ -840,6 +840,9 @@ SCENARIOS["gl_errors"] = _render("gl_errors")
 SCENARIOS["render_check"] = _render("render_check")
 SCENARIOS["render_quick"] = _render("render_check", scenes=["slaver_path"], battle=False)
 SCENARIOS["render_check_vk"] = _render("render_check_vk")
+SCENARIOS["vk_errors"] = _render("vk_errors")
+SCENARIOS["vk_textures"] = _render("vk_textures")
+SCENARIOS["vk_parity"] = _render("vk_parity")
 
 
 # Shader checks (docs_gl46_plan.md stage 3.1): shader_suite.py
@@ -852,6 +855,7 @@ def _shaders(name, **kw):
 
 SCENARIOS["shader_collect"] = _shaders("shader_collect")
 SCENARIOS["shader_check"] = _shaders("shader_check")
+SCENARIOS["vk_shader_check"] = _shaders("vk_shader_check")
 SCENARIOS["shader_glslang"] = _shaders("shader_glslang")
 SCENARIOS["shader_spirv"] = _shaders("shader_spirv")
 SCENARIOS["perf_baseline"] = _render("perf_baseline")
@@ -903,7 +907,7 @@ SUITES = {
     "phase5": ["unit_tests", "level_channel", "pvp_battle", "campaign_coop", "stress_8"],
     # Overgrowth Online is story co-op for now
     # The renderer (docs_gl46_plan.md): before and after every renderer change
-    "renderer": ["shader_check", "render_check", "shader_spirv", "render_check_vk", "perf_baseline"],
+    "renderer": ["shader_check", "render_check", "shader_spirv", "render_check_vk", "vk_errors", "vk_textures", "vk_shader_check", "vk_parity", "perf_baseline"],
     "coop": ["unit_tests", "campaign_coop", "coop_character", "coop_camera", "coop_talk", "coop_gear", "coop_revive", "coop_cutscene", "coop_checkpoint", "coop_weapons", "late_join", "drop_rejoin"],
     "phase2_long": ["unit_tests", "connect", "connect_good", "connect_typical", "connect_bad", "clock_sync",
                     "late_join", "drop_rejoin", "clean_leave", "client_camera", "bot_duel"],

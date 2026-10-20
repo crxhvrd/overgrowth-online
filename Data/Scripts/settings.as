@@ -313,6 +313,12 @@ void AddGraphicsScreen(){
     array<string> detail_object_config_variables = { "detail_objects", "detail_object_lowres", "detail_object_disable_shadows", "detail_object_decals" };
     array<string> detail_object_options = {"Off", "Low", "Medium", "High"};
     AddDropDown("Detail objects", settings_content, DropdownConfiguration( detail_object_config_values, detail_object_options, detail_object_config_variables ), "*");
+
+    // Overgrowth Online: the renderer (Vulkan for testers for now; a Vulkan start
+    // that fails comes back on OpenGL)
+    array<string> renderer_values = {"gl", "vulkan"};
+    array<string> renderer_options = {"OpenGL", "Vulkan (test)"};
+    AddDropDown("Renderer", settings_content, DropdownConfiguration( renderer_values, renderer_options, "renderer", "" ), "*");
     AddLabel("*Requires Restart", settings_content);
     
     DualColumns dual_columns("checkboxes_column", 800);

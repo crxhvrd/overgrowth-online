@@ -170,6 +170,17 @@ class Textures {
    public:
     enum MipmapParam { MIPMAPS,
                        NO_MIPMAPS };
+    // (stage 5.4: UnitBinding's kinds)
+    enum UnitKind {
+        kUnit2D,
+        kUnitCube,
+        kUnit2DArray,
+        kUnit3D,
+        kUnitBuffer,
+        kUnit2DMultisample,
+        kUnitCubeArray,
+        kUnitKinds
+    };
 
     void DrawImGuiDebug();
 
@@ -180,6 +191,9 @@ class Textures {
     std::mutex texture_mutex;
     GLuint m_wrap_t, m_wrap_s, min_filter, mag_filter;            // These settings are applied to the next texture that is loaded or created
     unsigned int bound_texture[PhoenixTextures::_texture_units];  // Shadow GL texture units
+    GLuint unit_texture_[PhoenixTextures::_texture_units][kUnitKinds] = {};  // (UnitBinding)
+    GLuint unit_sampler_[PhoenixTextures::_texture_units] = {};
+    static UnitKind KindOf(GLenum target);
     TextureAssetRef blank_texture_ref;
     TextureAssetRef blank_normal_texture_ref;
 
@@ -215,6 +229,7 @@ class Textures {
         unsigned int parent;
         GLuint parent_gl;  // the parent's GL texture the view was made of
         int level;
+        int num_levels;
         TextureRef view;
     };
     std::vector<MipView> mip_views;
@@ -250,6 +265,7 @@ class Textures {
     // Overgrowth Online: empty these units (a program switch: a sampler its draw
     // doesn't bind reads zero, as when every unit was emptied on each switch)
     void ClearUnits(const std::vector<int>& units);
+    int frame_ring_texel_unit_ = -1;
     // Overgrowth Online (GL 4.6 stage 2.2): sampler objects. A draw that samples a
     // texture differently binds its own sampler after the texture (the next bind of
     // that unit brings the texture's back)
@@ -260,7 +276,7 @@ class Textures {
     // Overgrowth Online (GL 4.6 stage 2.5): one mip level of a texture as a texture of
     // its own (a view of the same storage, sampled as the parent is), for a pass that
     // reads one level of a texture while it renders into another level of it
-    TextureRef GetMipView(const TextureRef& tex_ref, int level);
+    TextureRef GetMipView(const TextureRef& tex_ref, int level, int num_levels = 1);  // (levels level .. level + num_levels - 1)
     void Dispose();
     void Reload();
     void EnsureInVRAM(const TextureAssetRef& id);
@@ -272,6 +288,36 @@ class Textures {
     void setFilters(GLenum min, GLenum mag);
     void bindTexture(const TextureAssetRef& tex_ref, int which_unit = 0);
     void bindTexture(const TextureRef& tex_ref, int which_unit = 0);
+    // Overgrowth Online (GL 4.6 stage 5.0): the frame ring as a texel buffer at a unit
+    // (GPU skinning's bones: FrameRing::BufferTexture); the unit is remembered
+    void BindFrameRingTexels(int unit);
+    // The id ImGui draws a texture by (its slot + 1: imgui_impl_sdl_gl3.cpp binds it
+    // through Textures, so the Vulkan backend draws the same ids)
+    void* ImGuiTextureID(const TextureRef& tex_ref);
+    void* ImGuiTextureID(const TextureAssetRef& tex_ref);
+    // Overgrowth Online (GL 4.6 stage 5.3, the bridge's texture_digest): each texture
+    // loaded from a file, its first level read back and hashed (FNV-1a), by file name
+    struct Digest {
+        std::string name;
+        int width = 0, height = 0, layers = 0;
+        unsigned format = 0;  // GL internal format
+        uint64_t hash = 0;
+    };
+    std::vector<Digest> DigestLoaded();
+    // (the bridge's texture_stats: a texture by its name, level 0 read back as floats:
+    // min, max, mean of the first channel and the share of texels above 0; false: none)
+    bool LevelStats(const std::string& name, int* width, int* height, float* min, float* max, float* mean, float* nonzero);
+    // (and texture_dump: level 0's first channel as raw floats, rows from the bottom)
+    bool DumpLevel(const std::string& name, const std::string& path, int* width, int* height);
+    void ListNamed(std::vector<std::string>& out) const;  // (texture_list: the engine's own textures, by name)
+    // Overgrowth Online (GL 4.6 stage 5.4): what GL has bound at a unit for each kind of
+    // texture (GL keeps one binding per target: array, 3D and buffer textures stay
+    // bound where 2D and cube ones are cleared, see ClearUnits), and the unit's sampler.
+    // The Vulkan renderer's descriptors read these
+    void UnitBinding(int unit, UnitKind kind, GLuint* texture, GLuint* sampler) const;
+    int frame_ring_texel_unit() const { return frame_ring_texel_unit_; }
+    // A rectangle of a level from CPU data (text atlases, video frames)
+    void UpdateRegion(const TextureRef& tex_ref, int level, int x, int y, int width, int height, GLenum format, GLenum type, const void* data);
     void bindTexture(const unsigned int& tex_ref, int which_unit = 0);
     void bindBlankTexture(int which_unit = 0);
     void bindBlankNormalTexture(int which_unit = 0);
@@ -290,6 +336,9 @@ class Textures {
     TextureRef makeCubemapArrayTexture(int num_slices, int width, int height, GLint internal_format, GLint format, unsigned char flags);
     TextureRef makeFlatCubemapArrayTexture(int num_slices, int width, int height, GLint internal_format, GLint format, unsigned char flags);
     TextureRef makeRectangularTexture(int width, int height, GLint internal_format = GL_RGBA, GLint format = GL_RGBA);
+    // Overgrowth Online (GL 4.6 stage 5.0): a multisample render target (MSAA); never sampled,
+    // resolved by Graphics::BlitRenderTarget
+    TextureRef makeMultisampleTexture(int width, int height, int samples, GLint internal_format);
     TextureRef makeTexture(int width, int height, GLint internal_format = GL_RGBA, GLint format = GL_RGBA, bool mipmap = false, void* data = NULL);
     TextureRef makeTexture(const TextureData& texture_data);
     TextureRef make3DTexture(int width, int height, int depth, GLint internal_format, GLint format, bool mipmap, void* data);

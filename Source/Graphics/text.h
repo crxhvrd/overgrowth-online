@@ -126,7 +126,7 @@ class TextAtlas {
     static bool Pack(unsigned char* pixels, int atlas_dims[2],
                      int font_face_id, int lowercase_font_face_id,
                      FontRenderer* font_renderer, std::vector<CharacterInfo>& alphabet);
-    int tex;
+    TextureRef texture;  // (Overgrowth Online stage 5.0: a Textures texture, was a bare GL name)
     int pixel_height;
 };
 

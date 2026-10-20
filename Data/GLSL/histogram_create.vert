@@ -20,6 +20,7 @@ uniform sampler2D tex0;
 in vec2 pixel_uv;
 
 void main() {
+    gl_PointSize = 1.0;  // (Overgrowth Online stage 5.0: Vulkan sizes points from here; GL from glPointSize, 1 too)
     vec4 color = texture2DLod(tex0, pixel_uv, 0.0);
     float avg = (color[0] + color[1] + color[2]) / 3.0;
     float bucket = avg;

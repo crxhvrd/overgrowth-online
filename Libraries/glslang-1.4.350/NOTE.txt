@@ -1,0 +1,6 @@
+glslang's C interface headers as shipped in the LunarG Vulkan SDK 1.4.350.0 (Include/glslang/Include:
+glslang_c_interface.h, glslang_c_shader_types.h, visibility.h; Include/glslang/Public/resource_limits_c.h),
+unchanged. Headers only: the Vulkan renderer loads glslang.dll (and glslang-default-resource-limits.dll) from
+the SDK's Bin at run time to compile shader programs the offline SPIR-V build doesn't have (stage 5.5).
+License: BSD 3-Clause (in each file's header); glslang.dll itself is under glslang's licences (BSD 3-Clause,
+with parts under MIT, Apache-2.0 and the GPL-3.0 Bison exception for its generated parser).

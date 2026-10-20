@@ -8,9 +8,48 @@ Libraries shipped as DLLs, under their own licences (see this folder):
   OpenAL Soft           LGPL 2 (unmodified DLL; you may replace it)
   libogg, libvorbis     BSD licence
   OpenVR                BSD licence
+  glslang               glslang.dll, glslang-default-resource-limits.dll (the Vulkan
+                        renderer's shader compiler, from the LunarG Vulkan SDK 1.4.350):
+                        BSD 3-Clause and others (licenses/glslang.txt)
   zlib                  zlib licence
   Steamworks API        steam_api64.dll, redistributed under the Steamworks SDK
                         Access Agreement
   GameNetworkingSockets (test builds only) BSD licence; protobuf (BSD), OpenSSL
   Microsoft Visual C++ runtime (msvcp140, vcruntime140): Microsoft's
                         redistributable licence
+
+Compiled into the game, under their own licences:
+  volk                  MIT licence (licenses/volk.txt)
+  Vulkan Memory Allocator  MIT licence (licenses/VulkanMemoryAllocator.txt)
+  Vulkan-Headers        Apache License 2.0, like the engine
+  SPIRV-Reflect         Apache License 2.0, like the engine
+  Dear ImGui            MIT licence (licenses/imgui.txt)
+  ImPlot                MIT licence (licenses/implot.txt)
+  FreeType              FreeType License (licenses/FreeType.txt); its BDF and PCF drivers
+                        MIT-style (licenses/FreeType-BDF.txt, licenses/FreeType-PCF.txt).
+                        Portions of this software are copyright (c) 2022 The FreeType
+                        Project (www.freetype.org). All rights reserved.
+  GLM                   MIT licence (licenses/glm.txt)
+  JsonCpp               public domain or MIT licence (licenses/jsoncpp.txt)
+  TCLAP                 MIT licence (licenses/tclap.txt)
+  tween.lua (C++ port)  MIT licence (licenses/tween.txt)
+  Fast Quadric Mesh Simplification  MIT licence (licenses/FastQuadricMeshSimplification.txt)
+  Zstandard             BSD licence (licenses/zstd.txt)
+  TUT test framework    BSD licence (licenses/tut-framework.txt)
+  Oculus SDK (LibOVR)   Oculus SDK License (licenses/OculusSDK.txt)
+  Triangle              free non-commercial licence (licenses/Triangle.txt)
+  Bullet Physics        zlib licence
+  AngelScript           zlib licence
+  Recast & Detour       zlib licence
+  TinyXML               zlib licence
+  T-Rex                 zlib licence
+  crunch (crnlib)       zlib licence
+  minizip               zlib licence
+  binn                  Apache License 2.0, like the engine
+  UTF8-CPP              Boost Software License 1.0
+  flat_hash_map         Boost Software License 1.0
+  stb_image, stb_image_write  public domain
+  MurmurHash3           public domain
+  glad                  public domain (generated OpenGL loader)
+  NVAPI                 NVIDIA's NVAPI licence
+  nvImage               NVIDIA SDK sample code (DDS loading)

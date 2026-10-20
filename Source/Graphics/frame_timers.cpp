@@ -6,6 +6,9 @@
 //-----------------------------------------------------------------------------
 #include "frame_timers.h"
 
+#include <Graphics/graphics.h>
+#include <Graphics/render_backend.h>
+#include <Graphics/Vulkan/vk_backend.h>
 #include <Internal/profiler.h>
 #include <Internal/config.h>
 #include <Logging/logdata.h>
@@ -82,6 +85,9 @@ int windows_since_log = 0;
 Snapshot last;
 
 bool QueriesAvailable() {
+    if (UseVulkan()) {  // (Vulkan: the queue's timestamps, stage 5.6)
+        return VkBackend::TimestampValidBits() > 0;
+    }
     return GLAD_GL_VERSION_3_3 || GLAD_GL_ARB_timer_query;
 }
 
@@ -93,7 +99,10 @@ GLuint NextQuery(FrameSlot& s) {
     if (s.used == s.queries.size()) {
         size_t had = s.queries.size();
         s.queries.resize(had == 0 ? 256 : had * 2);
-        glGenQueries((GLsizei)(s.queries.size() - had), &s.queries[had]);
+        // (Overgrowth Online stage 5.0: the queries through Graphics, one at a time)
+        for (size_t i = had; i < s.queries.size(); ++i) {
+            s.queries[i] = Graphics::Instance()->CreateQuery(Graphics::kTimestampQuery);
+        }
     }
     return s.queries[s.used++];
 }
@@ -150,16 +159,14 @@ void Collect(FrameSlot& s) {
         return;
     }
 
-    GLint available = 0;
-    glGetQueryObjectiv(s.records.back().q_end, GL_QUERY_RESULT_AVAILABLE, &available);
-    if (!available) {
+    Graphics* graphics = Graphics::Instance();
+    if (!graphics->QueryAvailable(s.records.back().q_end)) {
         return;
     }
 
     for (const Record& r : s.records) {
-        GLuint64 a = 0, b = 0;
-        glGetQueryObjectui64v(r.q_begin, GL_QUERY_RESULT, &a);
-        glGetQueryObjectui64v(r.q_end, GL_QUERY_RESULT, &b);
+        uint64_t a = graphics->QueryResult(r.q_begin);
+        uint64_t b = graphics->QueryResult(r.q_end);
         Acc& z = acc[r.zone];
         z.gpu_ns += b > a ? double(b - a) : 0.0;
         z.cpu_ms += r.cpu_ms;
@@ -227,7 +234,7 @@ bool OnRenderThread() {
 void Init() {
     render_thread = std::this_thread::get_id();
     have_thread = true;
-    g_debug_groups = config["gl_debug_groups"].toNumber<bool>() && GLAD_GL_KHR_debug;
+    g_debug_groups = config["gl_debug_groups"].toNumber<bool>() && (UseVulkan() || GLAD_GL_KHR_debug);  // (Vulkan: labels)
     SetEnabled(config["frame_timers"].toNumber<bool>());
 }
 
@@ -289,12 +296,12 @@ void Begin(const char* name) {
     o.group = g_debug_groups;
 
     if (o.group) {
-        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, collapsed.c_str());
+        Graphics::Instance()->PushDebugGroup(collapsed.c_str());
     }
     if (g_on) {
         o.zone = ZoneId(collapsed);
         o.q_begin = NextQuery(slots[slot]);
-        glQueryCounter(o.q_begin, GL_TIMESTAMP);
+        Graphics::Instance()->WriteTimestamp(o.q_begin);
         o.t0 = Clock::now();
     }
     stack.push_back(o);
@@ -311,11 +318,11 @@ void End() {
     if (o.zone >= 0 && g_on) {
         FrameSlot& s = slots[slot];
         GLuint q_end = NextQuery(s);
-        glQueryCounter(q_end, GL_TIMESTAMP);
+        Graphics::Instance()->WriteTimestamp(q_end);
         s.records.push_back({o.zone, o.q_begin, q_end, Ms(Clock::now() - o.t0)});
     }
     if (o.group) {
-        glPopDebugGroup();
+        Graphics::Instance()->PopDebugGroup();
     }
 }
 

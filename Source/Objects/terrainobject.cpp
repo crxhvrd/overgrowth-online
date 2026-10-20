@@ -104,7 +104,7 @@ int TerrainObject::lineCheck(const vec3& start, const vec3& end, vec3* point, ve
 void TerrainObject::ReceiveObjectMessageVAList(OBJECT_MSG::Type type, va_list args) {
     switch (type) {
         case OBJECT_MSG::LIGHTING_CHANGED:
-            terrain_.BakeTerrainTexture(terrain_.framebuffer, scenegraph_->sky->GetSpecularCubeMapTexture());
+            terrain_.BakeTerrainTexture(scenegraph_->sky->GetSpecularCubeMapTexture());
             break;
         default:
             Object::ReceiveObjectMessageVAList(type, args);
@@ -118,7 +118,7 @@ void TerrainObject::PreDrawFrame(float curr_game_time) {
     CHECK_GL_ERROR();
     if (scenegraph_->sky->live_updated) {
         CHECK_GL_ERROR();
-        terrain_.BakeTerrainTexture(terrain_.framebuffer, scenegraph_->sky->GetSpecularCubeMapTexture());
+        terrain_.BakeTerrainTexture(scenegraph_->sky->GetSpecularCubeMapTexture());
         scenegraph_->sky->BakeSecondPass(&terrain_.baked_texture_ref);
         scenegraph_->sky->live_updated = false;
         CHECK_GL_ERROR();
@@ -518,9 +518,6 @@ void TerrainObject::DrawTerrain() {
     shaders->SetUniformInt("subdivisions_z", scenegraph_->light_probe_collection.grid_lookup.subdivisions[2]);
     shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_COLOR_BUFFER), TEX_AMBIENT_COLOR_BUFFER);
     shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_GRID_DATA), TEX_AMBIENT_GRID_DATA);
-    if (scenegraph_->light_probe_collection.light_probe_buffer_object_id != -1) {
-        glBindBuffer(GL_TEXTURE_BUFFER, scenegraph_->light_probe_collection.light_probe_buffer_object_id);
-    }
 
     scenegraph_->BindDecals(shader);
     scenegraph_->BindLights(shader);

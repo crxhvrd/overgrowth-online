@@ -114,7 +114,7 @@ def unify_locations(modules):
 
 # The engine's bindings (stage 3.3). Uniform blocks in set 0 at the binding points the
 # engine binds them to; textures (and texel buffers) in set 1 at their unit, "texN" -> N.
-BLOCK_BINDINGS = {"InstanceInfo": 0, "ClusterInfo": 1, "ShadowCascades": 2, "gl_DefaultUniformBlock": 3}
+BLOCK_BINDINGS = {"InstanceInfo": 0, "ClusterInfo": 1, "ShadowCascades": 2, "gl_DefaultUniformBlock": 3, "LightProbeInfo": 4}
 SET_BLOCKS, SET_TEXTURES = 0, 1
 
 

@@ -537,20 +537,20 @@ void ASDebugger::DebugLoop() {
 
         // Back up state
         std::stack<ViewportDims> viewport_dims_stack;
-        std::stack<GLuint> fbo_stack;
+        std::stack<Graphics::RenderTargetState> render_target_stack;
 
-        graphics->PushViewport();     // Viewport is set to entire window
-        graphics->PushFramebuffer();  // Framebuffer is set to 0
+        graphics->PushViewport();      // Viewport is set to entire window
+        graphics->PushRenderTarget();  // Render target is set to the window
         // Back these up to temporarily so no assertions fail/states change
         viewport_dims_stack = graphics->viewport_dims_stack;
-        fbo_stack = graphics->fbo_stack;
+        render_target_stack = graphics->render_target_stack;
 
         graphics->viewport_dims_stack = std::stack<ViewportDims>();
-        graphics->fbo_stack = std::stack<GLuint>();
+        graphics->render_target_stack = std::stack<Graphics::RenderTargetState>();
 
         // Changes states
         graphics->setViewport(0, 0, graphics->window_dims[0], graphics->window_dims[1]);
-        graphics->bindFramebuffer(0);
+        graphics->BindWindow();
         graphics->Clear(true);
 
         // Draw
@@ -562,8 +562,8 @@ void ASDebugger::DebugLoop() {
 
         // Restore state
         graphics->viewport_dims_stack = viewport_dims_stack;
-        graphics->fbo_stack = fbo_stack;
-        graphics->PopFramebuffer();
+        graphics->render_target_stack = render_target_stack;
+        graphics->PopRenderTarget();
         graphics->PopViewport();
 
         static uint32_t last_time = 0;

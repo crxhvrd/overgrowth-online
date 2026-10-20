@@ -145,46 +145,43 @@ void ProfilerContext::Dispose(StackAllocator* stack_allocator) {
 
 #include <Internal/snprintf.h>
 #include <Threading/thread_sanity.h>
-
-#include <opengl.h>
+#include <Graphics/graphics.h>
 
 #include <cassert>
 #include <cstdarg>
 
 #define GPUMARKBUFSIZE 512
 
+// (Overgrowth Online stage 5.0: the groups through Graphics, which checks for
+// debug group support itself, the same way for the push and the pop)
 ProfilerScopedGPUZone::ProfilerScopedGPUZone(const char *msg, ...) {
     AssertMainThread();
 
-    if (GLAD_GL_KHR_debug) {
-        char buf[GPUMARKBUFSIZE];
-        va_list args;
+    char buf[GPUMARKBUFSIZE];
+    va_list args;
 
-        va_start(args, msg);
+    va_start(args, msg);
 
-        int ret = vsnprintf(buf, GPUMARKBUFSIZE, msg, args);
-        va_end(args);
+    int ret = vsnprintf(buf, GPUMARKBUFSIZE, msg, args);
+    va_end(args);
 
-        // We want to crash if this fails
-        // If we want to continue we'd have to keep track of whether this succeeded to avoid GL errors
-        assert(ret >= 0);
+    // We want to crash if this fails
+    // If we want to continue we'd have to keep track of whether this succeeded to avoid GL errors
+    assert(ret >= 0);
 
-        if (ret < GPUMARKBUFSIZE) {
-            buf[ret] = '\0';
-        } else {
-            buf[GPUMARKBUFSIZE - 1] = '\0';
-        }
-
-        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, buf);
+    if (ret < GPUMARKBUFSIZE) {
+        buf[ret] = '\0';
+    } else {
+        buf[GPUMARKBUFSIZE - 1] = '\0';
     }
+
+    Graphics::Instance()->PushDebugGroup(buf);
 }
 
 ProfilerScopedGPUZone::~ProfilerScopedGPUZone() {
     AssertMainThread();
 
-    if (GLAD_GL_KHR_debug) {
-        glPopDebugGroup();
-    }
+    Graphics::Instance()->PopDebugGroup();
 }
 
 #endif  // NTELEMETRY

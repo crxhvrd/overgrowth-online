@@ -32,8 +32,17 @@ out vec4 out_color;
 
 #define M_PI 3.1415926535897932384626433832795
 
+// Overgrowth Online (GL 4.6 stage 5.5): an integer hash (PCG2D) of the direction,
+// quantized; the fract(sin(x) * 43758.5453) one differed between APIs and vendors
 float rand(vec2 co){
-    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+    uvec2 v = uvec2(ivec2(floor(co * 65536.0))) * 1664525u + 1013904223u;
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v = v ^ (v >> 16u);
+    v.x += v.y * 1664525u;
+    v.y += v.x * 1664525u;
+    v = v ^ (v >> 16u);
+    return float(v.x >> 8u) * (1.0 / 16777216.0);
 }
 
 void main() {    

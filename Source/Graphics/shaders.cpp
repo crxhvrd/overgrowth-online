@@ -29,6 +29,11 @@
 
 #include <Graphics/textures.h>
 #include <Graphics/graphics.h>
+#include <Graphics/render_backend.h>
+#include <Graphics/Vulkan/vk_draw.h>
+#include <Graphics/Vulkan/vk_programs.h>
+#include <Graphics/Vulkan/vk_compile.h>
+#include <Graphics/Vulkan/vk_gl.h>
 
 #include <Internal/common.h>
 #include <Internal/textfile.h>
@@ -48,6 +53,14 @@
 extern bool g_single_pass_shadow_cascade;
 
 void Shaders::Dispose() {
+    if (UseVulkan()) {
+        for (auto &program : programs) {
+            VkPrograms::Destroy(program.gl_program);
+        }
+        shaders.clear();
+        programs.clear();
+        return;
+    }
     CHECK_GL_ERROR();
     for (auto &program : programs) {
         if (program.gl_program != UNLOADED_SHADER_ID) {
@@ -346,10 +359,11 @@ static void Preprocess(Shader *shader, ShaderType type, const std::vector<std::s
     for (const auto &definition : definitions) {
         AddShaderDefinition(&text, definition);
     }
-    if (GLAD_GL_ARB_sample_shading) {
+    // (Vulkan has both: the text as GL makes it, stage 5.5)
+    if (UseVulkan() || GLAD_GL_ARB_sample_shading) {
         AddShaderDefinition(&text, "ARB_sample_shading_available");
     }
-    if (GLAD_GL_ARB_shader_texture_lod && type == _fragment) {
+    if ((UseVulkan() || GLAD_GL_ARB_shader_texture_lod) && type == _fragment) {
         text.insert(0, "#extension GL_ARB_shader_texture_lod : enable\n");
     }
 
@@ -385,7 +399,9 @@ void Shaders::ReloadShader(int which, ShaderType type) {
     if (which >= 0) {
         Shader &shader = shaders[which];
         if (shader.gl_shader != UNLOADED_SHADER_ID) {
-            glDeleteShader(shader.gl_shader);
+            if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+                glDeleteShader(shader.gl_shader);
+            }
             shader.gl_shader = UNLOADED_SHADER_ID;
         }
         textFileRead(shader.name, &shader.text);
@@ -423,7 +439,11 @@ void Shaders::Reload(bool force) {
                 }
             }
             if (unloaded) {
-                glDeleteProgram(program.gl_program);
+                if (UseVulkan()) {
+                    VkPrograms::Destroy(program.gl_program);
+                } else {
+                    glDeleteProgram(program.gl_program);
+                }
                 program.gl_program = UNLOADED_SHADER_ID;
             }
         }
@@ -470,7 +490,9 @@ bool Shaders::createShader(int which, ShaderType type) {
         return true;
     }
 
-    if (type == _vertex) {
+    if (UseVulkan()) {
+        shader.gl_shader = VkStub::NewId();  // (Vulkan: stage 5.4)
+    } else if (type == _vertex) {
         shader.gl_shader = glCreateShader(GL_VERTEX_SHADER);
     } else if (type == _fragment) {
         shader.gl_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -483,9 +505,11 @@ bool Shaders::createShader(int which, ShaderType type) {
     }
     shader.type = type;
 
-    const char *sources[] = {shader.text.c_str()};
-    glShaderSource(shader.gl_shader, 1, sources, NULL);
-    glCompileShader(shader.gl_shader);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+        const char *sources[] = {shader.text.c_str()};
+        glShaderSource(shader.gl_shader, 1, sources, NULL);
+        glCompileShader(shader.gl_shader);
+    }
 
     // Output shader source to file
     if (config["shader_debug"].toNumber<bool>()) {
@@ -536,7 +560,11 @@ bool Shaders::createShader(int which, ShaderType type) {
     }
 
     int status = 0;
-    glGetShaderiv(shader.gl_shader, GL_COMPILE_STATUS, &status);
+    if (UseVulkan()) {
+        status = 1;  // (Vulkan: stage 5.4)
+    } else {
+        glGetShaderiv(shader.gl_shader, GL_COMPILE_STATUS, &status);
+    }
     if (!status) {
         int len = 0;
         char buffer[1025] = {0};
@@ -584,7 +612,7 @@ GLint Shaders::returnShaderVariable(const std::string &name, int which) {
     Program::UniformAddressCacheMap::iterator iter =
         programs[which].uniform_address_cache.find(name);
     if (iter == programs[which].uniform_address_cache.end()) {
-        GLint addr = glGetUniformLocation(programs[which].gl_program, name.c_str());
+        GLint addr = UseVulkan() ? -1 : glGetUniformLocation(programs[which].gl_program, name.c_str());  // (Vulkan: stage 5.4)
         if (addr == -1 && !programs[which].shadow_data.empty()) {
             // Overgrowth Online (GL 4.6 stage 3.4): a member of the default block
             auto member = programs[which].shadow_member_ids.find(name);
@@ -604,9 +632,14 @@ GLint Shaders::returnShaderVariableIndex(const std::string &name, int program_id
     Program::UniformAddressCacheMap::iterator iter =
         programs[program_id].uniform_address_cache.find(key);
     if (iter == programs[program_id].uniform_address_cache.end()) {
-        GLuint index;
+        GLuint index = GL_INVALID_INDEX;
         const char *name_cstr = name.c_str();
-        glGetUniformIndices(programs[program_id].gl_program, 1, &name_cstr, &index);
+        if (UseVulkan()) {  // (a block member, by reflection)
+            int m = VkPrograms::MemberIndex(programs[program_id].gl_program, name);
+            index = m < 0 ? GL_INVALID_INDEX : (GLuint)m;
+        } else {
+            glGetUniformIndices(programs[program_id].gl_program, 1, &name_cstr, &index);
+        }
         programs[program_id].uniform_address_cache[key] = index;
         return index;
     } else {
@@ -619,8 +652,12 @@ GLint Shaders::returnShaderVariableOffset(int uniform_index, int program_id) {
         programs[program_id].uniform_offset_cache.find(uniform_index);
     if (iter == programs[program_id].uniform_offset_cache.end()) {
         GLuint index = uniform_index;
-        GLint offset;
-        glGetActiveUniformsiv(programs[program_id].gl_program, 1, &index, GL_UNIFORM_OFFSET, &offset);
+        GLint offset = -1;
+        if (UseVulkan()) {
+            offset = VkPrograms::MemberOffset(programs[program_id].gl_program, (int)index);
+        } else {
+            glGetActiveUniformsiv(programs[program_id].gl_program, 1, &index, GL_UNIFORM_OFFSET, &offset);
+        }
         programs[program_id].uniform_offset_cache[uniform_index] = offset;
         return offset;
     } else {
@@ -632,8 +669,12 @@ GLint Shaders::returnShaderBlockSize(int block_index, int program_id) {
     Program::UniformOffsetCacheMap::iterator iter =
         programs[program_id].uniform_offset_cache.find(-block_index - 1);
     if (iter == programs[program_id].uniform_offset_cache.end()) {
-        GLint block_size;
-        glGetActiveUniformBlockiv(programs[program_id].gl_program, block_index, GL_UNIFORM_BLOCK_DATA_SIZE, &block_size);
+        GLint block_size = 0;
+        if (UseVulkan()) {
+            block_size = VkPrograms::BlockSize(programs[program_id].gl_program, block_index);
+        } else {
+            glGetActiveUniformBlockiv(programs[program_id].gl_program, block_index, GL_UNIFORM_BLOCK_DATA_SIZE, &block_size);
+        }
         programs[program_id].uniform_offset_cache[-block_index - 1] = block_size;
         return block_size;
     } else {
@@ -645,7 +686,7 @@ GLint Shaders::returnShaderAttrib(const std::string &name, int which) {
     Program::AttribAddressCacheMap::iterator iter =
         programs[which].attrib_address_cache.find(name);
     if (iter == programs[which].attrib_address_cache.end()) {
-        GLint addr = glGetAttribLocation(programs[which].gl_program, name.c_str());
+        GLint addr = UseVulkan() ? -1 : glGetAttribLocation(programs[which].gl_program, name.c_str());  // (Vulkan: stage 5.4)
         programs[which].attrib_address_cache[name] = addr;
         return addr;
     } else {
@@ -780,7 +821,7 @@ void Shaders::createProgram(int which_program) {
     if (program.gl_program != UNLOADED_SHADER_ID) {
         return;
     }
-    program.gl_program = glCreateProgram();
+    program.gl_program = UseVulkan() ? VkStub::NewId() : glCreateProgram();  // (Vulkan: stage 5.4)
     std::string vulkan_dir = VulkanGlslDir(program);
     if (!vulkan_dir.empty()) {
         static const char *kStageFiles[kMaxShaderTypes] = {"vert.gl", "frag.gl", "geom.gl", "tesc.gl", "tese.gl"};
@@ -791,6 +832,9 @@ void Shaders::createProgram(int which_program) {
                 continue;
             }
             std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+            if (UseVulkan()) {
+                continue;  // (Vulkan: stage 5.4)
+            }
             GLuint shader = glCreateShader(kStageTypes[t]);
             const char *source = text.c_str();
             glShaderSource(shader, 1, &source, NULL);
@@ -830,26 +874,68 @@ void Shaders::createProgram(int which_program) {
     Shader *frag_shader = &shaders[program.shader_ids[_fragment]];
     if (frag_shader->depth_only == false) {
         if (frag_shader->bind_out_color) {
-            glBindFragDataLocation(program.gl_program, 0, "out_color");
+            if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+                glBindFragDataLocation(program.gl_program, 0, "out_color");
+            }
             LOGI << "Binding out color for " << frag_shader->name << std::endl;
         }
 
         if (frag_shader->particle == false) {
             if (frag_shader->bind_out_vel) {
-                glBindFragDataLocation(program.gl_program, 1, "out_vel");
+                if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+                    glBindFragDataLocation(program.gl_program, 1, "out_vel");
+                }
                 LOGI << "Binding out vel for " << frag_shader->name << std::endl;
             }
         }
     }
 
-    glAttachShader(program.gl_program, shaders[program.shader_ids[_vertex]].gl_shader);
-    for (int i = _geom; i < kMaxShaderTypes; ++i) {
-        if (program.shader_ids[i] >= 0) {
-            glAttachShader(program.gl_program, shaders[program.shader_ids[(ShaderType)i]].gl_shader);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+        glAttachShader(program.gl_program, shaders[program.shader_ids[_vertex]].gl_shader);
+        for (int i = _geom; i < kMaxShaderTypes; ++i) {
+            if (program.shader_ids[i] >= 0) {
+                glAttachShader(program.gl_program, shaders[program.shader_ids[(ShaderType)i]].gl_shader);
+            }
         }
+        glAttachShader(program.gl_program, shaders[program.shader_ids[_fragment]].gl_shader);
     }
-    glAttachShader(program.gl_program, shaders[program.shader_ids[_fragment]].gl_shader);
     }  // (made from its source)
+    if (UseVulkan()) {
+        // Overgrowth Online (GL 4.6 stage 5.4): the program's stages from the SPIR-V
+        // build, read by reflection (VkPrograms fills what GL's link gave: the default
+        // block's members, the units it samples, its attribute locations)
+        program.own_shaders.clear();
+        program.uniform_address_cache.clear();
+        program.uniform_value_cache.clear();
+        program.uniform_offset_cache.clear();
+        if (vulkan_dir.empty()) {
+            // Overgrowth Online (GL 4.6 stage 5.5): not in the SPIR-V build: compiled now
+            // from the stages' text (VkCompile keeps it in the write directory)
+            static const int kCompileStage[kMaxShaderTypes] = {VkCompile::kVert, VkCompile::kFrag, VkCompile::kGeom, VkCompile::kTesc,
+                                                                VkCompile::kTese};
+            const char *sources[VkCompile::kStages] = {};
+            for (int t = 0; t < kMaxShaderTypes; ++t) {
+                if (program.shader_ids[t] >= 0) {
+                    sources[kCompileStage[t]] = shaders[program.shader_ids[t]].text.c_str();
+                }
+            }
+            vulkan_dir = VkCompile::ProgramDir(program.name, sources);
+        }
+        if (vulkan_dir.empty()) {
+            LOGE << "Vulkan: no SPIR-V build of " << program.name << " (flags " << program.optional_shaders << "): config shader_vulkan_glsl" << std::endl;
+            compile_failures.push_back("no SPIR-V build of " + program.name);
+            program.tex_uniform.assign(32, -1);
+            program.sampler_units.clear();
+            program.attrib_address_cache.clear();
+            ReflectShadowBlock(program);
+        } else if (!VkPrograms::Create(program.gl_program, vulkan_dir, program)) {
+            compile_failures.push_back("Vulkan program " + program.name + " (" + vulkan_dir + ")");
+        }
+        program.commonShaderUniforms.assign(MAX_COMMON_UNIFORMS, -1);
+        program.commonShaderUniforms[NORMAL_MATRIX] = returnShaderVariable("normalMatrix", which_program);
+        program.commonShaderUniforms[MODEL_MATRIX] = returnShaderVariable("modelMatrix", which_program);
+        return;
+    }
     glLinkProgram(program.gl_program);
     for (GLuint own : program.own_shaders) {
         glDeleteShader(own);  // (freed with the program)
@@ -971,8 +1057,6 @@ void Shaders::createProgram(int which_program) {
     program.uniform_offset_cache.clear();
 
     program.commonShaderUniforms.resize(MAX_COMMON_UNIFORMS);
-    program.commonShaderUniforms[NORMAL_MATRIX] = glGetUniformLocation(program.gl_program, "normalMatrix");
-    program.commonShaderUniforms[MODEL_MATRIX] = glGetUniformLocation(program.gl_program, "modelMatrix");
 
     for (unsigned i = 0; i < 32; ++i) {
         if (program.tex_uniform[i] > 1000) {
@@ -983,11 +1067,41 @@ void Shaders::createProgram(int which_program) {
         }
     }
 
-    GLuint shadow_cascade_idx = glGetUniformBlockIndex(program.gl_program, "ShadowCascades");
-    if (shadow_cascade_idx != GL_INVALID_INDEX) {
-        glUniformBlockBinding(program.gl_program, shadow_cascade_idx, UBO_SHADOW_CASCADES);
+    // Overgrowth Online (stage 5.0): every uniform block gets its binding point here,
+    // by name (draws only bind the data: Graphics::BindUniformRing/BindUniformData)
+    static const struct {
+        const char* name;
+        GLuint binding;
+    } kBlocks[] = {{"InstanceInfo", UBO_INSTANCE_INFO}, {"ClusterInfo", UBO_CLUSTER_DATA},
+                   {"ShadowCascades", UBO_SHADOW_CASCADES}, {"LightProbeInfo", UBO_LIGHT_PROBE_INFO}};
+    for (const auto& block : kBlocks) {
+        GLuint idx = glGetUniformBlockIndex(program.gl_program, block.name);
+        if (idx != GL_INVALID_INDEX) {
+            glUniformBlockBinding(program.gl_program, idx, block.binding);
+        }
     }
     ReflectShadowBlock(program);
+    // (after the reflection: a member of the default block when made from the Vulkan
+    // build, which Program::SetUniform used to miss)
+    program.commonShaderUniforms[NORMAL_MATRIX] = returnShaderVariable("normalMatrix", which_program);
+    program.commonShaderUniforms[MODEL_MATRIX] = returnShaderVariable("modelMatrix", which_program);
+}
+
+void Program::SetUniform(GLint uniformID, const mat4& value) {
+    // note that this avoids all of the caching that would otherwise happen
+    if (uniformID >= Shaders::kShadowUniformBase) {
+        Shaders::Instance()->ShadowWrite(uniformID, &value, 1, 4, 4, false);
+    } else if (uniformID != -1 && !UseVulkan()) {
+        glUniformMatrix4fv(uniformID, 1, GL_FALSE, value);
+    }
+}
+
+void Program::SetUniform(GLint uniformID, const mat3& value) {
+    if (uniformID >= Shaders::kShadowUniformBase) {
+        Shaders::Instance()->ShadowWrite(uniformID, &value, 1, 3, 3, false);
+    } else if (uniformID != -1 && !UseVulkan()) {
+        glUniformMatrix3fv(uniformID, 1, GL_FALSE, value);
+    }
 }
 
 Program *Shaders::GetCurrentProgram() {
@@ -1012,7 +1126,9 @@ void Shaders::setProgram(int which) {
         }
         createProgram(which);
     }
-    glUseProgram(programs[which].gl_program);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+        glUseProgram(programs[which].gl_program);
+    }
     // Overgrowth Online (GL 4.6 stage 2.1): not every unit emptied any more, only
     // the ones this program samples: a sampler a draw leaves unbound still reads
     // zero, not the last program's texture; other units keep theirs. Samplers have
@@ -1026,7 +1142,9 @@ void Shaders::setProgram(int which) {
 // Stop using shaders
 void Shaders::noProgram() {
     if (bound_program == -1) return;
-    glUseProgram(0);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+        glUseProgram(0);
+    }
     bound_program = -1;
 }
 
@@ -1103,7 +1221,7 @@ void Shaders::FlushShadowBlock() {
     if (program.shadow_dirty || program.shadow_sent_frame != FrameRing::Frame()) {
         static GLint alignment = 0;
         if (alignment == 0) {
-            glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
+            GLVK(GetIntegerv)(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
         }
         FrameRing::Allocation a = FrameRing::Allocate(program.shadow_data.size(), alignment);
         memcpy(a.ptr, &program.shadow_data[0], program.shadow_data.size());
@@ -1113,7 +1231,11 @@ void Shaders::FlushShadowBlock() {
         program.shadow_dirty = false;
     }
     // (always bound: other code binds uniform buffers by index too)
-    glBindBufferRange(GL_UNIFORM_BUFFER, kDefaultBlockBinding, program.shadow_sent_buffer, program.shadow_sent_offset, program.shadow_data.size());
+    if (UseVulkan()) {
+        VkDraw::SetUniformBuffer(kDefaultBlockBinding, program.shadow_sent_buffer, program.shadow_sent_offset, program.shadow_data.size());
+    } else {
+        glBindBufferRange(GL_UNIFORM_BUFFER, kDefaultBlockBinding, program.shadow_sent_buffer, program.shadow_sent_offset, program.shadow_data.size());
+    }
 }
 
 // The default block's layout, by reflection
@@ -1123,6 +1245,9 @@ static void ReflectShadowBlock(Program &program) {
     program.shadow_member_ids.clear();
     program.shadow_dirty = true;
     program.shadow_sent_frame = ~0ull;
+    if (UseVulkan()) {
+        return;  // (Vulkan: stage 5.4)
+    }
     GLint num_blocks = 0;
     glGetProgramiv(program.gl_program, GL_ACTIVE_UNIFORM_BLOCKS, &num_blocks);
     for (GLint b = 0; b < num_blocks; ++b) {
@@ -1239,7 +1364,7 @@ void Shaders::SetUniformMat4(GLint var_id, const GLfloat *data) {
         }
     }
 
-    if (changed) {
+    if (changed && !UseVulkan()) {  // (Vulkan: stage 5.4)
         glUniformMatrix4fv(var_id, 1, GL_FALSE, data);
     }
 }
@@ -1273,7 +1398,7 @@ void Shaders::SetUniformMat3(GLint var_id, const GLfloat *data) {
         }
     }
 
-    if (changed) {
+    if (changed && !UseVulkan()) {  // (Vulkan: stage 5.4)
         glUniformMatrix3fv(var_id, 1, GL_FALSE, data);
     }
 }
@@ -1321,7 +1446,7 @@ void Shaders::SetUniformVec3(GLint var_id, const GLfloat *data) {
         }
     }
 
-    if (changed) {
+    if (changed && !UseVulkan()) {  // (Vulkan: stage 5.4)
         glUniform3fv(var_id, 1, data);
     }
     CHECK_GL_ERROR();
@@ -1370,7 +1495,7 @@ void Shaders::SetUniformVec2(GLint var_id, const GLfloat *data) {
         }
     }
 
-    if (changed) {
+    if (changed && !UseVulkan()) {  // (Vulkan: stage 5.4)
         glUniform2fv(var_id, 1, data);
     }
     CHECK_GL_ERROR();
@@ -1405,7 +1530,7 @@ void Shaders::SetUniformFloat(GLint var_id, const float &data) {
         value[0] = data;
     }
 
-    if (changed) {
+    if (changed && !UseVulkan()) {  // (Vulkan: stage 5.4)
         glUniform1f(var_id, data);
     }
 }
@@ -1437,7 +1562,7 @@ void Shaders::SetUniformInt(GLint var_id, const int &data, ForceFlag force_flag)
         value[0] = (GLfloat)data;
     }
 
-    if (changed || force_flag == kForce) {
+    if ((changed || force_flag == kForce) && !UseVulkan()) {  // (Vulkan: stage 5.4)
         glUniform1i(var_id, data);
     }
 }
@@ -1464,7 +1589,9 @@ void Shaders::SetUniformMat4Array(GLint var_id, const std::vector<mat4> &transfo
         return;
     }
 
-    glUniformMatrix4fv(var_id, transforms.size(), GL_FALSE, &transforms[0].entries[0]);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+        glUniformMatrix4fv(var_id, transforms.size(), GL_FALSE, &transforms[0].entries[0]);
+    }
 }
 
 void Shaders::SetUniformVec4Array(const std::string &var_name, const std::vector<vec4> &val) {
@@ -1481,7 +1608,9 @@ void Shaders::SetUniformVec4Array(GLint var_id, const std::vector<vec4> &val) {
         return;
     }
 
-    glUniform4fv(var_id, val.size(), &val[0].entries[0]);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+        glUniform4fv(var_id, val.size(), &val[0].entries[0]);
+    }
 }
 
 void Shaders::SetUniformVec3Array(const std::string &var_name, const std::vector<vec3> &val) {
@@ -1498,7 +1627,9 @@ void Shaders::SetUniformVec3Array(GLint var_id, const std::vector<vec3> &val) {
         return;
     }
 
-    glUniform3fv(var_id, val.size(), &val[0].entries[0]);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+        glUniform3fv(var_id, val.size(), &val[0].entries[0]);
+    }
 }
 
 void Shaders::SetUniformVec3Array(GLint var_id, const vec3 *val, int size) {
@@ -1510,7 +1641,9 @@ void Shaders::SetUniformVec3Array(GLint var_id, const vec3 *val, int size) {
         return;
     }
 
-    glUniform3fv(var_id, size, (const GLfloat *)val);
+    if (!UseVulkan()) {  // (Vulkan: stage 5.4)
+        glUniform3fv(var_id, size, (const GLfloat *)val);
+    }
 }
 
 void Shaders::ResetVRAM() {
@@ -1535,7 +1668,13 @@ int Shaders::GetUBOBindIndex(int shader_id, const char *name) {
         program->uniform_address_cache.find(key);
     if (iter == program->uniform_address_cache.end()) {
         int programHandle = program->gl_program;
-        GLuint blockIndex = glGetUniformBlockIndex(programHandle, name);
+        GLuint blockIndex;
+        if (UseVulkan()) {  // (by reflection)
+            int b = VkPrograms::BlockIndex(program->gl_program, name);
+            blockIndex = b < 0 ? GL_INVALID_INDEX : (GLuint)b;
+        } else {
+            blockIndex = glGetUniformBlockIndex(programHandle, name);
+        }
         program->uniform_address_cache[key] = blockIndex;
         return blockIndex;
     } else {
@@ -1591,7 +1730,7 @@ void Shaders::SetUniformVec4(GLint var_id, const GLfloat *data) {
         }
     }
 
-    if (changed) {
+    if (changed && !UseVulkan()) {  // (Vulkan: stage 5.4)
         glUniform4fv(var_id, 1, data);
     }
     CHECK_GL_ERROR();
@@ -1615,6 +1754,9 @@ std::string GetShaderPath(const std::string &shader_name, const std::string &sha
 }
 
 void ShaderUniform::Submit() {
+    if (UseVulkan()) {
+        return;  // (Vulkan: stage 5.4)
+    }
     switch (type) {
         case ShaderUniformType::UNKNOWN:
         case ShaderUniformType::SAMPLER2D:

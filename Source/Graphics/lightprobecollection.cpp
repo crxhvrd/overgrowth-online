@@ -53,7 +53,6 @@ LightProbeCollection::LightProbeCollection() : tet_mesh_viz_enabled(false),
                                                probe_lighting_enabled(true),
                                                light_volume_enabled(true),
                                                probe_model_id(-1) {
-    cube_map_fbo = INVALID_FRAMEBUFFER;
     next_id = 0;
     tet_mesh.display_id = -1;
     tet_mesh_needs_update = false;
@@ -65,7 +64,6 @@ LightProbeCollection::LightProbeCollection() : tet_mesh_viz_enabled(false),
 }
 
 LightProbeCollection::~LightProbeCollection() {
-    LOG_ASSERT(cube_map_fbo == INVALID_FRAMEBUFFER);
 }
 
 int LightProbeCollection::AddProbe(const vec3& pos, bool negative, const float* coeff) {
@@ -132,9 +130,6 @@ bool LightProbeCollection::DeleteProbe(int id) {
 }
 
 void LightProbeCollection::Init() {
-    if (cube_map_fbo == INVALID_FRAMEBUFFER) {
-        Graphics::Instance()->genFramebuffers(&cube_map_fbo, "light_probe_cube_map");
-    }
     if (!cube_map.valid()) {
         cube_map = Textures::Instance()->makeCubemapTexture(128, 128, GL_RGBA16F, GL_RGBA, Textures::MIPMAPS);
     }
@@ -143,15 +138,11 @@ void LightProbeCollection::Init() {
     if (!light_probes.empty()) {
         tet_mesh_needs_update = true;
     }
-    light_probe_texture_buffer_id = -1;
-    light_probe_buffer_object_id = -1;
-    grid_texture_buffer_id = -1;
-    grid_buffer_object_id = -1;
+    light_probe_texture_buffer.clear();
+    grid_texture_buffer.clear();
 }
 
 void LightProbeCollection::Dispose() {
-    Graphics::Instance()->deleteFramebuffer(&cube_map_fbo);
-    cube_map_fbo = INVALID_FRAMEBUFFER;
     cube_map.clear();
     ambient_3d_tex.clear();
     light_probes.clear();
@@ -526,31 +517,23 @@ void LightProbeCollection::UpdateTextureBuffer(BulletWorld& bw) {
 
     const int kMaxTextureBufferSize = 4 * 1024 * 1024;
     // Create texture buffer object if it is not already created
-    if (light_probe_texture_buffer_id == -1) {
+    // (Overgrowth Online stage 5.0: the texel buffers are Textures' buffer textures,
+    // bound at their units once: buffer textures stay bound across programs)
+    if (!light_probe_texture_buffer.valid()) {
         PROFILER_ZONE(g_profiler_ctx, "Create light probe texture buffer");
-        int max_size;
-        glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &max_size);
-        LOG_ASSERT(max_size >= kMaxTextureBufferSize);
-        GLuint buffer_object;
-        glGenBuffers(1, &buffer_object);
-        light_probe_buffer_object_id = buffer_object;
-        glBindBuffer(GL_TEXTURE_BUFFER, light_probe_buffer_object_id);
+        LOG_ASSERT(Graphics::Instance()->MaxTextureBufferSize() >= kMaxTextureBufferSize);
         char* buf = new char[kMaxTextureBufferSize];
         float* buf_f = (float*)buf;
         // Start by filling buffer with noise
         for (int i = 0, len = kMaxTextureBufferSize / sizeof(float); i < len; ++i) {
             buf_f[i] = RangedRandomFloat(0.0f, 1.0f);
         }
-        glBufferData(GL_TEXTURE_BUFFER, kMaxTextureBufferSize, buf, GL_DYNAMIC_DRAW);
+        light_probe_texture_buffer = Textures::Instance()->makeBufferTexture(kMaxTextureBufferSize, GL_RGBA32UI, buf);
         delete[] buf;
-        GLuint tex;
-        glGenTextures(1, &tex);
-        light_probe_texture_buffer_id = tex;
-        glActiveTexture(GL_TEXTURE0 + TEX_AMBIENT_COLOR_BUFFER);
-        glBindTexture(GL_TEXTURE_BUFFER, light_probe_texture_buffer_id);
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32UI, light_probe_buffer_object_id);
+        Textures::Instance()->SetTextureName(light_probe_texture_buffer, "Light Probe Tet Mesh");
+        Textures::Instance()->bindTexture(light_probe_texture_buffer, TEX_AMBIENT_COLOR_BUFFER);
     }
-    LOG_ASSERT(light_probe_texture_buffer_id != -1);
+    LOG_ASSERT(light_probe_texture_buffer.valid());
     if (tet_mesh.point_id.size() >= 4) {
         // Calculate colors of tet corners, flood-filling from positive probes to negative probes
         // TODO: allocate this using stack allocator for speed
@@ -639,7 +622,6 @@ void LightProbeCollection::UpdateTextureBuffer(BulletWorld& bw) {
         //     32 bits * 4 uints = 128 bits for neighbor ids ~ 1 * 128
         //     8 bits * 3 channels * 6 cube faces = 576 bits ~ 5 * 128
         //     total ~ 8 * 128
-        glBindBuffer(GL_TEXTURE_BUFFER, light_probe_buffer_object_id);
         int space = 16 * tet_mesh.tet_points.size() * 8;
         char* buf = new char[space];
         unsigned* buf_u = (unsigned*)buf;
@@ -717,40 +699,25 @@ void LightProbeCollection::UpdateTextureBuffer(BulletWorld& bw) {
             buf_u[buf_index++] = 0;
         }
 
-        glBufferData(GL_TEXTURE_BUFFER, kMaxTextureBufferSize, NULL, GL_DYNAMIC_DRAW);  // Orphan buffer?
-
-        void* mapped = glMapBufferRange(GL_TEXTURE_BUFFER, 0, space, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-        memcpy(mapped, buf, space);
-        glUnmapBuffer(GL_TEXTURE_BUFFER);
+        Textures::Instance()->updateBufferTexture(light_probe_texture_buffer, space, buf);  // (the whole buffer orphaned, then these bytes)
 
         delete[] buf;
     }
-    if (grid_texture_buffer_id == -1 && !grid_lookup.cell_tet.empty()) {
+    if (!grid_texture_buffer.valid() && !grid_lookup.cell_tet.empty()) {
         PROFILER_ZONE(g_profiler_ctx, "Generate grid texture buffer");
-        int max_size;
-        glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &max_size);
-        LOG_ASSERT(max_size >= kMaxTextureBufferSize);
-        GLuint buffer_object;
-        glGenBuffers(1, &buffer_object);
-        grid_buffer_object_id = buffer_object;
-        glBindBuffer(GL_TEXTURE_BUFFER, grid_buffer_object_id);
+        LOG_ASSERT(Graphics::Instance()->MaxTextureBufferSize() >= kMaxTextureBufferSize);
         char* buf = new char[kMaxTextureBufferSize];
         float* buf_f = (float*)buf;
         for (int i = 0, len = kMaxTextureBufferSize / sizeof(float); i < len; ++i) {
             buf_f[i] = RangedRandomFloat(0.0f, 1.0f);
         }
-        glBufferData(GL_TEXTURE_BUFFER, kMaxTextureBufferSize, buf, GL_DYNAMIC_DRAW);
+        grid_texture_buffer = Textures::Instance()->makeBufferTexture(kMaxTextureBufferSize, GL_RGBA32UI, buf);
         delete[] buf;
-        GLuint tex;
-        glGenTextures(1, &tex);
-        grid_texture_buffer_id = tex;
-        glActiveTexture(GL_TEXTURE0 + TEX_AMBIENT_GRID_DATA);
-        glBindTexture(GL_TEXTURE_BUFFER, grid_texture_buffer_id);
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32UI, grid_buffer_object_id);
+        Textures::Instance()->SetTextureName(grid_texture_buffer, "Light Probe Grid");
+        Textures::Instance()->bindTexture(grid_texture_buffer, TEX_AMBIENT_GRID_DATA);
     }
-    if (grid_texture_buffer_id != -1 && !grid_lookup.cell_tet.empty()) {
+    if (grid_texture_buffer.valid() && !grid_lookup.cell_tet.empty()) {
         PROFILER_ZONE(g_profiler_ctx, "Update grid texture buffer");
-        glBindBuffer(GL_TEXTURE_BUFFER, grid_buffer_object_id);
         int space = 4 * grid_lookup.cell_tet.size();
         char* buf = new char[space];
         unsigned* buf_u = (unsigned*)buf;
@@ -762,11 +729,7 @@ void LightProbeCollection::UpdateTextureBuffer(BulletWorld& bw) {
             buf_u[i] = grid_lookup.cell_tet[i];
         }
 
-        glBufferData(GL_TEXTURE_BUFFER, kMaxTextureBufferSize, NULL, GL_DYNAMIC_DRAW);  // Orphan buffer?
-
-        void* mapped = glMapBufferRange(GL_TEXTURE_BUFFER, 0, space, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-        memcpy(mapped, buf, space);
-        glUnmapBuffer(GL_TEXTURE_BUFFER);
+        Textures::Instance()->updateBufferTexture(grid_texture_buffer, space, buf);
 
         delete[] buf;
     }
@@ -899,67 +862,27 @@ void LightProbeCollection::Draw(BulletWorld& bw) {
             }
             shaders->setProgram(shader_id);
 
-            int programHandle = shaders->programs[shader_id].gl_program;
-            GLuint blockIndex = glGetUniformBlockIndex(programHandle, "LightProbeInfo");
-
-            const GLchar* names[] = {
-                "center[0]",
-                "view_mat",
-                "proj_mat",
-                "cam_pos",
-                "ambient_cube_color[0]",
-                // These long names were necessary on a Mac OS 10.7 ATI card
-                "LightProbeInfo.center[0]",
-                "LightProbeInfo.view_mat",
-                "LightProbeInfo.proj_mat",
-                "LightProbeInfo.cam_pos",
-                "LightProbeInfo.ambient_cube_color[0]"};
-
-            GLuint indices[5] = {0};
-            glGetUniformIndices(programHandle, 5, names, indices);
-            CHECK_GL_ERROR();
-
-            // Check long name if short name is not found
-            for (unsigned int index : indices) {
-                if (index == GL_INVALID_INDEX) {
-                    glGetUniformIndices(programHandle, 5, &names[5], indices);
-                    break;
-                }
-            }
-
-            for (unsigned int index : indices) {
-                if (index == GL_INVALID_INDEX) {
-                    return;
-                }
-            }
-
-            GLint offset[5] = {-1};
-            glGetActiveUniformsiv(programHandle, 5, indices, GL_UNIFORM_OFFSET, offset);
-
-            GLint blockSize;
-            glGetActiveUniformBlockiv(programHandle, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
-            GLubyte* blockBuffer = (GLubyte*)OG_MALLOC(blockSize);
-
-            vec4* center = (vec4*)((uintptr_t)blockBuffer + offset[0]);
-            mat4* view_mat = (mat4*)((uintptr_t)blockBuffer + offset[1]);
-            mat4* proj_mat = (mat4*)((uintptr_t)blockBuffer + offset[2]);
-            vec3* cam_pos = (vec3*)((uintptr_t)blockBuffer + offset[3]);
-            vec4* ambient_cube_color_vec = (vec4*)((uintptr_t)blockBuffer + offset[4]);
-            static int ubo_id = -1;
-            if (ubo_id == -1) {
-                GLuint uboHandle;
-                glGenBuffers(1, &uboHandle);
-                ubo_id = uboHandle;
-                glBindBuffer(GL_UNIFORM_BUFFER, ubo_id);
-                glBufferData(GL_UNIFORM_BUFFER, blockSize, blockBuffer, GL_DYNAMIC_DRAW);
-            }
-            glBindBuffer(GL_UNIFORM_BUFFER, ubo_id);
-            glBindBufferBase(GL_UNIFORM_BUFFER, blockIndex, ubo_id);
+            // (Overgrowth Online stage 5.0: the block is std140, filled from a struct with
+            // its offsets and bound through the frame ring at UBO_LIGHT_PROBE_INFO)
+            const int kBatchSize = 128;  // Max that fits into 16k UBO
+            struct LightProbeInfoBlock {
+                vec4 center[kBatchSize];
+                mat4 view_mat;
+                mat4 proj_mat;
+                float cam_pos[4];  // (a vec3: 16 bytes in std140)
+                vec4 ambient_cube_color[6 * kBatchSize];
+            };
+            static_assert(sizeof(LightProbeInfoBlock) == 14480, "LightProbeInfo's std140 layout");
+            LightProbeInfoBlock* block = (LightProbeInfoBlock*)OG_MALLOC(sizeof(LightProbeInfoBlock));
+            memset(block, 0, sizeof(LightProbeInfoBlock));
 
             Camera* camera = ActiveCameras::Get();
-            *cam_pos = camera->GetPos();
-            *view_mat = camera->GetViewMatrix();
-            *proj_mat = camera->GetProjMatrix();
+            vec3 cam = camera->GetPos();
+            block->cam_pos[0] = cam[0];
+            block->cam_pos[1] = cam[1];
+            block->cam_pos[2] = cam[2];
+            block->view_mat = camera->GetViewMatrix();
+            block->proj_mat = camera->GetProjMatrix();
 
             Model* probe_model = &Models::Instance()->GetModel(probe_model_id);
             if (!probe_model->vbo_loaded) {
@@ -973,33 +896,27 @@ void LightProbeCollection::Draw(BulletWorld& bw) {
             }
             VBOContainer* vbos[1] = {&probe_model->VBO_vertices};
             graphics->BeginVertexLayout(layout, shader_id, vbos, probe_model->VBO_faces.id());
-            const int kBatchSize = 128;  // Max that fits into 16k UBO
             for (int i = 0, len = light_probes.size(); i < len; i += kBatchSize) {
                 int num_to_render = std::min(kBatchSize, (int)light_probes.size() - i);
                 for (int j = 0; j < num_to_render; ++j) {
-                    center[j] = vec4(light_probes[i + j].pos, 0.0f);
+                    block->center[j] = vec4(light_probes[i + j].pos, 0.0f);
                     if (light_probes[i + j].negative) {
                         for (int k = 0; k < 6; ++k) {
-                            ambient_cube_color_vec[j * 6 + k] = vec3(0.0f, 0.0f, 1.0f);
+                            block->ambient_cube_color[j * 6 + k] = vec3(0.0f, 0.0f, 1.0f);
                         }
                     } else {
                         for (int k = 0; k < 6; ++k) {
-                            ambient_cube_color_vec[j * 6 + k] = light_probes[i + j].ambient_cube_color[k];
+                            block->ambient_cube_color[j * 6 + k] = light_probes[i + j].ambient_cube_color[k];
                         }
                     }
                 }
-                glBindBuffer(GL_UNIFORM_BUFFER, ubo_id);
-                glBufferData(GL_UNIFORM_BUFFER, blockSize, NULL, GL_DYNAMIC_DRAW);  // orphan buffer
-
-                void* mapped = glMapBufferRange(GL_UNIFORM_BUFFER, 0, blockSize, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-                memcpy(mapped, blockBuffer, blockSize);
-                glUnmapBuffer(GL_UNIFORM_BUFFER);
+                graphics->BindUniformData(UBO_LIGHT_PROBE_INFO, block, sizeof(LightProbeInfoBlock));
 
                 graphics->DrawElementsInstanced(GL_TRIANGLES, probe_model->faces.size(), GL_UNSIGNED_INT, 0, num_to_render);
             }
             graphics->EndVertexLayout();
 
-            OG_FREE(blockBuffer);
+            OG_FREE(block);
             graphics->ResetVertexAttribArrays();
         }
     }

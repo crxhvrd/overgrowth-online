@@ -398,9 +398,10 @@ void MovementObject::PreDrawCamera(float curr_game_time) {
                         int count = -1;
                         {
                             PROFILER_ZONE(g_profiler_ctx, "GL_QUERY_RESULT");
-                            glGetQueryObjectiv(query->id, GL_QUERY_RESULT_AVAILABLE, &count);
-                            if (count == 1) {
-                                glGetQueryObjectiv(query->id, GL_QUERY_RESULT, &count);
+                            // (Overgrowth Online stage 5.0: the queries through Graphics; the
+                            // samples clamped to int as the int read did)
+                            if (Graphics::Instance()->QueryAvailable(query->id)) {
+                                count = (int)std::min<uint64_t>(Graphics::Instance()->QueryResult(query->id), INT32_MAX);
                             } else {
                                 count = -1;
                             }
@@ -780,15 +781,14 @@ void MovementObject::Draw() {
                     if (curr_query_id == -1) {
                         curr_query_id = occlusion_queries.size();
                         occlusion_queries.resize(occlusion_queries.size() + 1);
-                        GLuint val;
-                        glGenQueries(1, &val);
+                        GLuint val = Graphics::Instance()->CreateQuery(Graphics::kOcclusionQuery);
                         occlusion_queries[curr_query_id].id = val;
                     }
                     occlusion_queries[curr_query_id].cam_id = active_cam_id;
                     occlusion_queries[curr_query_id].in_progress = true;
 
                     // LOGI << "glBeginQuery on " << occlusion_queries[curr_query_id].id <<  std::endl;
-                    glBeginQuery(GL_SAMPLES_PASSED, occlusion_queries[curr_query_id].id);
+                    Graphics::Instance()->BeginOcclusionQuery(occlusion_queries[curr_query_id].id);
 
                     GLState gl_state;
                     gl_state.blend = false;
@@ -824,7 +824,7 @@ void MovementObject::Draw() {
                     Graphics::Instance()->ResetVertexAttribArrays();
 
                     // LOGI << "glEndQuery on " << occlusion_queries[curr_query_id].id <<  std::endl;
-                    glEndQuery(GL_SAMPLES_PASSED);
+                    Graphics::Instance()->EndOcclusionQuery();
                     Graphics::Instance()->setColorMask(true, true, true, true);
                 }
             }
@@ -5005,8 +5005,7 @@ void MovementObject::Dispose() {
     rigged_object_->as_context = NULL;
 
     for (auto& occlusion_querie : occlusion_queries) {
-        const GLuint val = occlusion_querie.id;
-        glDeleteQueries(1, &val);
+        Graphics::Instance()->DeleteQuery(occlusion_querie.id);
     }
     occlusion_queries.clear();
 }

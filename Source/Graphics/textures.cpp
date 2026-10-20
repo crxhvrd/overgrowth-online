@@ -32,6 +32,7 @@
 
 #include <Graphics/reversez.h>
 #include <Graphics/textures.h>
+#include <Graphics/vboringcontainer.h>
 #include <Graphics/shaders.h>
 #include <Graphics/graphics.h>
 #include <Graphics/graphics.h>
@@ -39,6 +40,8 @@
 #include <Graphics/ColorWheel.h>
 #include <Graphics/converttexture.h>
 #include <Graphics/vbocontainer.h>
+#include <Graphics/render_backend.h>
+#include <Graphics/Vulkan/vk_gl.h>
 
 #include <Internal/datemodified.h>
 #include <Internal/stopwatch.h>
@@ -191,7 +194,7 @@ static int FullMipCount(int width, int height, int depth = 1) {
 
 static GLuint CreateGLTexture(GLenum target) {
     GLuint id = 0;
-    glCreateTextures(target, 1, &id);
+    GLVK(CreateTextures)(target, 1, &id);
     return id;
 }
 
@@ -372,7 +375,7 @@ void Textures::DrawImGuiDebug() {
                 type = kBuffer;
             } else if (tex.gl_texture_id != UNLOADED_ID) {
                 FormatString(buf, kBufSize, "%s%d:%s generated texture", color_tex_num, i, color_simple);
-                drawable = true;
+                drawable = tex.tex_target != GL_TEXTURE_2D_MULTISAMPLE;
                 type = kSimple;
             } else {
                 FormatString(buf, kBufSize, "%s%d: unknown", color_tex_num, i);
@@ -433,7 +436,7 @@ void Textures::DrawImGuiDebug() {
                             ImGui::BeginTooltip();
                             ImGui::PushTextWrapPos(450.0f);
                             Textures::Instance()->EnsureInVRAM(i);
-                            ImGui::Image((ImTextureID)((uintptr_t)textures[i].gl_texture_id), ImVec2(128, 128), ImVec2(0, 0), ImVec2(1, 1));
+                            ImGui::Image((ImTextureID)(uintptr_t)(i + 1), ImVec2(128, 128), ImVec2(0, 0), ImVec2(1, 1));  // (a slot + 1: see ImGuiTextureID)
                             ImGui::PopTextWrapPos();
                             ImGui::EndTooltip();
                             ImGui::PopStyleColor(1);
@@ -482,8 +485,8 @@ void Textures::SaveCubeMapMipmapsHDR(TextureRef which, const char* filename, int
         for (int i = 0; i < 6; i++) {
             int start_size = data.size();
             data.resize(data.size() + width * width * 4);
-            glGetTextureSubImage(gl_id, mip_level, 0, 0, i, width, width, 1, GL_BGRA, GL_FLOAT,
-                                 (GLsizei)(width * width * 4 * sizeof(float)), &data[start_size]);
+            GLVK(GetTextureSubImage)(gl_id, mip_level, 0, 0, i, width, width, 1, GL_BGRA, GL_FLOAT,
+                                     (GLsizei)(width * width * 4 * sizeof(float)), &data[start_size]);
         }
         ++mip_level;
         width /= 2;
@@ -523,7 +526,7 @@ TextureRef Textures::LoadCubeMapMipmapsHDR(const char* filename) {
             int index = 0;
             while (width > 1) {
                 for (int i = 0; i < 6; i++) {
-                    glTextureSubImage3D(gl_id, mip_level, 0, 0, i, width, width, 1, GL_BGRA, GL_FLOAT, &data[index]);
+                    GLVK(TextureSubImage3D)(gl_id, mip_level, 0, 0, i, width, width, 1, GL_BGRA, GL_FLOAT, &data[index]);
                     index += width * width * 4;
                 }
                 ++mip_level;
@@ -607,7 +610,7 @@ void Textures::Dispose() {
     }
     textures.clear();
     for (const auto& entry : sampler_cache) {
-        glDeleteSamplers(1, &entry.second);
+        GLVK(DeleteSamplers)(1, &entry.second);
     }
     sampler_cache.clear();
 
@@ -789,7 +792,7 @@ void Textures::RemoveRefPtr(unsigned int id, TextureRef* ref) {
 void Textures::GenerateMipmap(const TextureRef& tex_ref) {
     PROFILER_GPU_ZONE(g_profiler_ctx, "Textures::GenerateMipmap");
     EnsureInVRAM(tex_ref);
-    glGenerateTextureMipmap(returnTexture(tex_ref));
+    GLVK(GenerateTextureMipmap)(returnTexture(tex_ref));
 }
 
 void Textures::setSampleFilter(const TextureRef& tex_ref, enum SampleFilter filter) {
@@ -815,7 +818,12 @@ void Textures::setSampleWrap(const TextureRef& tex_ref, enum SampleWrap wrapping
 }
 
 void Textures::SetSamplingi(Texture& tex, GLenum pname, GLint value) {
-    glTextureParameteri(tex.gl_texture_id, pname, value);
+    if (tex.tex_target == GL_TEXTURE_2D_MULTISAMPLE) {
+        return;  // (never sampled: no sampling state)
+    }
+    if (!UseVulkan()) {  // (Vulkan: samplers carry it)
+        glTextureParameteri(tex.gl_texture_id, pname, value);
+    }
     SamplerState& st = tex.sampler;
     switch (pname) {
         case GL_TEXTURE_MIN_FILTER: st.min_filter = value; break;
@@ -834,7 +842,9 @@ void Textures::SetSamplingf(Texture& tex, GLenum pname, float value) {
     if (pname == GL_TEXTURE_MAX_ANISOTROPY_EXT) {
         value = std::max(1.0f, value);  // (anisotropy off is 0 in the config: 1 here, 0 is an invalid value)
     }
-    glTextureParameterf(tex.gl_texture_id, pname, value);
+    if (!UseVulkan()) {  // (Vulkan: samplers carry it)
+        glTextureParameterf(tex.gl_texture_id, pname, value);
+    }
     SamplerState& st = tex.sampler;
     switch (pname) {
         case GL_TEXTURE_LOD_BIAS: st.lod_bias = value; break;
@@ -848,7 +858,10 @@ void Textures::SamplingChanged(Texture& tex) {
     tex.gl_sampler = 0;
     for (unsigned int unit = 0; unit < _texture_units; ++unit) {
         if (bound_texture[unit] != INVALID_ID && &textures[bound_texture[unit]] == &tex) {
-            glBindSampler(unit, SamplerFor(tex));
+            unit_sampler_[unit] = SamplerFor(tex);
+            if (!UseVulkan()) {  // (Vulkan: the descriptors read UnitBinding)
+                glBindSampler(unit, unit_sampler_[unit]);
+            }
         }
     }
 }
@@ -860,16 +873,19 @@ GLuint Textures::GetSampler(const SamplerState& state) {
         }
     }
     GLuint id = 0;
-    glCreateSamplers(1, &id);
-    glSamplerParameteri(id, GL_TEXTURE_MIN_FILTER, state.min_filter);
-    glSamplerParameteri(id, GL_TEXTURE_MAG_FILTER, state.mag_filter);
-    glSamplerParameteri(id, GL_TEXTURE_WRAP_S, state.wrap_s);
-    glSamplerParameteri(id, GL_TEXTURE_WRAP_T, state.wrap_t);
-    glSamplerParameteri(id, GL_TEXTURE_WRAP_R, state.wrap_r);
-    glSamplerParameteri(id, GL_TEXTURE_COMPARE_MODE, state.compare_mode);
-    glSamplerParameteri(id, GL_TEXTURE_COMPARE_FUNC, state.compare_func);
-    glSamplerParameterf(id, GL_TEXTURE_LOD_BIAS, state.lod_bias);
-    glSamplerParameterf(id, GL_TEXTURE_MAX_ANISOTROPY_EXT, state.max_anisotropy);
+    GLVK(CreateSamplers)(1, &id);
+    GLVK(SamplerParameteri)(id, GL_TEXTURE_MIN_FILTER, state.min_filter);
+    GLVK(SamplerParameteri)(id, GL_TEXTURE_MAG_FILTER, state.mag_filter);
+    GLVK(SamplerParameteri)(id, GL_TEXTURE_WRAP_S, state.wrap_s);
+    GLVK(SamplerParameteri)(id, GL_TEXTURE_WRAP_T, state.wrap_t);
+    GLVK(SamplerParameteri)(id, GL_TEXTURE_WRAP_R, state.wrap_r);
+    GLVK(SamplerParameteri)(id, GL_TEXTURE_COMPARE_MODE, state.compare_mode);
+    // (diagnostics, both renderers: config debug_shadow_compare 1 = every comparison
+    // passes, 2 = none does; for bisecting what the shadow lookups contribute)
+    static const int debug_compare = config["debug_shadow_compare"].toNumber<int>();
+    GLVK(SamplerParameteri)(id, GL_TEXTURE_COMPARE_FUNC, debug_compare == 1 ? GL_ALWAYS : debug_compare == 2 ? GL_NEVER : state.compare_func);
+    GLVK(SamplerParameterf)(id, GL_TEXTURE_LOD_BIAS, state.lod_bias);
+    GLVK(SamplerParameterf)(id, GL_TEXTURE_MAX_ANISOTROPY_EXT, state.max_anisotropy);
     sampler_cache.emplace_back(state, id);
     return id;
 }
@@ -892,15 +908,19 @@ SamplerState Textures::GetSamplerState(const TextureRef& tex_ref) {
 }
 
 void Textures::BindSampler(int which_unit, const SamplerState& state) {
-    glBindSampler(which_unit, GetSampler(state));
+    const GLuint sampler = GetSampler(state);
+    unit_sampler_[which_unit] = sampler;
+    if (!UseVulkan()) {  // (Vulkan: the descriptors read UnitBinding)
+        glBindSampler(which_unit, sampler);
+    }
 }
 
-TextureRef Textures::GetMipView(const TextureRef& tex_ref, int level) {
+TextureRef Textures::GetMipView(const TextureRef& tex_ref, int level, int num_levels) {
     EnsureInVRAM(tex_ref);
     const GLuint parent_gl = textures[tex_ref.id].gl_texture_id;
     MipView* found = NULL;
     for (MipView& v : mip_views) {
-        if (v.parent == tex_ref.id && v.level == level) {
+        if (v.parent == tex_ref.id && v.level == level && v.num_levels == num_levels) {
             found = &v;
             break;
         }
@@ -918,6 +938,7 @@ TextureRef Textures::GetMipView(const TextureRef& tex_ref, int level) {
         MipView v;
         v.parent = tex_ref.id;
         v.level = level;
+        v.num_levels = num_levels;
         v.view = TextureRef(which);
         DecrementRefCount(which);  // (the TextureRef holds it)
         mip_views.push_back(v);
@@ -931,13 +952,13 @@ TextureRef Textures::GetMipView(const TextureRef& tex_ref, int level) {
     view.internal_format = parent.internal_format;
     view.format = parent.format;
     view.tex_target = parent.tex_target;
-    view.no_mipmap = true;
+    view.no_mipmap = num_levels == 1;
     GLint storage_format = 0;
-    glGetTextureLevelParameteriv(parent_gl, 0, GL_TEXTURE_INTERNAL_FORMAT, &storage_format);
     GLuint id = 0;
-    glGenTextures(1, &id);  // (a view needs a name never bound)
-    glTextureView(id, parent.tex_target, parent_gl, storage_format, level, 1, 0, 1);
-    view.gl_texture_id = id;
+    GLVK(GetTextureLevelParameteriv)(parent_gl, 0, GL_TEXTURE_INTERNAL_FORMAT, &storage_format);
+    GLVK(GenTextures)(1, &id);  // (a view needs a name never bound)
+                      GLVK(TextureView)(id, parent.tex_target, parent_gl, storage_format, level, num_levels, 0, parent.tex_target == GL_TEXTURE_CUBE_MAP ? 6 : 1);  // (a cube map: its six faces)
+                      view.gl_texture_id = id;
     view.sampler = parent.sampler;
     view.gl_sampler = 0;
     found->parent_gl = parent_gl;
@@ -949,7 +970,7 @@ void Textures::subImage(const TextureRef& tex_ref, void* data) {
         EnsureInVRAM(tex_ref);
         Texture& texture = textures[tex_ref.id];
 
-        glTextureSubImage2D(texture.gl_texture_id, 0, 0, 0, texture.width, texture.height, texture.format, GL_UNSIGNED_BYTE, data);
+        GLVK(TextureSubImage2D)(texture.gl_texture_id, 0, 0, 0, texture.width, texture.height, texture.format, GL_UNSIGNED_BYTE, data);
     } else {
         LOGE << "Unable to load data to texture." << std::endl;
     }
@@ -1025,7 +1046,7 @@ void Textures::subImage(const TextureRef& destination, const TextureRef& source,
                     break;
                 }
 
-                glCompressedTextureSubImage2D(dst_id, i, xoffset, yoffset, width, height, dst_tex.internal_format, tex_data->GetMipDataSize(0, dataMipLevel), tex_data->GetMipData(0, dataMipLevel));
+                GLVK(CompressedTextureSubImage2D)(dst_id, i, xoffset, yoffset, width, height, dst_tex.internal_format, tex_data->GetMipDataSize(0, dataMipLevel), tex_data->GetMipData(0, dataMipLevel));
 
                 if (dataMipLevel + 1 < mipLevels)
                     dataMipLevel++;
@@ -1035,11 +1056,11 @@ void Textures::subImage(const TextureRef& destination, const TextureRef& source,
             }
             regen_mipmap = false;
         } else {
-            glTextureSubImage2D(dst_id, 0, xoffset, yoffset, tex_data->GetMipWidth(0), tex_data->GetMipHeight(0), tex_data->GetGLBaseFormat(), tex_data->GetGLType(), tex_data->GetMipData(0, 0));
+            GLVK(TextureSubImage2D)(dst_id, 0, xoffset, yoffset, tex_data->GetMipWidth(0), tex_data->GetMipHeight(0), tex_data->GetGLBaseFormat(), tex_data->GetGLType(), tex_data->GetMipData(0, 0));
         }
 
         if (regen_mipmap) {
-            glGenerateTextureMipmap(dst_id);
+            GLVK(GenerateTextureMipmap)(dst_id);
         }
     } else {
         LOGE << __FUNCTION__ << ": Source or destination is invalid" << std::endl;
@@ -1054,7 +1075,7 @@ void Textures::TextureToVRAM(unsigned int which) {
         for (unsigned int tex_id : deferred_delete_textures) {
             LOGI << "Deferred delete of texture " << tex_id << std::endl;
             Graphics::Instance()->ForgetRenderTargets(tex_id);  // Overgrowth Online (2.5)
-            glDeleteTextures(1, &tex_id);
+            GLVK(DeleteTextures)(1, &tex_id);
         }
         deferred_delete_textures.clear();
     }
@@ -1197,9 +1218,9 @@ void Textures::TextureToVRAM(unsigned int which) {
                 int height = tex_data->GetMipHeight(base);
                 levels = std::max(1, std::min((int)num_mips - (int)startMip, FullMipCount(width, height)));
                 if (is_array) {
-                    glTextureStorage3D(id, levels, SizedFormat(internal_format), width, height, tex.num_slices);
+                    GLVK(TextureStorage3D)(id, levels, SizedFormat(internal_format), width, height, tex.num_slices);
                 } else {
-                    glTextureStorage2D(id, levels, SizedFormat(internal_format), width, height);
+                    GLVK(TextureStorage2D)(id, levels, SizedFormat(internal_format), width, height);
                 }
                 allocated = true;
             }
@@ -1209,20 +1230,20 @@ void Textures::TextureToVRAM(unsigned int which) {
                            tex_data->GetHeight() == tex.sub_textures[0].texture_data->GetHeight());
                 for (unsigned int i = startMip; i < num_mips && (int)(i - startMip) < levels; i++) {
                     PROFILER_GPU_ZONE(g_profiler_ctx, "glTextureSubImage3D");
-                    glTextureSubImage3D(id, i - startMip, 0, 0, slice, tex_data->GetMipWidth(i), tex_data->GetMipHeight(i), 1,
-                                        tex_data->GetGLBaseFormat(),
-                                        tex_data->GetGLType(),
-                                        tex_data->GetMipData(0, i));
+                    GLVK(TextureSubImage3D)(id, i - startMip, 0, 0, slice, tex_data->GetMipWidth(i), tex_data->GetMipHeight(i), 1,
+                                            tex_data->GetGLBaseFormat(),
+                                            tex_data->GetGLType(),
+                                            tex_data->GetMipData(0, i));
                 }
             } else {
                 for (unsigned int i = startMip; i < num_mips && (int)(i - startMip) < levels; i++) {
                     PROFILER_GPU_ZONE(g_profiler_ctx, "glTextureSubImage2D");
-                    glTextureSubImage2D(id, i - startMip, 0, 0,
-                                        tex_data->GetMipWidth(i),
-                                        tex_data->GetMipHeight(i),
-                                        tex_data->GetGLBaseFormat(),
-                                        tex_data->GetGLType(),
-                                        tex_data->GetMipData(0, i));
+                    GLVK(TextureSubImage2D)(id, i - startMip, 0, 0,
+                                            tex_data->GetMipWidth(i),
+                                            tex_data->GetMipHeight(i),
+                                            tex_data->GetGLBaseFormat(),
+                                            tex_data->GetGLType(),
+                                            tex_data->GetMipData(0, i));
                 }
             }
         }
@@ -1270,22 +1291,22 @@ void Textures::TextureToVRAM(unsigned int which) {
             int base_width = tex_data->GetMipWidth(skip_levels);
             int base_height = tex_data->GetMipHeight(skip_levels);
             int levels = std::max(1, std::min(mip_count - skip_levels, FullMipCount(base_width, base_height)));
-            glTextureStorage2D(id, levels, SizedFormat(internal_format), base_width, base_height);
+            GLVK(TextureStorage2D)(id, levels, SizedFormat(internal_format), base_width, base_height);
 
             for (unsigned int j = 0; j < tex_data->GetNumFaces(); j++) {
                 for (int i = skip_levels; i < skip_levels + levels; i++) {
                     int width = tex_data->GetMipWidth(i);
                     int height = tex_data->GetMipHeight(i);
                     if (tex_data->IsCompressed()) {
-                        glCompressedTextureSubImage3D(id, i - skip_levels, 0, 0, j, width, height, 1,
-                                                      internal_format,
-                                                      tex_data->GetMipDataSize(j, i),
-                                                      tex_data->GetMipData(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, i));
+                        GLVK(CompressedTextureSubImage3D)(id, i - skip_levels, 0, 0, j, width, height, 1,
+                                                          internal_format,
+                                                          tex_data->GetMipDataSize(j, i),
+                                                          tex_data->GetMipData(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, i));
                     } else {
-                        glTextureSubImage3D(id, i - skip_levels, 0, 0, j, width, height, 1,
-                                            tex_data->GetGLBaseFormat(),
-                                            tex_data->GetGLType(),
-                                            tex_data->GetMipData(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, i));
+                        GLVK(TextureSubImage3D)(id, i - skip_levels, 0, 0, j, width, height, 1,
+                                                tex_data->GetGLBaseFormat(),
+                                                tex_data->GetGLType(),
+                                                tex_data->GetMipData(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, i));
                     }
                 }
             }
@@ -1320,23 +1341,23 @@ void Textures::TextureToVRAM(unsigned int which) {
                 int base_width = tex_data->GetMipWidth(temp_skip_levels);
                 int base_height = tex_data->GetMipHeight(temp_skip_levels);
                 int levels = std::max(1, std::min(mip_count - temp_skip_levels, FullMipCount(base_width, base_height)));
-                glTextureStorage2D(id, levels, SizedFormat(internal_format), base_width, base_height);
+                GLVK(TextureStorage2D)(id, levels, SizedFormat(internal_format), base_width, base_height);
 
                 for (int i = temp_skip_levels; i < temp_skip_levels + levels; i++) {
                     if (tex_data->IsCompressed()) {
-                        glCompressedTextureSubImage2D(id, i - temp_skip_levels, 0, 0,
-                                                      tex_data->GetMipWidth(i),
-                                                      tex_data->GetMipHeight(i),
-                                                      internal_format,
-                                                      tex_data->GetMipDataSize(0, i),
-                                                      tex_data->GetMipData(0, i));
+                        GLVK(CompressedTextureSubImage2D)(id, i - temp_skip_levels, 0, 0,
+                                                          tex_data->GetMipWidth(i),
+                                                          tex_data->GetMipHeight(i),
+                                                          internal_format,
+                                                          tex_data->GetMipDataSize(0, i),
+                                                          tex_data->GetMipData(0, i));
                     } else {
-                        glTextureSubImage2D(id, i - temp_skip_levels, 0, 0,
-                                            tex_data->GetMipWidth(i),
-                                            tex_data->GetMipHeight(i),
-                                            tex_data->GetGLBaseFormat(),
-                                            tex_data->GetGLType(),
-                                            tex_data->GetMipData(0, i));
+                        GLVK(TextureSubImage2D)(id, i - temp_skip_levels, 0, 0,
+                                                tex_data->GetMipWidth(i),
+                                                tex_data->GetMipHeight(i),
+                                                tex_data->GetGLBaseFormat(),
+                                                tex_data->GetGLType(),
+                                                tex_data->GetMipData(0, i));
                     }
                     CHECK_GL_ERROR();
                 }
@@ -1351,7 +1372,7 @@ void Textures::TextureToVRAM(unsigned int which) {
                 tex_data->EnsureInRAM();
 
                 int levels = std::max(1, std::min((int)num_mips, FullMipCount(tex.width, tex.height)));
-                glTextureStorage3D(id, levels, SizedFormat(internal_format), tex.width, tex.height, tex.num_slices);
+                GLVK(TextureStorage3D)(id, levels, SizedFormat(internal_format), tex.width, tex.height, tex.num_slices);
 
                 for (unsigned int slice = 0; slice < tex.num_slices; slice++) {
                     TextureData* tex_data = tex.sub_textures[slice].texture_data;
@@ -1373,17 +1394,17 @@ void Textures::TextureToVRAM(unsigned int which) {
                     }
 
                     for (unsigned int i = start_mip; i < tex_data->GetMipLevels() && (int)(i - start_mip) < levels; i++) {
-                        glCompressedTextureSubImage3D(id,
-                                                      i - start_mip,
-                                                      0,
-                                                      0,
-                                                      slice,
-                                                      width,
-                                                      height,
-                                                      1,
-                                                      internal_format,
-                                                      tex_data->GetMipDataSize(0, i),
-                                                      tex_data->GetMipData(0, i));
+                        GLVK(CompressedTextureSubImage3D)(id,
+                                                          i - start_mip,
+                                                          0,
+                                                          0,
+                                                          slice,
+                                                          width,
+                                                          height,
+                                                          1,
+                                                          internal_format,
+                                                          tex_data->GetMipDataSize(0, i),
+                                                          tex_data->GetMipData(0, i));
 
                         width = std::max(1, (width + 1) / 2);
                         height = std::max(1, (height + 1) / 2);
@@ -1569,7 +1590,7 @@ unsigned int Textures::makeCubemapTextureInternal(int width, int height, GLint i
     for (int w = width, h = height; w >= 1 && h >= 1 && (mipmap_param == MIPMAPS || levels == 0); w /= 2, h /= 2) {
         ++levels;
     }
-    glTextureStorage2D(id, std::max(1, levels), SizedFormat(internal_format), width, height);
+    GLVK(TextureStorage2D)(id, std::max(1, levels), SizedFormat(internal_format), width, height);
     CHECK_GL_ERROR();
     return which;
 }
@@ -1641,7 +1662,7 @@ unsigned int Textures::makeTextureInternal(int width, int height, GLint internal
     GLuint id = texture.gl_texture_id;
     // Level 0, or the whole chain for a mipmapped one (as the old code ended up with)
     int levels = mipmap ? FullMipCount(width, height) : 1;
-    glTextureStorage2D(id, levels, SizedFormat(internal_format), width, height);
+    GLVK(TextureStorage2D)(id, levels, SizedFormat(internal_format), width, height);
     if (IsCompressedGLFormat(internal_format)) {
         // Zeros in every level, as before (immutable storage starts undefined)
         PROFILER_ZONE(g_profiler_ctx, "glCompressedTextureSubImage2D");
@@ -1651,12 +1672,12 @@ unsigned int Textures::makeTextureInternal(int width, int height, GLint internal
         int temp_height = height;
         for (int temp_level = 0; temp_level < levels; ++temp_level) {
             data_size = ((temp_width + 3) / 4) * ((temp_height + 3) / 4) * 16;
-            glCompressedTextureSubImage2D(id, temp_level, 0, 0, temp_width, temp_height, internal_format, data_size, &zeros[0]);
+            GLVK(CompressedTextureSubImage2D)(id, temp_level, 0, 0, temp_width, temp_height, internal_format, data_size, &zeros[0]);
             temp_width = std::max(1, temp_width / 2);
             temp_height = std::max(1, temp_height / 2);
         }
     } else if (data != NULL) {
-        glTextureSubImage2D(id, 0, 0, 0, width, height, format, internal_format == GL_RGBA16F ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
+        GLVK(TextureSubImage2D)(id, 0, 0, 0, width, height, format, internal_format == GL_RGBA16F ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
     }
     CHECK_GL_ERROR();
     if (mipmap)
@@ -1676,7 +1697,7 @@ unsigned int Textures::makeTextureInternal(int width, int height, GLint internal
     CHECK_GL_ERROR();
     if (mipmap && !IsCompressedGLFormat(internal_format)) {
         PROFILER_ZONE(g_profiler_ctx, "glGenerateTextureMipmap");
-        glGenerateTextureMipmap(id);
+        GLVK(GenerateTextureMipmap)(id);
     }
     CHECK_GL_ERROR();
 
@@ -1702,9 +1723,9 @@ unsigned int Textures::make3DTextureInternal(int* dims, GLint internal_format, G
 
     CHECK_GL_ERROR();
     GLuint id = texture.gl_texture_id;
-    glTextureStorage3D(id, mipmap ? FullMipCount(dims[0], dims[1], dims[2]) : 1, SizedFormat(internal_format), dims[0], dims[1], dims[2]);
+    GLVK(TextureStorage3D)(id, mipmap ? FullMipCount(dims[0], dims[1], dims[2]) : 1, SizedFormat(internal_format), dims[0], dims[1], dims[2]);
     if (data != NULL) {
-        glTextureSubImage3D(id, 0, 0, 0, 0, dims[0], dims[1], dims[2], format, internal_format == GL_RGBA16F ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
+        GLVK(TextureSubImage3D)(id, 0, 0, 0, 0, dims[0], dims[1], dims[2], format, internal_format == GL_RGBA16F ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
     }
     CHECK_GL_ERROR();
     if (mipmap)
@@ -1721,7 +1742,7 @@ unsigned int Textures::make3DTextureInternal(int* dims, GLint internal_format, G
     CHECK_GL_ERROR();
     if (mipmap) {
         PROFILER_ZONE(g_profiler_ctx, "glGenerateTextureMipmap");
-        glGenerateTextureMipmap(id);
+        GLVK(GenerateTextureMipmap)(id);
     }
     CHECK_GL_ERROR();
 
@@ -1783,10 +1804,10 @@ unsigned int Textures::makeTextureColorInternal(int width, int height, GLint int
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
     GLuint id = texture.gl_texture_id;
-    glTextureStorage2D(id, mipmap ? FullMipCount(width, height) : 1, SizedFormat(internal_format), width, height);
+    GLVK(TextureStorage2D)(id, mipmap ? FullMipCount(width, height) : 1, SizedFormat(internal_format), width, height);
     // (bytes whatever the internal format: the buffer holds 4 a pixel; reading it
     // as floats for GL_RGBA16F read past its end)
-    glTextureSubImage2D(id, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, &data[0]);
+    GLVK(TextureSubImage2D)(id, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, &data[0]);
     if (mipmap)
         SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     else
@@ -1795,7 +1816,7 @@ unsigned int Textures::makeTextureColorInternal(int width, int height, GLint int
     SetSamplingi(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     SetSamplingi(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     if (mipmap) {
-        glGenerateTextureMipmap(id);
+        GLVK(GenerateTextureMipmap)(id);
     }
     CHECK_GL_ERROR();
 
@@ -1852,10 +1873,10 @@ unsigned int Textures::makeTextureTestPatternInternal(int width, int height, GLi
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
     GLuint id = texture.gl_texture_id;
-    glTextureStorage2D(id, mipmap ? FullMipCount(width, height) : 1, SizedFormat(internal_format), width, height);
+    GLVK(TextureStorage2D)(id, mipmap ? FullMipCount(width, height) : 1, SizedFormat(internal_format), width, height);
     // (bytes whatever the internal format: the buffer holds 4 a pixel; reading it
     // as floats for GL_RGBA16F read past its end)
-    glTextureSubImage2D(id, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, &data[0]);
+    GLVK(TextureSubImage2D)(id, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, &data[0]);
     if (mipmap)
         SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     else
@@ -1864,7 +1885,7 @@ unsigned int Textures::makeTextureTestPatternInternal(int width, int height, GLi
     SetSamplingi(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     SetSamplingi(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     if (mipmap) {
-        glGenerateTextureMipmap(id);
+        GLVK(GenerateTextureMipmap)(id);
     }
     CHECK_GL_ERROR();
 
@@ -1958,10 +1979,10 @@ unsigned int Textures::makeCubemapArrayTextureInternal(int num_slices, int width
     }
     CHECK_GL_ERROR();
     // (the full chain: its mips were always generated)
-    glTextureStorage3D(id, FullMipCount(width, height), SizedFormat(internal_format), width, height, num_slices * 6);
-    glTextureSubImage3D(id, 0, 0, 0, 0, width, height, num_slices * 6, format, GL_FLOAT, &pixels[0]);
+    GLVK(TextureStorage3D)(id, FullMipCount(width, height), SizedFormat(internal_format), width, height, num_slices * 6);
+    GLVK(TextureSubImage3D)(id, 0, 0, 0, 0, width, height, num_slices * 6, format, GL_FLOAT, &pixels[0]);
     CHECK_GL_ERROR();
-    glGenerateTextureMipmap(id);
+    GLVK(GenerateTextureMipmap)(id);
     CHECK_GL_ERROR();
     return which;
 }
@@ -2000,9 +2021,9 @@ unsigned int Textures::makeFlatCubemapArrayTextureInternal(int num_slices, int w
     SetSamplingi(texture, GL_TEXTURE_WRAP_T, texture.wrap_t);
     CHECK_GL_ERROR();
     std::vector<float> pixels(width * height * num_slices * 6 * 4, 0.0f);
-    glTextureStorage3D(id, FullMipCount(width * 6, height), SizedFormat(internal_format), width * 6, height, num_slices);
-    glTextureSubImage3D(id, 0, 0, 0, 0, width * 6, height, num_slices, format, GL_FLOAT, &pixels[0]);
-    glGenerateTextureMipmap(id);
+    GLVK(TextureStorage3D)(id, FullMipCount(width * 6, height), SizedFormat(internal_format), width * 6, height, num_slices);
+    GLVK(TextureSubImage3D)(id, 0, 0, 0, 0, width * 6, height, num_slices, format, GL_FLOAT, &pixels[0]);
+    GLVK(GenerateTextureMipmap)(id);
     CHECK_GL_ERROR();
 
     return which;
@@ -2373,7 +2394,7 @@ unsigned int Textures::makeRectangularTextureInternal(int width, int height, GLi
         !Graphics::Instance()->features().HDR_enable()) {
         storage_format = GL_RGBA;
     }
-    glTextureStorage2D(id, FullMipCount(width, height), SizedFormat(storage_format), width, height);
+    GLVK(TextureStorage2D)(id, FullMipCount(width, height), SizedFormat(storage_format), width, height);
     CHECK_GL_ERROR();
     SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     SetSamplingi(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -2400,6 +2421,26 @@ TextureRef Textures::makeRectangularTexture(int width, int height, GLint interna
     return tex_ref;
 }
 
+TextureRef Textures::makeMultisampleTexture(int width, int height, int samples, GLint internal_format) {
+    PROFILED_TEXTURE_MUTEX_LOCK
+    unsigned which = AllocateFreeSlot();
+    Texture& texture = textures[which];
+    texture.Init();
+    texture.width = width;
+    texture.height = height;
+    texture.internal_format = internal_format;
+    texture.format = internal_format;
+    texture.tex_target = GL_TEXTURE_2D_MULTISAMPLE;
+    texture.no_mipmap = true;
+    CreateGLTexture(texture);
+    GLVK(TextureStorage2DMultisample)(texture.gl_texture_id, samples, SizedFormat(internal_format), width, height, GL_TRUE);
+    CHECK_GL_ERROR();
+    PROFILED_TEXTURE_MUTEX_UNLOCK
+    TextureRef tex_ref(which);
+    DecrementRefCount(which);
+    return tex_ref;
+}
+
 void Textures::SetTextureName(const TextureRef& texture_ref, const char* name) {
     PROFILED_TEXTURE_MUTEX_LOCK
     if (textures[texture_ref.id].notify_on_dispose) {
@@ -2422,10 +2463,14 @@ unsigned int Textures::makeBufferTextureInternal(size_t size, GLint internal_for
     texture.internal_format = internal_format;
     texture.tex_target = GL_TEXTURE_BUFFER;
 
-    glGenBuffers(1, &texture.gl_buffer_id);
+    GLVK(GenBuffers)(1, &texture.gl_buffer_id);
     CHECK_GL_ERROR();
-    glBindBuffer(GL_TEXTURE_BUFFER, texture.gl_buffer_id);
-    glBufferData(GL_TEXTURE_BUFFER, size, data, GL_DYNAMIC_DRAW);
+    if (UseVulkan()) {  // (the buffer by its name: no binding point)
+        vkgl::NamedBufferData(texture.gl_buffer_id, size, data, GL_DYNAMIC_DRAW);
+    } else {
+        glBindBuffer(GL_TEXTURE_BUFFER, texture.gl_buffer_id);
+        glBufferData(GL_TEXTURE_BUFFER, size, data, GL_DYNAMIC_DRAW);
+    }
     CHECK_GL_ERROR();
 
     CreateGLTexture(texture);
@@ -2433,7 +2478,7 @@ unsigned int Textures::makeBufferTextureInternal(size_t size, GLint internal_for
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
     CHECK_GL_ERROR();
-    glTextureBuffer(texture.gl_texture_id, internal_format, texture.gl_buffer_id);
+    GLVK(TextureBuffer)(texture.gl_texture_id, internal_format, texture.gl_buffer_id);
 
     CHECK_GL_ERROR();
 
@@ -2537,15 +2582,22 @@ void Textures::RebindTexture(int unit) {
     } else if (texture.gl_texture_id == INVALID_ID || texture.gl_texture_id == UNLOADED_ID) {
         LOGE << "Trying to rebind invalid texture id." << std::endl;
     } else {
-        glBindTextureUnit(unit, texture.gl_texture_id);
         // (stage 2.2: and the sampler for how it's sampled; buffer textures have none)
-        glBindSampler(unit, texture.tex_target == GL_TEXTURE_BUFFER ? 0 : SamplerFor(texture));
+        const GLuint sampler = texture.tex_target == GL_TEXTURE_BUFFER ? 0 : SamplerFor(texture);
+        unit_texture_[unit][KindOf(texture.cube_map ? GL_TEXTURE_CUBE_MAP : texture.tex_target)] = texture.gl_texture_id;
+        unit_sampler_[unit] = sampler;
+        if (!UseVulkan()) {  // (Vulkan: the descriptors read UnitBinding)
+            glBindTextureUnit(unit, texture.gl_texture_id);
+            glBindSampler(unit, sampler);
+        }
     }
 }
 
 void Textures::SetActiveTexture(int which_unit) {
     if (active_texture != which_unit) {
-        glActiveTexture(GL_TEXTURE0 + which_unit);
+        if (!UseVulkan()) {  // (Vulkan: units have no active one)
+            glActiveTexture(GL_TEXTURE0 + which_unit);
+        }
         active_texture = which_unit;
     }
 }
@@ -2596,6 +2648,9 @@ void Textures::bindTexture(const unsigned int& which_texture, int which_unit) {
         GLenum old_tex_target = textures[bound_texture[which_unit]].tex_target;
         if (textures[which_texture].tex_target != old_tex_target) {
             if (old_tex_target != GL_NONE) {
+                unit_texture_[which_unit][KindOf(old_tex_target)] = 0;
+            }
+            if (old_tex_target != GL_NONE && !UseVulkan()) {  // (Vulkan: the descriptors read UnitBinding)
                 // that target only, as before (glBindTextureUnit(unit, 0) would
                 // empty the unit's other targets too: see ClearUnits)
                 glActiveTexture(GL_TEXTURE0 + which_unit);
@@ -2620,6 +2675,9 @@ void Textures::InvalidateBindCacheInternal() {
             const Texture& t = textures[bound_texture[i]];
             GLenum target = t.cube_map ? GL_TEXTURE_CUBE_MAP : t.tex_target;
             if (target == GL_TEXTURE_2D || target == GL_TEXTURE_CUBE_MAP) {
+                unit_texture_[i][KindOf(target)] = 0;
+            }
+            if ((target == GL_TEXTURE_2D || target == GL_TEXTURE_CUBE_MAP) && !UseVulkan()) {  // (Vulkan: the descriptors read UnitBinding)
                 glActiveTexture(GL_TEXTURE0 + i);
                 glBindTexture(target, 0);
             }
@@ -2627,7 +2685,9 @@ void Textures::InvalidateBindCacheInternal() {
         }
     }
     // Code with bare GL calls after this expects unit 0 active
-    glActiveTexture(GL_TEXTURE0);
+    if (!UseVulkan()) {  // (Vulkan: units have no active one)
+        glActiveTexture(GL_TEXTURE0);
+    }
     active_texture = 0;
 }
 
@@ -2635,6 +2695,187 @@ void Textures::InvalidateBindCache() {
     PROFILED_TEXTURE_MUTEX_LOCK
     InvalidateBindCacheInternal();
     PROFILED_TEXTURE_MUTEX_UNLOCK
+}
+
+void* Textures::ImGuiTextureID(const TextureRef& tex_ref) {
+    if (!tex_ref.valid()) {
+        return NULL;
+    }
+    EnsureInVRAM(tex_ref);
+    return (void*)(uintptr_t)(tex_ref.id + 1);
+}
+
+void* Textures::ImGuiTextureID(const TextureAssetRef& tex_ref) {
+    return ImGuiTextureID(tex_ref->GetTextureRef());
+}
+
+bool Textures::DumpLevel(const std::string& name, const std::string& path, int* width, int* height) {
+    for (size_t i = 0; i < textures.size(); ++i) {
+        const Texture& tex = textures[i];
+        if (tex.name != name || tex.gl_texture_id == UNLOADED_ID ||
+            (tex.tex_target != GL_TEXTURE_2D && tex.tex_target != GL_TEXTURE_CUBE_MAP)) {
+            continue;
+        }
+        const int faces = tex.tex_target == GL_TEXTURE_CUBE_MAP ? 6 : 1;
+        GLint w = 0, h = 0, internal = 0;
+        GLVK(GetTextureLevelParameteriv)(tex.gl_texture_id, 0, GL_TEXTURE_WIDTH, &w);
+        GLVK(GetTextureLevelParameteriv)(tex.gl_texture_id, 0, GL_TEXTURE_HEIGHT, &h);
+        GLVK(GetTextureLevelParameteriv)(tex.gl_texture_id, 0, GL_TEXTURE_INTERNAL_FORMAT, &internal);
+        if (w <= 0 || h <= 0) {
+            return false;
+        }
+        const bool depth = internal == GL_DEPTH_COMPONENT24 || internal == GL_DEPTH_COMPONENT32F || internal == GL_DEPTH_COMPONENT ||
+                           internal == GL_DEPTH_COMPONENT16 || internal == GL_DEPTH_COMPONENT32;
+        std::vector<float> data((size_t)w * h * faces * (depth ? 1 : 4), 0.0f);
+        GLVK(GetTextureImage)(tex.gl_texture_id, 0, depth ? GL_DEPTH_COMPONENT : GL_RGBA, GL_FLOAT, (GLsizei)(data.size() * sizeof(float)), &data[0]);
+        FILE* f = fopen(path.c_str(), "wb");
+        if (f == NULL) {
+            return false;
+        }
+        fwrite(&data[0], sizeof(float), data.size(), f);
+        fclose(f);
+        *width = w;
+        *height = h;
+        return true;
+    }
+    return false;
+}
+
+void Textures::ListNamed(std::vector<std::string>& out) const {
+    for (size_t i = 0; i < textures.size(); ++i) {
+        const Texture& tex = textures[i];
+        if (!tex.name.empty() && tex.gl_texture_id != UNLOADED_ID && tex.sub_textures.empty()) {
+            char line[512];
+            FormatString(line, sizeof(line), "%s|0x%x|%dx%dx%d|0x%x", tex.name.c_str(), tex.tex_target, tex.width, tex.height, tex.depth, tex.internal_format);
+            out.push_back(line);
+        }
+    }
+}
+
+bool Textures::LevelStats(const std::string& name, int* width, int* height, float* min, float* max, float* mean, float* nonzero) {
+    for (size_t i = 0; i < textures.size(); ++i) {
+        const Texture& tex = textures[i];
+        if (tex.name != name || tex.gl_texture_id == UNLOADED_ID || tex.tex_target != GL_TEXTURE_2D) {
+            continue;
+        }
+        GLint w = 0, h = 0, internal = 0;
+        GLVK(GetTextureLevelParameteriv)(tex.gl_texture_id, 0, GL_TEXTURE_WIDTH, &w);
+        GLVK(GetTextureLevelParameteriv)(tex.gl_texture_id, 0, GL_TEXTURE_HEIGHT, &h);
+        GLVK(GetTextureLevelParameteriv)(tex.gl_texture_id, 0, GL_TEXTURE_INTERNAL_FORMAT, &internal);
+        if (w <= 0 || h <= 0) {
+            return false;
+        }
+        const bool depth = internal == GL_DEPTH_COMPONENT24 || internal == GL_DEPTH_COMPONENT32F || internal == GL_DEPTH_COMPONENT ||
+                           internal == GL_DEPTH_COMPONENT16 || internal == GL_DEPTH_COMPONENT32;
+        const int comps = depth ? 1 : 4;
+        std::vector<float> data((size_t)w * h * comps, 0.0f);
+        GLVK(GetTextureImage)(tex.gl_texture_id, 0, depth ? GL_DEPTH_COMPONENT : GL_RGBA, GL_FLOAT, (GLsizei)(data.size() * sizeof(float)), &data[0]);
+        double sum = 0.0;
+        size_t above = 0;
+        *min = 1e30f;
+        *max = -1e30f;
+        for (size_t k = 0; k < (size_t)w * h; ++k) {
+            const float v = data[k * comps];
+            *min = std::min(*min, v);
+            *max = std::max(*max, v);
+            sum += v;
+            above += v > 0.0f ? 1 : 0;
+        }
+        *width = w;
+        *height = h;
+        *mean = (float)(sum / ((double)w * h));
+        *nonzero = (float)above / (float)((size_t)w * h);
+        return true;
+    }
+    return false;
+}
+
+std::vector<Textures::Digest> Textures::DigestLoaded() {
+    std::vector<Digest> out;
+    std::vector<unsigned char> data;
+    for (size_t i = 0; i < textures.size(); ++i) {
+        const Texture& tex = textures[i];
+        if (tex.sub_textures.empty() || tex.gl_texture_id == UNLOADED_ID ||
+            (tex.sub_textures[0].load_name.empty() && tex.sub_textures[0].texture_name.empty())) {
+            continue;  // (no file: render targets, which only GL has drawn into yet)
+        }
+        if (tex.tex_target != GL_TEXTURE_2D && tex.tex_target != GL_TEXTURE_2D_ARRAY && tex.tex_target != GL_TEXTURE_CUBE_MAP) {
+            continue;
+        }
+        const GLuint id = tex.gl_texture_id;
+        GLint w = 0, h = 0, compressed = 0, internal = 0;
+        GLVK(GetTextureLevelParameteriv)(id, 0, GL_TEXTURE_WIDTH, &w);
+        GLVK(GetTextureLevelParameteriv)(id, 0, GL_TEXTURE_HEIGHT, &h);
+        GLVK(GetTextureLevelParameteriv)(id, 0, GL_TEXTURE_COMPRESSED, &compressed);
+        GLVK(GetTextureLevelParameteriv)(id, 0, GL_TEXTURE_INTERNAL_FORMAT, &internal);
+        const int layers = tex.tex_target == GL_TEXTURE_CUBE_MAP ? 6 : tex.tex_target == GL_TEXTURE_2D_ARRAY ? (int)tex.num_slices : 1;
+        if (w <= 0 || h <= 0 || layers <= 0) {
+            continue;
+        }
+        size_t size;
+        if (compressed) {
+            const bool dxt1 = internal == GL_COMPRESSED_RGB_S3TC_DXT1_EXT || internal == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT ||
+                              internal == GL_COMPRESSED_SRGB_S3TC_DXT1_EXT || internal == GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT;
+            size = (size_t)((w + 3) / 4) * ((h + 3) / 4) * (dxt1 ? 8 : 16) * layers;
+            data.assign(size, 0);
+            GLVK(GetCompressedTextureImage)(id, 0, (GLsizei)size, &data[0]);
+        } else {
+            size = (size_t)w * h * 4 * layers;
+            data.assign(size, 0);
+            GLVK(GetTextureImage)(id, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLsizei)size, &data[0]);
+        }
+        uint64_t hash = 1469598103934665603ull;
+        for (size_t k = 0; k < size; ++k) {
+            hash = (hash ^ data[k]) * 1099511628211ull;
+        }
+        Digest d;
+        d.name = tex.sub_textures[0].load_name.empty() ? tex.sub_textures[0].texture_name : tex.sub_textures[0].load_name;
+        d.width = w;
+        d.height = h;
+        d.layers = layers;
+        d.format = (unsigned)internal;
+        d.hash = hash;
+        out.push_back(d);
+    }
+    return out;
+}
+
+Textures::UnitKind Textures::KindOf(GLenum target) {
+    switch (target) {
+        case GL_TEXTURE_CUBE_MAP: return kUnitCube;
+        case GL_TEXTURE_2D_ARRAY: return kUnit2DArray;
+        case GL_TEXTURE_3D: return kUnit3D;
+        case GL_TEXTURE_BUFFER: return kUnitBuffer;
+        case GL_TEXTURE_2D_MULTISAMPLE: return kUnit2DMultisample;
+        case GL_TEXTURE_CUBE_MAP_ARRAY: return kUnitCubeArray;
+        default: return kUnit2D;
+    }
+}
+
+void Textures::UnitBinding(int unit, UnitKind kind, GLuint* texture, GLuint* sampler) const {
+    if (unit < 0 || unit >= (int)_texture_units || kind < 0 || kind >= kUnitKinds) {
+        *texture = 0;
+        *sampler = 0;
+        return;
+    }
+    *texture = unit_texture_[unit][kind];
+    *sampler = unit_sampler_[unit];
+}
+
+void Textures::BindFrameRingTexels(int unit) {
+    if (!UseVulkan()) {  // (Vulkan: the descriptors read UnitBinding)
+        glBindTextureUnit(unit, FrameRing::BufferTexture());
+        glBindSampler(unit, 0);
+    }
+    bound_texture[unit] = INVALID_ID;  // (not a Texture)
+    frame_ring_texel_unit_ = unit;
+    unit_texture_[unit][kUnitBuffer] = FrameRing::BufferTexture();
+    unit_sampler_[unit] = 0;
+}
+
+void Textures::UpdateRegion(const TextureRef& tex_ref, int level, int x, int y, int width, int height, GLenum format, GLenum type, const void* data) {
+    EnsureInVRAM(tex_ref);
+    GLVK(TextureSubImage2D)(textures[tex_ref.id].gl_texture_id, level, x, y, width, height, format, type, data);
 }
 
 void Textures::ClearUnits(const std::vector<int>& units) {
@@ -2651,6 +2892,9 @@ void Textures::ClearUnits(const std::vector<int>& units) {
             const Texture& t = textures[bound_texture[unit]];
             GLenum target = t.cube_map ? GL_TEXTURE_CUBE_MAP : t.tex_target;
             if (target == GL_TEXTURE_2D || target == GL_TEXTURE_CUBE_MAP) {
+                unit_texture_[unit][KindOf(target)] = 0;
+            }
+            if ((target == GL_TEXTURE_2D || target == GL_TEXTURE_CUBE_MAP) && !UseVulkan()) {  // (Vulkan: the descriptors read UnitBinding)
                 glActiveTexture(GL_TEXTURE0 + unit);
                 glBindTexture(target, 0);
                 glActiveTexture(GL_TEXTURE0 + active_texture);  // (bare GL code expects its unit)
@@ -2808,11 +3052,11 @@ bool Textures::ReloadAsCompressed(const TextureRef& texref) {
 void Textures::SaveToPNG(int texture, std::string path) {
     GLint width, height;
 
-    glGetTextureLevelParameteriv(texture, 0, GL_TEXTURE_WIDTH, &width);
-    glGetTextureLevelParameteriv(texture, 0, GL_TEXTURE_HEIGHT, &height);
+    GLVK(GetTextureLevelParameteriv)(texture, 0, GL_TEXTURE_WIDTH, &width);
+    GLVK(GetTextureLevelParameteriv)(texture, 0, GL_TEXTURE_HEIGHT, &height);
 
     void* data = OG_MALLOC(sizeof(GLuint) * width * height);
-    glGetTextureImage(texture, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, (GLsizei)(sizeof(GLuint) * width * height), data);
+    GLVK(GetTextureImage)(texture, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, (GLsizei)(sizeof(GLuint) * width * height), data);
 
     ImageExport::SavePNG(path.c_str(), (unsigned char*)data, width, height);
 
@@ -2835,15 +3079,15 @@ void Textures::RemoveTextureFromVRAM(int which) {
     }
     if (textures[which].gl_texture_id != UNLOADED_ID && textures[which].gl_texture_id != INVALID_ID) {
         Graphics::Instance()->ForgetRenderTargets(textures[which].gl_texture_id);
-        if (glIsTexture(textures[which].gl_texture_id)) {
-            glDeleteTextures(1, &textures[which].gl_texture_id);
+        if (GLVK(IsTexture)(textures[which].gl_texture_id)) {
+            GLVK(DeleteTextures)(1, &textures[which].gl_texture_id);
         }
         textures[which].gl_texture_id = UNLOADED_ID;
     }
 
     if (textures[which].gl_buffer_id != UNLOADED_ID && textures[which].gl_buffer_id != INVALID_ID) {
-        if (glIsBuffer(textures[which].gl_buffer_id)) {
-            glDeleteBuffers(1, &textures[which].gl_buffer_id);
+        if (GLVK(IsBuffer)(textures[which].gl_buffer_id)) {
+            GLVK(DeleteBuffers)(1, &textures[which].gl_buffer_id);
         }
         textures[which].gl_buffer_id = UNLOADED_ID;
     }
@@ -2887,8 +3131,8 @@ void Textures::SetProcessPoolsEnabled(bool val) {
 void Textures::ApplyAnisotropy() {
     for (unsigned int i = 0; i < textures.size(); i++) {
         Texture& tex = textures[i];
-        if (tex.gl_texture_id == 0 || tex.gl_texture_id == UNLOADED_ID || tex.gl_texture_id == INVALID_ID || tex.tex_target == GL_TEXTURE_BUFFER) {
-            continue;  // not in VRAM yet (it gets it on upload), or a buffer
+        if (tex.gl_texture_id == 0 || tex.gl_texture_id == UNLOADED_ID || tex.gl_texture_id == INVALID_ID || tex.tex_target == GL_TEXTURE_BUFFER || tex.tex_target == GL_TEXTURE_2D_MULTISAMPLE) {
+            continue;  // not in VRAM yet (it gets it on upload), a buffer or a multisample target
         }
         SetSamplingf(tex, GL_TEXTURE_MAX_ANISOTROPY_EXT, Graphics::Instance()->config_.anisotropy());
     }
@@ -2903,32 +3147,55 @@ void Textures::updateBufferTexture(TextureRef& texture_ref, size_t size, const v
     LOG_ASSERT(texture.gl_texture_id != 0);
     LOG_ASSERT(texture.gl_buffer_id != 0);
     LOG_ASSERT(texture.tex_target == GL_TEXTURE_BUFFER);
-    glBindBuffer(GL_TEXTURE_BUFFER, texture.gl_buffer_id);
+    if (!UseVulkan()) {  // (Vulkan: the buffer by its name, no binding point)
+        glBindBuffer(GL_TEXTURE_BUFFER, texture.gl_buffer_id);
+    }
     if (size > texture.size) {
         PROFILER_ZONE(g_profiler_ctx, "Resize buffer");
         // resize the buffer
-        glBufferData(GL_TEXTURE_BUFFER, size, NULL, GL_DYNAMIC_DRAW);
+        if (UseVulkan()) {
+            vkgl::NamedBufferData(texture.gl_buffer_id, size, NULL, GL_DYNAMIC_DRAW);
+        } else {
+            glBufferData(GL_TEXTURE_BUFFER, size, NULL, GL_DYNAMIC_DRAW);
+        }
         texture.size = size;
     } else {
         PROFILER_ZONE(g_profiler_ctx, "Discard? buffer");
-        glBufferData(GL_TEXTURE_BUFFER, texture.size, NULL, GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_TEXTURE_BUFFER, texture.gl_buffer_id);
+        if (UseVulkan()) {
+            vkgl::NamedBufferData(texture.gl_buffer_id, texture.size, NULL, GL_DYNAMIC_DRAW);
+        } else {
+            glBufferData(GL_TEXTURE_BUFFER, texture.size, NULL, GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_TEXTURE_BUFFER, texture.gl_buffer_id);
+        }
     }
     const bool kUseMapRange = false;
     if (kUseMapRange) {
         PROFILER_ZONE(g_profiler_ctx, "glMapBufferRange");
         // Again, i don't believe that using unsynchronized here is necessarily safe, can we guarantee this?
         // same as in vbocontainer
-        void* mapped = glMapBufferRange(GL_TEXTURE_BUFFER, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+        void* mapped;
+        if (UseVulkan()) {
+            mapped = vkgl::MapNamedBufferRange(texture.gl_buffer_id, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+        } else {
+            mapped = glMapBufferRange(GL_TEXTURE_BUFFER, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+        }
         // void* mapped = glMapBufferRange(GL_TEXTURE_BUFFER, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT );
         CHECK_GL_ERROR();
         {
             PROFILER_ZONE(g_profiler_ctx, "memcpy");
             memcpy(mapped, data, size);
         }
-        glUnmapBuffer(GL_TEXTURE_BUFFER);
+        if (UseVulkan()) {
+            vkgl::UnmapNamedBuffer(texture.gl_buffer_id);
+        } else {
+            glUnmapBuffer(GL_TEXTURE_BUFFER);
+        }
     } else {
         PROFILER_ZONE(g_profiler_ctx, "glBufferSubData");
-        glBufferSubData(GL_TEXTURE_BUFFER, 0, size, data);
+        if (UseVulkan()) {
+            vkgl::NamedBufferSubData(texture.gl_buffer_id, 0, size, data);
+        } else {
+            glBufferSubData(GL_TEXTURE_BUFFER, 0, size, data);
+        }
     }
 }

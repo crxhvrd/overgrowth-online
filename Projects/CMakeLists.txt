@@ -599,6 +599,11 @@ INCLUDE_DIRECTORIES(SYSTEM
 INCLUDE_DIRECTORIES(
     ${SRCDIR}
     ${LIBDIR}
+    ${LIBDIR}/Vulkan-Headers-1.4.350/include
+    ${LIBDIR}/volk-1.4.350
+    ${LIBDIR}/vma-3.3.0/include
+    ${LIBDIR}/SPIRV-Reflect-1.4.350
+    ${LIBDIR}/glslang-1.4.350/include
     ${LIBDIR}/imgui-1.85
     ${LIBDIR}/imgui-1.85/misc/freetype
     ${LIBDIR}/ovr_sdk_win_1.12.0_public/OculusSDK/LibOVR/Include
@@ -1172,6 +1177,11 @@ IF(BUILD_OVERGROWTH)
     target_add_grouped_source(Overgrowth Editors)
     target_add_grouped_source(Overgrowth Game)
     target_add_grouped_source(Overgrowth Graphics)
+    # Overgrowth Online (GL 4.6 stage 5): the Vulkan backend. Vulkan is loaded at run
+    # time (volk), never linked, so a PC without it still starts on GL
+    target_add_grouped_source(Overgrowth Graphics/Vulkan)
+    target_sources(Overgrowth PRIVATE ${LIBDIR}/volk-1.4.350/volk.c ${LIBDIR}/SPIRV-Reflect-1.4.350/spirv_reflect.c)
+    target_compile_definitions(Overgrowth PRIVATE VK_NO_PROTOTYPES)
     target_add_grouped_source(Overgrowth GUI)
     target_add_grouped_source(Overgrowth GUI/IMUI)
     target_add_grouped_source(Overgrowth GUI/dimgui)

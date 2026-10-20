@@ -49,9 +49,6 @@ class Sky {
     bool cached;
     bool load_resources_queued;
 
-    GLuint framebuffer;
-    GLuint framebuffer2;
-
     TextureAssetRef sky_texture_ref;
     TextureAssetRef horizon_texture_ref;
     Model sky_dome_model;

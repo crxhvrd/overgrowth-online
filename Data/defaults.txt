@@ -20,6 +20,7 @@ blood:                  2
 blood_color:            0.4 0 0
 multisample:            1
 anisotropy:             4
+renderer:               gl
 motion_blur_amount:     0
 post_effects:           true
 shaders:                true

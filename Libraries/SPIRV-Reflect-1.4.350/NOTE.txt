@@ -1,0 +1,4 @@
+SPIRV-Reflect as shipped in the LunarG Vulkan SDK 1.4.350.0 (Source/SPIRV-Reflect: spirv_reflect.c/.h and the
+spirv.h it includes), unchanged.
+License: Apache-2.0 (in each file's header), the same as the engine (see LICENSE).
+Used by the Vulkan backend (stage 5.4) to read the SPIR-V build's bindings, inputs and default uniform block.

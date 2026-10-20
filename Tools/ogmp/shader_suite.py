@@ -212,3 +212,25 @@ def shader_check(ctx, chunk=40, keys=None, keep_dir=False):
             shutil.copytree(src, ctx.out_dir + "/compiled_shaders", dirs_exist_ok=True)
         json.dump(stages, open(ctx.out_dir + "/program_stages.json", "w", encoding="utf-8"), indent=1)
     return {"passed": not fails, "metrics": m, "notes": fails}
+
+
+def vk_shader_check(ctx):
+    """Stage 5.4: every manifest program made on the Vulkan renderer from the latest
+    SPIR-V build (shader_spirv writes test/spirv): modules, reflection (default block,
+    texture units, attributes) and the push-descriptor layout, with the validation
+    layer on. A program that fails or a validation message fails it."""
+    from .instance import TEST_DIR
+    if not os.path.exists(TEST_DIR + "/spirv/index.json"):
+        return {"passed": False, "metrics": {}, "notes": ["no Vulkan build (run shader_spirv)"]}
+    r = shader_check(ctx, keys={"renderer": "vulkan", "vk_validation": "2", "shader_vulkan_glsl": TEST_DIR + "/spirv"})
+    log = ctx.instances[-1].log()
+    if "Vulkan renderer on " not in log:
+        r["passed"] = False
+        r["notes"].append("the game didn't start on Vulkan")
+    messages = [l.strip() for l in log.splitlines() if "Vulkan error" in l or "Vulkan warning" in l or "Vulkan: " in l]
+    r["metrics"]["vulkan_messages"] = len(messages)
+    if messages:
+        r["metrics"]["first_messages"] = [x[:300] for x in messages[:5]]
+        r["passed"] = False
+        r["notes"].append(f"{len(messages)} Vulkan messages")
+    return r

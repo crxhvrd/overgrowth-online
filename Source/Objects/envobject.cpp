@@ -373,7 +373,7 @@ void EnvObject::DrawInstances(EnvObject** instance_array, int num_instances, con
     static int ubo_batch_size_multiplier = 1;
     static GLint max_ubo_size = -1;
     if (max_ubo_size == -1) {
-        glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &max_ubo_size);
+        max_ubo_size = graphics->MaxUniformBlockSize();
 
         if (max_ubo_size >= 131072) {
             ubo_batch_size_multiplier = 8;
@@ -550,9 +550,6 @@ void EnvObject::DrawInstances(EnvObject** instance_array, int num_instances, con
             shaders->SetUniformInt("subdivisions_z", scenegraph_->light_probe_collection.grid_lookup.subdivisions[2]);
             shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_COLOR_BUFFER), TEX_AMBIENT_COLOR_BUFFER);
             shaders->SetUniformInt(shaders->GetTexUniform(TEX_AMBIENT_GRID_DATA), TEX_AMBIENT_GRID_DATA);
-            if (scenegraph_->light_probe_collection.light_probe_buffer_object_id != -1) {
-                glBindBuffer(GL_TEXTURE_BUFFER, scenegraph_->light_probe_collection.light_probe_buffer_object_id);
-            }
         }
 
         if (g_no_reflection_capture == false) {
@@ -660,9 +657,6 @@ void EnvObject::DrawInstances(EnvObject** instance_array, int num_instances, con
                 detail_scale = (vec4*)((uintptr_t)blockBuffer + 8 * sizeof(float) * 4);
             }
 
-            if (!attrib_envobj_instancing) {
-                glUniformBlockBinding(shaders->programs[the_shader].gl_program, instance_block_index, 0);
-            }
             int to_draw = min(kBatchSize, num_instances - i);
             PROFILER_ENTER(g_profiler_ctx, "Setup batch data");
             for (int j = 0; j < to_draw; ++j) {
@@ -783,7 +777,8 @@ void EnvObject::DrawInstances(EnvObject** instance_array, int num_instances, con
 
                 if (!attrib_envobj_instancing) {
                     env_object_instance_buffer.Fill(block_size / kBatchSize * to_draw, blockBuffer);
-                    glBindBufferRange(GL_UNIFORM_BUFFER, 0, env_object_instance_buffer.gl_id, env_object_instance_buffer.offset, env_object_instance_buffer.next_offset - env_object_instance_buffer.offset);
+                    // (Overgrowth Online stage 5.0: InstanceInfo gets UBO_INSTANCE_INFO at link)
+                    graphics->BindUniformRing(UBO_INSTANCE_INFO, env_object_instance_buffer);
                 }
             }
             CHECK_GL_ERROR();

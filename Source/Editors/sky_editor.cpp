@@ -174,7 +174,7 @@ void SkyEditor::Draw() {
             shaders->SetUniformMat4("mvp", handle_mvp);
             rgb = CalcColorFromAngle(m_sun_color_angle);
             shaders->SetUniformVec4("color_uniform", vec4(rgb, 1.0f));
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            graphics->SetWireframe(false);
             float data[30];
             data[0] = 0.0f;
             data[1] = 0.0f;

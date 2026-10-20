@@ -33,6 +33,7 @@ out vec4 color;
 #endif
 
 void main() {
+    gl_PointSize = 1.0;  // (Overgrowth Online stage 5.0: Vulkan sizes points from here; GL from glPointSize, 1 too)
 #ifdef FIRE
     world_vert = vert_attrib + normalize(cam_pos - vert_attrib) * 0.1;
     gl_Position = mvp * vec4(world_vert, 1.0);

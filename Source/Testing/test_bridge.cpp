@@ -32,6 +32,11 @@
 #include <Graphics/shaders.h>
 #include <Graphics/camera.h>
 #include <Graphics/frame_timers.h>
+#include <Graphics/render_backend.h>
+#include <Graphics/Vulkan/vk_backend.h>
+#include <Graphics/Vulkan/vk_gl.h>
+#include <Graphics/Vulkan/vk_draw.h>
+#include <Graphics/textures.h>
 #include <Internal/timer.h>
 #include <Logging/logdata.h>
 #include <JSON/json.h>
@@ -282,6 +287,16 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         out["level"] = loaded ? sg->level_path_.GetOriginalPath() : "";
         out["my_avatar"] = loaded ? MyAvatar(engine) : -1;
         out["gl_problems"] = GLDebugProblemCount();  // GL debug output: errors, undefined, deprecated ("gl_debug")
+        out["renderer"] = UseVulkan() ? "vulkan" : "gl";
+        if (UseVulkan()) {
+            out["vk_problems"] = VkBackend::ValidationProblems();  // validation layer warnings and errors ("vk_validation")
+            out["vk_frames"] = (Json::UInt64)VkBackend::FramesPresented();
+            VkDraw::Stats ds = VkDraw::GetStats();
+            out["vk_draws"] = (Json::UInt64)ds.draws;
+            out["vk_draws_skipped"] = (Json::UInt64)ds.skipped;
+            out["vk_pipelines"] = (Json::UInt64)ds.pipelines;
+            out["vk_passes"] = (Json::UInt64)ds.passes;
+        }
         Json::Value& o = out["online"];
         o["active"] = online->IsActive();
         o["hosting"] = online->IsHosting();
@@ -598,7 +613,7 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         out["failures"] = fails;
     } else if (cmd == "gl_problems") {
         // Overgrowth Online: the GL debug output's problems, each message with its count
-        if (req.get("provoke", false).asBool()) {
+        if (req.get("provoke", false).asBool() && !UseVulkan()) {
             glEnable(0x7FFF);  // an invalid enum on purpose: the output must report it (gl_errors)
         }
         out["alive"] = GLDebugOutputAlive();  // the output reached the callback (our check marker)
@@ -611,6 +626,86 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
             list.append(v);
         }
         out["problems"] = list;
+    } else if (cmd == "texture_stats") {
+        // Overgrowth Online (stage 5.5 checks): a texture by its name, level 0's first channel
+        int w = 0, h = 0;
+        float mn = 0, mx = 0, mean = 0, nonzero = 0;
+        out["found"] = Textures::Instance()->LevelStats(req.get("name", "").asString(), &w, &h, &mn, &mx, &mean, &nonzero);
+        out["width"] = w;
+        out["height"] = h;
+        out["min"] = mn;
+        out["max"] = mx;
+        out["mean"] = mean;
+        out["nonzero"] = nonzero;
+    } else if (cmd == "editor_item") {
+        // A map editor ribbon item, as clicking it ("calculateao" bakes the light probes)
+        if (!loaded) {
+            throw std::runtime_error("editor_item needs a level");
+        }
+        sg->map_editor->RibbonItemClicked(req.get("item", "").asString(), req.get("param", false).asBool());
+        out["probe_queue"] = (int)sg->light_probe_collection.to_process.size();
+    } else if (cmd == "light_probes") {
+        // The light probes' baked colours (six per probe) and the bake queue (Vulkan
+        // against OpenGL: stage 5.6)
+        if (!loaded) {
+            throw std::runtime_error("light_probes needs a level");
+        }
+        const LightProbeCollection& lpc = sg->light_probe_collection;
+        out["queue"] = (int)lpc.to_process.size();
+        Json::Value probes(Json::arrayValue);
+        for (const LightProbe& probe : lpc.light_probes) {
+            Json::Value colors(Json::arrayValue);
+            for (const vec3& c : probe.ambient_cube_color) {
+                colors.append(c[0]);
+                colors.append(c[1]);
+                colors.append(c[2]);
+            }
+            probes.append(colors);
+        }
+        out["probes"] = probes;
+    } else if (cmd == "texture_list") {
+        std::vector<std::string> names;
+        Textures::Instance()->ListNamed(names);
+        Json::Value list(Json::arrayValue);
+        for (const std::string& n : names) {
+            list.append(n);
+        }
+        out["textures"] = list;
+    } else if (cmd == "texture_dump") {
+        // (a texture by its name: level 0 as raw floats, for comparing two renderers)
+        int w = 0, h = 0;
+        out["found"] = Textures::Instance()->DumpLevel(req.get("name", "").asString(), req.get("path", "").asString(), &w, &h);
+        out["width"] = w;
+        out["height"] = h;
+    } else if (cmd == "texture_digest") {
+        // Overgrowth Online (GL 4.6 stage 5.3): each texture loaded from a file, read
+        // back and hashed by its name: OpenGL and Vulkan must agree (vk_textures)
+        Json::Value list(Json::arrayValue);
+        for (const Textures::Digest& d : Textures::Instance()->DigestLoaded()) {
+            Json::Value v;
+            v["name"] = d.name;
+            v["width"] = d.width;
+            v["height"] = d.height;
+            v["layers"] = d.layers;
+            v["format"] = (Json::UInt)d.format;
+            char hex[24];
+            FormatString(hex, sizeof(hex), "%016llx", (unsigned long long)d.hash);
+            v["hash"] = hex;
+            list.append(v);
+        }
+        out["textures"] = list;
+        if (UseVulkan()) {
+            vkgl::Stats s = vkgl::GetStats();
+            Json::Value& vk = out["vulkan"];
+            vk["images"] = (Json::UInt64)s.images;
+            vk["image_mb"] = (double)s.image_bytes / (1024.0 * 1024.0);
+            vk["buffers"] = (Json::UInt64)s.buffers;
+            vk["buffer_mb"] = (double)s.buffer_bytes / (1024.0 * 1024.0);
+            vk["samplers"] = (Json::UInt64)s.samplers;
+            vk["staging_mb"] = (double)s.staging_bytes / (1024.0 * 1024.0);
+            vk["uploads"] = (Json::UInt64)s.uploads;
+            vk["upload_mb"] = (double)s.upload_bytes / (1024.0 * 1024.0);
+        }
     } else if (cmd == "screenshot") {
         Graphics* g = Graphics::Instance();
         g->queued_screenshot_path = req.get("path", "").asString();
