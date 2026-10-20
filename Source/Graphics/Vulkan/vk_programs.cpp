@@ -141,6 +141,7 @@ bool Create(GLuint name, const std::string& dir, Program& program) {
     Destroy(name);
     std::unique_ptr<Info> info(new Info());
     info->name = program.name;
+    info->flags = (uint32_t)program.optional_shaders;
     info->id = next_id++;
     std::map<uint32_t, Binding> bindings;
     std::map<uint32_t, VkShaderStageFlags> binding_stages;
@@ -402,9 +403,18 @@ bool Create(GLuint name, const std::string& dir, Program& program) {
     return true;
 }
 
+std::function<void()> before_destroy;
+
+void OnBeforeDestroy(std::function<void()> fn) {
+    before_destroy = std::move(fn);
+}
+
 void Destroy(GLuint name) {
     if (shut_down) {
         return;
+    }
+    if (before_destroy && programs.count(name) != 0) {
+        before_destroy();
     }
     auto it = programs.find(name);
     if (it == programs.end()) {
@@ -430,6 +440,12 @@ void Destroy(GLuint name) {
 const Info* Get(GLuint name) {
     auto it = programs.find(name);
     return it == programs.end() ? NULL : it->second.get();
+}
+
+void ForEach(const std::function<void(const Info&)>& fn) {
+    for (const auto& kv : programs) {
+        fn(*kv.second);
+    }
 }
 
 size_t Count() {

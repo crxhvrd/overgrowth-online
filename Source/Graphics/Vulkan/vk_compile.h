@@ -32,4 +32,8 @@ enum Stage { kVert,
 // VkPrograms::Create reads it. Empty: no glslang, or the program doesn't compile (logged)
 std::string ProgramDir(const std::string& name, const char* const sources[kStages]);
 
+// Data/VulkanShaders beside the game's exe, with its "/" (packages ship the known programs
+// and pipelines there); "" when there's none
+std::string ShippedDir();
+
 }  // namespace VkCompile

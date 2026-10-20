@@ -4,7 +4,7 @@
 
 Contents:
   OvergrowthOnline/ the exe and its DLLs (+ the VC++ runtime), steam_appid.txt,
-                    our Data overlay (Scripts, GLSL, root files), licences
+                    our Data overlay (Scripts, GLSL, VulkanShaders, root files), licences
   launcher/         Overgrowth.exe (the stand-in Steam starts)
   mod/overhaul/     the Overhaul mod (D:/OvergrowthAI)
   install.bat, uninstall.bat (+ .ps1), README.txt
@@ -50,6 +50,26 @@ for d in ["Scripts", "GLSL"]:
 for f in os.listdir(ROOT + "/Data"):
     if os.path.isfile(f"{ROOT}/Data/{f}"):
         shutil.copy2(f"{ROOT}/Data/{f}", f"{online}/Data/{f}")
+
+# The Vulkan renderer's programs, compiled ahead (scenarios vk_pipeline_seed, then
+# vk_shader_cache): a first Vulkan load compiles only what isn't among them (mods'
+# shaders). Built from the shaders as they are now, or the package isn't made
+cache = ROOT + "/test/vk_shader_cache"
+if not os.path.isdir(cache) or not os.listdir(cache):
+    sys.exit("No Vulkan shader cache: run  python -I Tools/ogmp.py run vk_shader_cache")
+newest_shader = max(os.path.getmtime(os.path.join(dp, f)) for dp, _, fs in os.walk(ROOT + "/Data/GLSL") for f in fs)
+cache_time = min(os.path.getmtime(os.path.join(cache, d, "program.txt")) for d in os.listdir(cache))
+if newest_shader > cache_time:
+    sys.exit("The Vulkan shader cache is older than Data/GLSL: run  python -I Tools/ogmp.py run vk_shader_cache")
+shutil.copytree(cache, f"{online}/Data/VulkanShaders")
+# ... and the pipelines recorded on the test levels (scenario vk_pipeline_seed), made
+# ahead from a first load on
+seed = ROOT + "/test/vk_pipeline_seed.txt"
+if not os.path.exists(seed):
+    sys.exit("No Vulkan pipeline list: run  python -I Tools/ogmp.py run vk_pipeline_seed")
+if os.path.getmtime(seed) > cache_time:
+    sys.exit("The Vulkan shader cache is older than the pipeline list (its programs aren't all in it): run vk_shader_cache")
+shutil.copy2(seed, f"{online}/Data/VulkanShaders/pipelines.txt")
 
 # Licences: the engine (Apache-2.0), the libraries shipped as DLLs and the ones compiled in
 os.makedirs(online + "/licenses")

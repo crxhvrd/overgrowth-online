@@ -488,6 +488,32 @@ bool Write(const std::string& path, const void* data, size_t bytes) {
 
 }  // namespace
 
+std::string ShippedDir() {
+    static bool found = false;
+    static std::string dir;
+    if (found) {
+        return dir;
+    }
+    found = true;
+#ifdef _WIN32
+    wchar_t exe[MAX_PATH] = {0};
+    DWORD n = GetModuleFileNameW(NULL, exe, MAX_PATH);
+    if (n > 0 && n < MAX_PATH) {
+        std::wstring path(exe, n);
+        size_t slash = path.find_last_of(L"\\/");
+        if (slash != std::wstring::npos) {
+            const std::wstring folder = path.substr(0, slash) + L"\\Data\\VulkanShaders";
+            const DWORD attributes = GetFileAttributesW(folder.c_str());
+            if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                dir = std::string(UTF8fromUTF16(folder).c_str()) + "/";
+                LOGI << "Vulkan: shipped shaders in " << dir << std::endl;
+            }
+        }
+    }
+#endif
+    return dir;
+}
+
 std::string ProgramDir(const std::string& name, const char* const sources[kStages]) {
     if (!sources[kVert] || !sources[kFrag] || !Load()) {
         return std::string();
@@ -502,6 +528,12 @@ std::string ProgramDir(const std::string& name, const char* const sources[kStage
     }
     char key[32];
     snprintf(key, sizeof(key), "%016llx", (unsigned long long)h);
+    // Built already: shipped beside the game (packages carry the known programs, stage 5.8),
+    // or compiled on an earlier run
+    const std::string shipped = ShippedDir();
+    if (!shipped.empty() && Exists(shipped + key + "/program.txt")) {
+        return shipped + key;
+    }
     const std::string dir = GetWritePath(CoreGameModID) + "Data/VulkanShaders/" + key;
     const std::string done = dir + "/program.txt";  // (written last: the directory is complete)
     if (Exists(done)) {

@@ -9,17 +9,31 @@
 #include "vk_draw.h"
 
 #include <Graphics/Vulkan/vk_backend.h>
+#include <Graphics/Vulkan/vk_compile.h>
 #include <Graphics/Vulkan/vk_gl.h>
 #include <Graphics/Vulkan/vk_programs.h>
 #include <Graphics/Vulkan/vk_queries.h>
 #include <Graphics/textures.h>
+#include <Graphics/graphics.h>
+#include <Internal/filesystem.h>
+#include <Internal/modid.h>
+#include <Compat/fileio.h>
 #include <Logging/logdata.h>
 
+#include <SDL.h>
+
 #include <algorithm>
+#include <atomic>
+#include <mutex>
+#include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <set>
+#include <sstream>
 #include <string>
+#include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace VkDraw {
@@ -403,6 +417,254 @@ struct KeyEqual {
 };
 std::unordered_map<Key, VkPipeline, KeyHash, KeyEqual>& pipelines = *new std::unordered_map<Key, VkPipeline, KeyHash, KeyEqual>();  // (never destroyed: see vk_gl.cpp)
 
+// ---- pipelines made ahead (stage 5.8). Every pipeline made is recorded in the write
+// directory (Data/VulkanShaders/pipelines.txt: its program by name and optional
+// stages, its state, the vertex input; with MSAA on, the scene's sample count as "S",
+// so a record serves 2x, 4x and 8x). Packages ship a list recorded in test runs
+// (scenario vk_pipeline_seed) beside the exe. A level's load makes the recorded ones
+// for its programs on worker threads (PrecreatePipelines), and the menus warm the rest
+// up (WarmUpPrograms ...), so a first draw doesn't wait for one. The pipeline cache
+// (pipelines.cache) keeps the driver's work between runs
+
+VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
+bool pipeline_cache_tried = false;
+std::set<std::string>& records = *new std::set<std::string>();  // (never destroyed: see vk_gl.cpp)
+bool records_loaded = false;
+const size_t kMaxRecords = 20000;
+
+std::string ShaderCacheDir() {
+    return GetWritePath(CoreGameModID) + "Data/VulkanShaders/";
+}
+
+bool ReadAll(const std::string& path, std::vector<char>& out) {
+    FILE* f = my_fopen(path.c_str(), "rb");
+    if (!f) {
+        return false;
+    }
+    char buf[65536];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+        out.insert(out.end(), buf, buf + n);
+    }
+    fclose(f);
+    return true;
+}
+
+void EnsurePipelineCache() {
+    if (pipeline_cache_tried) {
+        return;
+    }
+    pipeline_cache_tried = true;
+    std::vector<char> data;
+    const VkPhysicalDeviceProperties& p = VkBackend::Properties();
+    if (ReadAll(ShaderCacheDir() + "pipelines.cache", data) && data.size() >= 16 + VK_UUID_SIZE) {
+        // (VkPipelineCacheHeaderVersionOne: this GPU's and driver's only)
+        uint32_t header[4];
+        memcpy(header, data.data(), sizeof(header));
+        if (header[0] < 16 + VK_UUID_SIZE || header[1] != VK_PIPELINE_CACHE_HEADER_VERSION_ONE || header[2] != p.vendorID ||
+            header[3] != p.deviceID || memcmp(data.data() + 16, p.pipelineCacheUUID, VK_UUID_SIZE) != 0) {
+            data.clear();
+        }
+    } else {
+        data.clear();
+    }
+    VkPipelineCacheCreateInfo info = {VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
+    info.initialDataSize = data.size();
+    info.pInitialData = data.empty() ? NULL : data.data();
+    if (vkCreatePipelineCache(VkBackend::Device(), &info, NULL, &pipeline_cache) != VK_SUCCESS) {
+        info.initialDataSize = 0;
+        info.pInitialData = NULL;
+        data.clear();
+        if (vkCreatePipelineCache(VkBackend::Device(), &info, NULL, &pipeline_cache) != VK_SUCCESS) {
+            pipeline_cache = VK_NULL_HANDLE;
+        }
+    }
+    LOGI << "Vulkan pipeline cache: " << (data.empty() ? std::string("new") : std::to_string(data.size() >> 10) + " KB from earlier runs") << std::endl;
+}
+
+void SavePipelineCache() {
+    if (pipeline_cache == VK_NULL_HANDLE) {
+        return;
+    }
+    size_t n = 0;
+    if (vkGetPipelineCacheData(VkBackend::Device(), pipeline_cache, &n, NULL) != VK_SUCCESS || n == 0) {
+        return;
+    }
+    std::vector<char> data(n);
+    if (vkGetPipelineCacheData(VkBackend::Device(), pipeline_cache, &n, data.data()) != VK_SUCCESS) {
+        return;
+    }
+    const std::string path = ShaderCacheDir() + "pipelines.cache";
+    CreateParentDirs(path);
+    FILE* f = my_fopen(path.c_str(), "wb");
+    if (f) {
+        fwrite(data.data(), 1, n, f);
+        fclose(f);
+    }
+}
+
+uint64_t VertexHash(const VertexInput& in) {
+    uint64_t h = 1469598103934665603ull;
+    for (const VertexAttrib& a : in.attribs) {
+        // (field by field: the struct's padding bytes aren't set, and differed between
+        // equal layouts)
+        const uint32_t f[6] = {a.location, a.binding, (uint32_t)a.size, (uint32_t)a.type, a.normalized ? 1u : 0u, a.offset};
+        h = Fnv(f, sizeof(f), h);
+    }
+    return Fnv(in.divisors, sizeof(in.divisors), h);
+}
+
+std::string RecordOf(const Key& key, const VkPrograms::Info& prog, const VertexInput& in, int fsaa) {
+    std::ostringstream o;
+    o << "2|" << (fsaa > 1 ? "M" : "1") << "|" << prog.flags << "|" << prog.name << "|";
+    for (int i = 0; i < Target::kMaxColor; ++i) {
+        o << (i ? "," : "") << key.color_formats[i];
+    }
+    o << "|" << key.depth_format << "|" << key.num_color << "|";
+    if (fsaa > 1 && key.samples == (uint32_t)fsaa) {
+        o << "S";
+    } else {
+        o << key.samples;
+    }
+    o << "|" << key.topology << "|" << key.polygon_mode << "|"
+      << key.blend << "|" << key.blend_alpha_dst << "|" << key.write_masks << "|" << key.alpha_to_coverage << "|";
+    for (size_t i = 0; i < in.attribs.size(); ++i) {
+        const VertexAttrib& a = in.attribs[i];
+        o << (i ? ";" : "") << a.location << ":" << a.binding << ":" << a.size << ":" << a.type << ":" << (a.normalized ? 1 : 0) << ":" << a.offset;
+    }
+    o << "|";
+    for (int b = 0; b < VertexInput::kMaxBindings; ++b) {
+        o << (b ? "," : "") << in.divisors[b];
+    }
+    return o.str();
+}
+
+std::vector<std::string> Split(const std::string& s, char sep) {
+    std::vector<std::string> out;
+    size_t start = 0;
+    while (true) {
+        size_t at = s.find(sep, start);
+        out.push_back(s.substr(start, at == std::string::npos ? std::string::npos : at - start));
+        if (at == std::string::npos) {
+            return out;
+        }
+        start = at + 1;
+    }
+}
+
+uint32_t U32(const std::string& s) {
+    return (uint32_t)strtoul(s.c_str(), NULL, 10);
+}
+
+// A record back to its key (program and vertex hash still to fill), vertex input,
+// program name and optional stages, for MSAA setting fsaa. False: not one for this
+// setting (MSAA off and on draw with other programs), or not one this build reads
+bool ParseRecord(const std::string& r, int fsaa, std::string* name, uint32_t* flags, Key* key, VertexInput* in) {
+    const std::vector<std::string> all = Split(r, '|');
+    if (all.size() != 16 || all[0] != "2" || all[1] != (fsaa > 1 ? "M" : "1")) {
+        return false;
+    }
+    *flags = U32(all[2]);
+    const std::vector<std::string> f(all.begin() + 1, all.end());  // (the fields as before the flags)
+    memset(key, 0, sizeof(*key));
+    *name = f[2];
+    const std::vector<std::string> formats = Split(f[3], ',');
+    if (formats.size() != (size_t)Target::kMaxColor) {
+        return false;
+    }
+    for (int i = 0; i < Target::kMaxColor; ++i) {
+        key->color_formats[i] = U32(formats[i]);
+    }
+    key->depth_format = U32(f[4]);
+    key->num_color = U32(f[5]);
+    key->samples = f[6] == "S" ? (uint32_t)fsaa : U32(f[6]);
+    key->topology = U32(f[7]);
+    key->polygon_mode = U32(f[8]);
+    key->blend = U32(f[9]);
+    key->blend_alpha_dst = U32(f[10]);
+    key->write_masks = U32(f[11]);
+    key->alpha_to_coverage = U32(f[12]);
+    if (key->num_color > (uint32_t)Target::kMaxColor) {
+        return false;
+    }
+    in->attribs.clear();
+    if (!f[13].empty()) {
+        for (const std::string& a : Split(f[13], ';')) {
+            const std::vector<std::string> v = Split(a, ':');
+            if (v.size() != 6) {
+                return false;
+            }
+            VertexAttrib va;
+            va.location = U32(v[0]);
+            va.binding = U32(v[1]);
+            va.size = (GLint)U32(v[2]);
+            va.type = (GLenum)U32(v[3]);
+            va.normalized = U32(v[4]) != 0;
+            va.offset = U32(v[5]);
+            in->attribs.push_back(va);
+        }
+    }
+    const std::vector<std::string> divisors = Split(f[14], ',');
+    if (divisors.size() != (size_t)VertexInput::kMaxBindings) {
+        return false;
+    }
+    for (int b = 0; b < VertexInput::kMaxBindings; ++b) {
+        in->divisors[b] = U32(divisors[b]);
+    }
+    return true;
+}
+
+void LoadRecordFile(const std::string& path) {
+    std::vector<char> data;
+    if (!ReadAll(path, data)) {
+        return;
+    }
+    std::string line;
+    for (char c : data) {
+        if (c == '\n') {
+            if (!line.empty()) {
+                records.insert(line);
+            }
+            line.clear();
+        } else if (c != '\r') {
+            line += c;
+        }
+    }
+}
+
+// The shipped list and this PC's (a record in either isn't written again)
+void LoadRecords() {
+    if (records_loaded) {
+        return;
+    }
+    records_loaded = true;
+    const std::string shipped = VkCompile::ShippedDir();
+    if (!shipped.empty()) {
+        LoadRecordFile(shipped + "pipelines.txt");
+    }
+    LoadRecordFile(ShaderCacheDir() + "pipelines.txt");
+}
+
+void Record(const Key& key, const VkPrograms::Info& prog, const VertexInput& in) {
+    LoadRecords();
+    if (records.size() >= kMaxRecords) {
+        LogOnce("more pipelines than are recorded (the rest aren't made ahead)");
+        return;
+    }
+    const std::string line = RecordOf(key, prog, in, Graphics::Instance()->config_.FSAA_samples());
+    if (!records.insert(line).second) {
+        return;
+    }
+    const std::string path = ShaderCacheDir() + "pipelines.txt";
+    CreateParentDirs(path);
+    FILE* f = my_fopen(path.c_str(), "ab");
+    if (f) {
+        fwrite(line.c_str(), 1, line.size(), f);
+        fputc('\n', f);
+        fclose(f);
+    }
+}
+
 void DestroyPipelines() {
     for (auto& kv : pipelines) {
         VkPipeline p = kv.second;
@@ -411,7 +673,8 @@ void DestroyPipelines() {
     pipelines.clear();
 }
 
-VkPipeline MakePipeline(const Key& key, const VkPrograms::Info& prog, VkPrimitiveTopology topology) {
+// (thread-safe: pipelines are made ahead on worker threads; the caller logs and counts)
+VkPipeline MakePipeline(const Key& key, const VkPrograms::Info& prog, VkPrimitiveTopology topology, const VertexInput& vin) {
     // Vertex input: each program input from its attribute, or the stand-in binding
     const uint32_t kDummyBinding = VertexInput::kMaxBindings;
     std::vector<VkVertexInputAttributeDescription> attrs;
@@ -421,7 +684,7 @@ VkPipeline MakePipeline(const Key& key, const VkPrograms::Info& prog, VkPrimitiv
         VkVertexInputAttributeDescription a = {};
         a.location = in.location;
         const VertexAttrib* found = NULL;
-        for (const VertexAttrib& va : vertex_input.attribs) {
+        for (const VertexAttrib& va : vin.attribs) {
             if (va.location == in.location) {
                 found = &va;
                 break;
@@ -444,10 +707,7 @@ VkPipeline MakePipeline(const Key& key, const VkPrograms::Info& prog, VkPrimitiv
             VkVertexInputBindingDescription d = {};
             d.binding = b;
             d.stride = 0;  // (dynamic)
-            d.inputRate = (b < kDummyBinding && vertex_input.divisors[b] != 0) ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
-            if (b < kDummyBinding && vertex_input.divisors[b] > 1) {
-                LogOnce("a vertex divisor above 1 (drawn as 1)");
-            }
+            d.inputRate = (b < kDummyBinding && vin.divisors[b] != 0) ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
             bindings.push_back(d);
         }
     }
@@ -526,20 +786,84 @@ VkPipeline MakePipeline(const Key& key, const VkPrograms::Info& prog, VkPrimitiv
     info.pDynamicState = &dy;
     info.layout = prog.layout;
     VkPipeline p = VK_NULL_HANDLE;
-    if (vkCreateGraphicsPipelines(VkBackend::Device(), VK_NULL_HANDLE, 1, &info, NULL, &p) != VK_SUCCESS) {
-        LogOnce("vkCreateGraphicsPipelines failed for " + prog.name);
+    if (vkCreateGraphicsPipelines(VkBackend::Device(), pipeline_cache, 1, &info, NULL, &p) != VK_SUCCESS) {
         return VK_NULL_HANDLE;
     }
-    ++pipelines_made;
     return p;
 }
 
+// ---- the menus' warm-up
+
+struct WarmJob {
+    Key key;
+    const VkPrograms::Info* prog;
+    VertexInput in;
+};
+std::vector<WarmJob>& warm_jobs = *new std::vector<WarmJob>();
+std::vector<std::pair<Key, VkPipeline> >& warm_done = *new std::vector<std::pair<Key, VkPipeline> >();  // (made, not yet in the table)
+std::mutex& warm_lock = *new std::mutex();
+std::vector<std::thread>& warm_threads = *new std::vector<std::thread>();
+std::atomic<size_t> warm_next(0);
+std::atomic<bool> warm_stop(false);
+std::atomic<int> warm_running(0);
+bool warm_complete = false;
+
+void WarmWorker() {
+    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_LOW);  // (the menus stay smooth)
+    for (size_t i = warm_next++; i < warm_jobs.size() && !warm_stop; i = warm_next++) {
+        const WarmJob& j = warm_jobs[i];
+        VkPipeline p = MakePipeline(j.key, *j.prog, (VkPrimitiveTopology)j.key.topology, j.in);
+        if (p != VK_NULL_HANDLE) {
+            std::lock_guard<std::mutex> lock(warm_lock);
+            warm_done.push_back(std::make_pair(j.key, p));
+        }
+    }
+    --warm_running;
+}
+
+void Drain() {
+    std::vector<std::pair<Key, VkPipeline> > done;
+    {
+        std::lock_guard<std::mutex> lock(warm_lock);
+        done.swap(warm_done);
+    }
+    for (const auto& d : done) {
+        if (pipelines.count(d.first) == 0) {
+            pipelines[d.first] = d.second;
+            ++pipelines_made;
+        } else {
+            VkPipeline p = d.second;  // (made meanwhile by a draw)
+            VkBackend::DeferDestroy([p]() { vkDestroyPipeline(VkBackend::Device(), p, NULL); });
+        }
+    }
+}
+
+void StopWarm() {
+    warm_stop = true;
+    for (std::thread& t : warm_threads) {
+        t.join();
+    }
+    warm_threads.clear();
+    warm_stop = false;
+    Drain();
+    if (warm_next < warm_jobs.size()) {
+        warm_complete = false;  // (stopped part way: StartWarmUp goes on later)
+    }
+    warm_jobs.clear();
+}
+
 void ResetForShutdown() {
+    StopWarm();
     rendering = false;
     window_color = window_depth = 0;  // (vk_gl destroys them, and the stand-ins)
     window_size[0] = window_size[1] = 0;
     dummy = Dummies();
     DestroyPipelines();
+    SavePipelineCache();
+    if (pipeline_cache != VK_NULL_HANDLE) {
+        vkDestroyPipelineCache(VkBackend::Device(), pipeline_cache, NULL);
+        pipeline_cache = VK_NULL_HANDLE;
+    }
 }
 
 }  // namespace
@@ -602,12 +926,7 @@ void Clear(bool color, bool depth, const float rgba[4], bool scissor_test, const
 void SetVertexInput(const VertexInput& input) {
     vertex_input = input;
     vertex_input_set = true;
-    uint64_t h = 1469598103934665603ull;
-    for (const VertexAttrib& a : input.attribs) {
-        h = Fnv(&a, sizeof(a), h);
-    }
-    h = Fnv(input.divisors, sizeof(input.divisors), h);
-    vertex_input_hash = h;
+    vertex_input_hash = VertexHash(input);
 }
 
 void ClearVertexInput() {
@@ -775,9 +1094,19 @@ void Draw(const State& st, GLuint program, GLenum mode, uint32_t first, uint32_t
     if (found != pipelines.end()) {
         pipeline = found->second;
     } else {
-        pipeline = MakePipeline(key, *prog, topology);
+        EnsurePipelineCache();
+        pipeline = MakePipeline(key, *prog, topology, vertex_input);
         if (pipeline != VK_NULL_HANDLE) {
             pipelines[key] = pipeline;
+            ++pipelines_made;
+            Record(key, *prog, vertex_input);
+        } else {
+            LogOnce("vkCreateGraphicsPipelines failed for " + prog->name);
+        }
+        for (uint32_t b = 0; b < (uint32_t)VertexInput::kMaxBindings; ++b) {
+            if (vertex_input.divisors[b] > 1) {
+                LogOnce("a vertex divisor above 1 (drawn as 1)");
+            }
         }
     }
     if (pipeline == VK_NULL_HANDLE) {
@@ -899,6 +1228,161 @@ void Blit(const Target& src, int src_color, const int src_rect[4], const Target&
         return;
     }
     vkgl::Blit(sa->texture, sa->level, sa->layer, src_rect, da->texture, da->level, da->layer, dst_rect, depth, linear);
+}
+
+void PrecreatePipelines() {
+    if (VkBackend::Device() == VK_NULL_HANDLE) {
+        return;
+    }
+    StopWarm();  // (what the menus made so far is kept)
+    const auto start = std::chrono::steady_clock::now();
+    EnsurePipelineCache();
+    LoadRecords();
+    std::unordered_map<std::string, const VkPrograms::Info*> by_name;
+    VkPrograms::ForEach([&](const VkPrograms::Info& info) { by_name[info.name] = &info; });
+    const int fsaa = Graphics::Instance()->config_.FSAA_samples();
+    struct Job {
+        Key key;
+        const VkPrograms::Info* prog;
+        VertexInput in;
+        VkPipeline result;
+    };
+    std::vector<Job> jobs;
+    std::unordered_set<Key, KeyHash, KeyEqual> queued;
+    for (const std::string& r : records) {
+        Job j;
+        std::string name;
+        uint32_t flags = 0;
+        if (!ParseRecord(r, fsaa, &name, &flags, &j.key, &j.in)) {
+            continue;
+        }
+        auto it = by_name.find(name);
+        if (it == by_name.end()) {
+            continue;
+        }
+        j.prog = it->second;
+        j.key.program = j.prog->id;
+        j.key.vertex = VertexHash(j.in);
+        j.result = VK_NULL_HANDLE;
+        if (pipelines.count(j.key) != 0 || !queued.insert(j.key).second) {
+            continue;
+        }
+        jobs.push_back(j);
+    }
+    if (jobs.empty()) {
+        return;
+    }
+    unsigned threads = std::thread::hardware_concurrency();
+    threads = std::max(1u, std::min(8u, threads > 1 ? threads - 1 : 1u));
+    threads = (unsigned)std::min<size_t>(threads, jobs.size());
+    std::atomic<size_t> next(0);
+    auto work = [&]() {
+        for (size_t i = next++; i < jobs.size(); i = next++) {
+            jobs[i].result = MakePipeline(jobs[i].key, *jobs[i].prog, (VkPrimitiveTopology)jobs[i].key.topology, jobs[i].in);
+        }
+    };
+    std::vector<std::thread> workers;
+    for (unsigned t = 1; t < threads; ++t) {
+        workers.emplace_back(work);
+    }
+    work();
+    for (std::thread& t : workers) {
+        t.join();
+    }
+    size_t made = 0;
+    for (const Job& j : jobs) {
+        if (j.result != VK_NULL_HANDLE) {
+            pipelines[j.key] = j.result;
+            ++pipelines_made;
+            ++made;
+        }
+    }
+    SavePipelineCache();
+    LOGI << "Vulkan: " << made << " of " << jobs.size() << " recorded pipelines made ahead ("
+         << (int)std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() << " ms, " << threads
+         << " threads)" << std::endl;
+}
+
+std::vector<std::pair<std::string, uint32_t> > WarmUpPrograms() {
+    LoadRecords();
+    const int fsaa = Graphics::Instance()->config_.FSAA_samples();
+    std::set<std::pair<std::string, uint32_t> > seen;
+    std::vector<std::pair<std::string, uint32_t> > out;
+    for (const std::string& r : records) {
+        std::string name;
+        uint32_t flags = 0;
+        Key key;
+        VertexInput in;
+        if (ParseRecord(r, fsaa, &name, &flags, &key, &in) && seen.insert(std::make_pair(name, flags)).second) {
+            out.push_back(std::make_pair(name, flags));
+        }
+    }
+    return out;
+}
+
+void StartWarmUp() {
+    if (!warm_threads.empty() || warm_complete || VkBackend::Device() == VK_NULL_HANDLE) {
+        return;
+    }
+    static bool hooked = false;
+    if (!hooked) {
+        hooked = true;
+        VkPrograms::OnBeforeDestroy(&StopWarm);
+    }
+    EnsurePipelineCache();
+    LoadRecords();
+    std::unordered_map<std::string, const VkPrograms::Info*> by_name;
+    VkPrograms::ForEach([&](const VkPrograms::Info& info) { by_name[info.name] = &info; });
+    const int fsaa = Graphics::Instance()->config_.FSAA_samples();
+    std::unordered_set<Key, KeyHash, KeyEqual> queued;
+    warm_jobs.clear();
+    for (const std::string& r : records) {
+        WarmJob j;
+        std::string name;
+        uint32_t flags = 0;
+        if (!ParseRecord(r, fsaa, &name, &flags, &j.key, &j.in)) {
+            continue;
+        }
+        auto it = by_name.find(name);
+        if (it == by_name.end()) {
+            continue;
+        }
+        j.prog = it->second;
+        j.key.program = j.prog->id;
+        j.key.vertex = VertexHash(j.in);
+        if (pipelines.count(j.key) == 0 && queued.insert(j.key).second) {
+            warm_jobs.push_back(j);
+        }
+    }
+    warm_complete = true;
+    if (warm_jobs.empty()) {
+        return;
+    }
+    unsigned threads = std::max(1u, std::min(3u, std::thread::hardware_concurrency() / 4));
+    warm_next = 0;
+    warm_stop = false;
+    warm_running = (int)threads;
+    for (unsigned t = 0; t < threads; ++t) {
+        warm_threads.emplace_back(&WarmWorker);
+    }
+    LOGI << "Vulkan: warming up " << warm_jobs.size() << " recorded pipelines on " << threads << " threads" << std::endl;
+}
+
+bool WarmUpDone() {
+    return warm_complete && warm_running == 0;
+}
+
+void DrainWarmUp() {
+    Drain();
+    if (!warm_threads.empty() && warm_running == 0) {
+        StopWarm();  // (joins the finished threads)
+        SavePipelineCache();
+        LOGI << "Vulkan: pipeline warm-up done (" << pipelines.size() << " pipelines)" << std::endl;
+    }
+}
+
+void StopWarmUp() {
+    StopWarm();
 }
 
 Stats GetStats() {

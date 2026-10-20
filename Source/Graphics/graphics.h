@@ -439,6 +439,9 @@ class Graphics {
     void setDepthWrite(const bool what);
     void setPolygonOffset(const bool polygon_offset);
     void setAlphaToCoverage(const bool alpha_to_coverage);  // Overgrowth Online (GL 4.6 stage 2.6)
+    // Overgrowth Online (GL 4.6 stage 5.8): each menu frame on Vulkan, the recorded
+    // pipelines' programs made a few at a time, then their pipelines warmed up
+    void VulkanMenuWarmUp();
     void setScissorTest(const bool scissor_test);
     void setColorMask(const bool red, const bool green, const bool blue, const bool alpha);
     void setSimpleShadows(const bool val);

@@ -2420,6 +2420,33 @@ static void LogSlowFrame() {
     last_pipelines = pipelines;
 }
 
+void Graphics::VulkanMenuWarmUp() {
+    if (!UseVulkan()) {
+        return;
+    }
+    static std::vector<std::pair<std::string, uint32_t> > todo;
+    static bool listed = false;
+    static size_t next = 0;
+    if (!listed) {
+        listed = true;
+        todo = VkDraw::WarmUpPrograms();
+    }
+    if (next < todo.size()) {
+        // (about 2 ms of each frame: making a program reads and reflects its SPIR-V)
+        const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        Shaders* shaders = Shaders::Instance();
+        while (next < todo.size() && std::chrono::steady_clock::now() - start < std::chrono::milliseconds(2)) {
+            const std::pair<std::string, uint32_t>& p = todo[next++];
+            if (shaders->ProgramSourcesExist(p.first)) {
+                shaders->createProgram(shaders->returnProgram(p.first, (Shaders::OptionalShaders)p.second));
+            }
+        }
+        return;
+    }
+    VkDraw::StartWarmUp();  // (once; again after a level's load stopped it part way)
+    VkDraw::DrainWarmUp();
+}
+
 // Overgrowth Online (GL 4.6 stage 5.8): there from a Vulkan start until its first frames
 std::string VulkanStartGuard() {
     return GetWritePath(CoreGameModID) + "vulkan_starting.txt";

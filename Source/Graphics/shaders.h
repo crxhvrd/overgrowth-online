@@ -244,6 +244,9 @@ class Shaders {
     GLint returnShaderBlockSize(int block_index, int program_id);
     int returnShader(const char* path, ShaderType type, const std::vector<std::string>& definitions);
     int returnProgram(std::string name, OptionalShaders optional_shaders = kNone);
+    // Overgrowth Online (GL 4.6 stage 5.8): the program's vertex and fragment sources exist
+    // (a recorded program from a mod that's gone off doesn't)
+    bool ProgramSourcesExist(const std::string& name);
     // Overgrowth Online (GL 4.6 stage 3.1): compile and link failures since the last
     // clear (the shader_check bridge command); with config shader_manifest, every
     // program made is appended to <write dir>/Data/shader_manifest.txt ("flags<TAB>name")

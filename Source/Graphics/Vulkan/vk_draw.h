@@ -19,6 +19,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace VkDraw {
@@ -97,6 +99,19 @@ GLuint WindowColor();
 // Graphics::BlitRenderTarget between two targets' attachments (rects x0, y0, x1, y1)
 void Blit(const Target& src, int src_color, const int src_rect[4], const Target& dst, int dst_color, const int dst_rect[4], bool depth,
           bool linear);
+
+// The pipelines recorded (shipped beside the game, and this PC's) for the programs made
+// now (a level's, after its shaders are preloaded), made on worker threads (stage 5.8)
+void PrecreatePipelines();
+
+// The menus' warm-up: the recorded pipelines' programs (name, optional stages) for the
+// main thread to make a few at a time; then the pipelines for the programs made, on
+// low-priority threads, collected each menu frame. A level's load stops it
+std::vector<std::pair<std::string, uint32_t> > WarmUpPrograms();
+void StartWarmUp();
+bool WarmUpDone();  // (every recorded pipeline whose program is made is made)
+void DrainWarmUp();
+void StopWarmUp();
 
 struct Stats {
     uint64_t draws = 0, pipelines = 0, passes = 0;

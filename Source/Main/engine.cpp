@@ -24,6 +24,8 @@
 
 #include <Graphics/reversez.h>
 #include <Graphics/frame_timers.h>
+#include <Graphics/render_backend.h>
+#include <Graphics/Vulkan/vk_draw.h>
 #include <Game/hardcoded_assets.h>
 #include <Game/level.h>
 #include <Game/savefile.h>
@@ -4373,6 +4375,7 @@ void Engine::Draw() {
 
     if (check_save_level_changes_dialog_is_showing || !scenegraph_) {
         // No level loaded, so draw menu instead
+        graphics->VulkanMenuWarmUp();  // Overgrowth Online (GL 4.6 stage 5.8)
         graphics->setViewport(0, 0, graphics->window_dims[0], graphics->window_dims[1]);
         graphics->SetClearColor(vec4(0.0f));
         graphics->Clear(true);
@@ -5743,6 +5746,10 @@ void Engine::LoadLevel(Path queued_level) {
             {
                 PROFILER_ZONE(g_profiler_ctx, "Preload shaders");
                 scenegraph_->PreloadShaders();
+            }
+            if (UseVulkan()) {  // Overgrowth Online (GL 4.6 stage 5.8): their pipelines, made ahead
+                PROFILER_ZONE(g_profiler_ctx, "Vulkan pipelines");
+                VkDraw::PrecreatePipelines();
             }
 
             DrawLoadScreen(true);

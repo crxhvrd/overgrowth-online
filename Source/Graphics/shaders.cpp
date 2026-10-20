@@ -694,6 +694,12 @@ GLint Shaders::returnShaderAttrib(const std::string &name, int which) {
     }
 }
 
+bool Shaders::ProgramSourcesExist(const std::string &name) {
+    const std::string short_name = name.substr(0, name.find(' '));
+    return FileExists(GetShaderPath(short_name, shader_dir_path, _vertex).c_str(), kDataPaths | kModPaths) &&
+           FileExists(GetShaderPath(short_name, shader_dir_path, _fragment).c_str(), kDataPaths | kModPaths);
+}
+
 int Shaders::returnProgram(std::string name, OptionalShaders optional_shaders) {
     std::string short_name;
     if (name.find(' ') != std::string::npos) {

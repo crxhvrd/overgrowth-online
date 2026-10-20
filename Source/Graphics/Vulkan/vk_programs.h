@@ -18,6 +18,7 @@
 #include <opengl.h>
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -64,12 +65,15 @@ struct Info {
     VkPipelineLayout layout = VK_NULL_HANDLE;
     bool tessellation = false;
     uint64_t id = 0;  // (pipeline keys)
+    uint32_t flags = 0;  // the engine's optional stages (Shaders::OptionalShaders)
 };
 
 // The program `name` (its GL-style name) from the build's directory for it; fills
 // program as above. False: logged, nothing to draw with
 bool Create(GLuint name, const std::string& dir, Program& program);
 void Destroy(GLuint name);
+// Runs before a program is destroyed (pipelines being made from it on other threads stop)
+void OnBeforeDestroy(std::function<void()> before_destroy);
 const Info* Get(GLuint name);
 // GL's block queries (-1 / GL_INVALID_INDEX: none): a block's index by its name, its
 // size; a member's index by its GL name, its offset
@@ -78,5 +82,7 @@ int BlockSize(GLuint program, int index);
 int MemberIndex(GLuint program, const std::string& member);
 int MemberOffset(GLuint program, int index);
 size_t Count();
+// Every program made (the pipelines made ahead find theirs by name)
+void ForEach(const std::function<void(const Info&)>& fn);
 
 }  // namespace VkPrograms

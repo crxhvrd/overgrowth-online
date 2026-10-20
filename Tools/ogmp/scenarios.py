@@ -856,6 +856,8 @@ def _shaders(name, **kw):
 SCENARIOS["shader_collect"] = _shaders("shader_collect")
 SCENARIOS["shader_check"] = _shaders("shader_check")
 SCENARIOS["vk_shader_check"] = _shaders("vk_shader_check")
+SCENARIOS["vk_shader_cache"] = _shaders("vk_shader_cache")
+SCENARIOS["vk_pipeline_seed"] = _shaders("vk_pipeline_seed")
 SCENARIOS["shader_glslang"] = _shaders("shader_glslang")
 SCENARIOS["shader_spirv"] = _shaders("shader_spirv")
 SCENARIOS["perf_baseline"] = _render("perf_baseline")

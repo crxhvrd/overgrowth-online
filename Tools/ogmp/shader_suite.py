@@ -179,8 +179,8 @@ def shader_spirv(ctx, strict=True):
     return res
 
 
-def shader_check(ctx, chunk=40, keys=None, keep_dir=False):
-    entries = sorted(read_manifest(), key=lambda e: (e[1], e[0]))
+def shader_check(ctx, chunk=40, keys=None, keep_dir=False, extra=None):
+    entries = sorted(read_manifest() | set(extra or ()), key=lambda e: (e[1], e[0]))
     if not entries:
         return {"passed": False, "metrics": {}, "notes": ["empty manifest (run shader_collect)"]}
     all_keys = {"no_dialogues": "1"}
@@ -212,6 +212,107 @@ def shader_check(ctx, chunk=40, keys=None, keep_dir=False):
             shutil.copytree(src, ctx.out_dir + "/compiled_shaders", dirs_exist_ok=True)
         json.dump(stages, open(ctx.out_dir + "/program_stages.json", "w", encoding="utf-8"), indent=1)
     return {"passed": not fails, "metrics": m, "notes": fails}
+
+
+# Stage 5.8: the levels and settings the shipped pipeline list is recorded on (MSAA off
+# with the test defaults, 8x with high detail: a record with MSAA on serves 2x-8x)
+SEED_LEVELS = ["og_story/01_Slaver_Camp_Landing", "og_story/02_Slaver_Camp", "og_story/04_Main_Slaver_Camp", "og_story/06_Occupied_Farm",
+               "og_story/07_Beach_Boat_Assault", "og_story/10_Storm_Troopers", "og_story/15_Bayou", "og_story/19_Magma_Barracks",
+               "LugaruStory/Village", "LugaruStory/Raider_camp", "arenas/Magma_Arena", "arenas/stucco_courtyard_arena"]
+SEED_SETTINGS = [{"multisample": "1"},
+                 {"multisample": "8", "detail_objects": "1", "detail_object_decals": "1", "detail_object_lowres": "0",
+                  "detail_object_disable_shadows": "0", "simple_shadows": "0", "simple_water": "0", "particle_field": "1",
+                  "custom_level_shaders": "true", "depth_of_field": "1"}]
+
+
+def vk_pipeline_seed(ctx):
+    """Stage 5.8: the pipelines the game makes on SEED_LEVELS with SEED_SETTINGS (each
+    level played a few seconds, the camera turned around the player), as the game records
+    them; test/vk_pipeline_seed.txt, which make_package.py ships beside the exe so a first
+    load already makes them ahead. Uses the shader cache (run vk_shader_cache first)."""
+    import shutil
+    from .instance import TEST_DIR, Instance
+    from .scenarios import wait_loaded
+    cache = TEST_DIR + "/vk_shader_cache"
+    if not os.path.isdir(cache):
+        return {"passed": False, "metrics": {}, "notes": ["no shader cache (run vk_shader_cache)"]}
+    seed, m, fails = set(), {}, []
+    for n, settings in enumerate(SEED_SETTINGS):
+        for level in SEED_LEVELS:
+            keys = {"renderer": "vulkan", "limit_fps_in_game": "false", "vsync": "0"}
+            keys.update(settings)
+            inst = Instance("pipeline_seed", index=len(ctx.instances), level=f"Data/Levels/{level}.xml", keys=keys, width=1280, height=720)
+            ctx.instances.append(inst)
+            inst.prepare()
+            shutil.copytree(cache, inst.writedir + "Data/VulkanShaders")
+            inst.prepare = lambda: None  # (keep the cache copied in)
+            try:
+                inst.start()
+                wait_loaded(inst)
+                time.sleep(4.0)
+                me = inst.bridge.me()
+                if me is not None:
+                    x, y, z = me["pos"]
+                    for dx, dz in ((6, 0), (0, 6), (-6, 0), (0, -6)):
+                        inst.bridge.call("view", pos=[x, y + 2.5, z], target=[x + dx, y + 0.5, z + dz], fov=70.0)
+                        time.sleep(1.2)
+            except Exception as e:  # (a level that doesn't load: noted, the rest go on)
+                fails.append(f"{level} ({n}): {e}")
+            inst.stop()
+            path = inst.writedir + "Data/VulkanShaders/pipelines.txt"
+            lines = [l.strip() for l in open(path, encoding="utf-8")] if os.path.exists(path) else []
+            m[f"{level} {settings['multisample']}x"] = len(lines)
+            seed.update(l for l in lines if l)
+    with open(TEST_DIR + "/vk_pipeline_seed.txt", "w", encoding="utf-8", newline="\n") as f:
+        for line in sorted(seed):
+            f.write(line + "\n")
+    m["pipelines"] = len(seed)
+    return {"passed": not fails and len(seed) > 0, "metrics": m, "notes": fails}
+
+
+def vk_shader_cache(ctx):
+    """Stage 5.8: every manifest program made on Vulkan with no SPIR-V build, so each is
+    compiled at run time (VkCompile) as a player's game does it; the programs compiled
+    (the instance's Data/VulkanShaders, without its pipeline records and cache) go to
+    test/vk_shader_cache, which make_package.py ships beside the exe. Run it after any
+    shader change, before packaging. The programs the shipped pipeline list draws with
+    (test/vk_pipeline_seed.txt: levels' own post shaders, settings' variants) are made
+    too, so run vk_pipeline_seed first."""
+    import shutil
+    from .instance import TEST_DIR, RUN_DIR
+    extra = set()
+    seed = TEST_DIR + "/vk_pipeline_seed.txt"
+    if os.path.exists(seed):
+        for line in open(seed, encoding="utf-8"):
+            f = line.strip().split("|")
+            if len(f) == 16 and f[0] == "2":
+                extra.add((int(f[2]), f[3]))
+    r = shader_check(ctx, keys={"renderer": "vulkan", "shader_vulkan_glsl": ""}, extra=extra)
+    r["metrics"]["programs_from_pipeline_list"] = len(extra)
+    log = ctx.instances[-1].log()
+    if "Vulkan renderer on " not in log:
+        r["passed"] = False
+        r["notes"].append("the game didn't start on Vulkan")
+    failed = [l.strip()[:300] for l in log.splitlines() if "doesn't compile" in l]
+    if failed:
+        r["passed"] = False
+        r["notes"].append(f"{len(failed)} programs don't compile (first: {failed[0]})")
+    src = RUN_DIR + "/shader_check/writedir/Data/VulkanShaders"
+    out = TEST_DIR + "/vk_shader_cache"
+    shutil.rmtree(out, ignore_errors=True)
+    os.makedirs(out)
+    programs, size = 0, 0
+    for d in sorted(os.listdir(src)) if os.path.isdir(src) else []:
+        if os.path.exists(f"{src}/{d}/program.txt"):
+            shutil.copytree(f"{src}/{d}", f"{out}/{d}")
+            programs += 1
+            size += sum(os.path.getsize(f"{out}/{d}/{f}") for f in os.listdir(f"{out}/{d}"))
+    r["metrics"]["cached_programs"] = programs
+    r["metrics"]["cache_mb"] = round(size / 1e6, 1)
+    if programs == 0:
+        r["passed"] = False
+        r["notes"].append("nothing compiled")
+    return r
 
 
 def vk_shader_check(ctx):
