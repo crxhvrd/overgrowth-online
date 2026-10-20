@@ -117,7 +117,7 @@ void DrawGPUParticleField(SceneGraph* scenegraph, const char* type) {
     gl_state.cull_face = false;
     graphics->setGLState(gl_state);
     graphics->setAdditiveBlend(false);
-    glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+    Graphics::Instance()->setAlphaToCoverage(false);
 
     int shader_id;
     {
@@ -261,26 +261,25 @@ void DrawGPUParticleField(SceneGraph* scenegraph, const char* type) {
         index_vbo.Fill(kVBOStatic | kVBOElement, sizeof(index_vec), (void*)index_vec);
     }
     CHECK_GL_ERROR();
-    int vert_attrib_id = shaders->returnShaderAttrib("vertex_attrib", shader_id);
-    int tex_coord_attrib_id = shaders->returnShaderAttrib("tex_coord_attrib", shader_id);
-    data_vbo.Bind();
-    CHECK_GL_ERROR();
-    if (vert_attrib_id != -1) {
-        graphics->EnableVertexAttribArray(vert_attrib_id);
-        glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 5 * sizeof(GLfloat), (const void*)(data_vbo.offset() + 2 * sizeof(GLfloat)));
+    // Overgrowth Online (GL 4.6 stage 2.4): the field's quads, interleaved
+    // (tex coord 2, vertex 3)
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vertex_attrib", 0, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+        layout.Add("tex_coord_attrib", 0, 2);
     }
-    CHECK_GL_ERROR();
-    if (tex_coord_attrib_id != -1) {
-        graphics->EnableVertexAttribArray(tex_coord_attrib_id);
-        glVertexAttribPointer(tex_coord_attrib_id, 2, GL_FLOAT, false, 5 * sizeof(GLfloat), (const void*)data_vbo.offset());
+    {
+        GLuint buffers[2] = {data_vbo.id(), data_vbo.id()};
+        GLintptr offsets[2] = {(GLintptr)data_vbo.offset(), (GLintptr)data_vbo.offset()};
+        GLsizei strides[2] = {5 * sizeof(GLfloat), 5 * sizeof(GLfloat)};
+        graphics->BeginVertexLayout(layout, shader_id, 0x3, buffers, offsets, strides, index_vbo.id());
     }
-    CHECK_GL_ERROR();
-    index_vbo.Bind();
     CHECK_GL_ERROR();
     {
         PROFILER_ZONE(g_profiler_ctx, "glDrawElementsInstanced");
         graphics->DrawElementsInstanced(GL_TRIANGLES, 6000, GL_UNSIGNED_INT, 0, 1000);
     }
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
 }
 
@@ -411,6 +410,23 @@ void Particle::Draw(SceneGraph* scenegraph, DrawType draw_type, const mat4& proj
 
     CHECK_GL_ERROR();
 
+    // Overgrowth Online (GL 4.6 stage 2.4): a particle quad, interleaved
+    // (tex coord 2, vertex 3, tangent 3, normal 3)
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vertex_attrib", 0, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+        layout.Add("tex_coord_attrib", 0, 2);
+        layout.Add("normal_attrib", 0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat));
+        layout.Add("tangent_attrib", 0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat));
+    }
+    auto begin_quad = [&](GLuint buffer, GLintptr offset, GLuint element_buffer) {
+        const GLsizei kStride = 11 * sizeof(GLfloat);
+        GLuint buffers[4] = {buffer, buffer, buffer, buffer};
+        GLintptr offsets[4] = {offset, offset, offset, offset};
+        GLsizei strides[4] = {kStride, kStride, kStride, kStride};
+        graphics->BeginVertexLayout(layout, shader_id, 0xF, buffers, offsets, strides, element_buffer);
+    };
+
     if (connected.empty()) {
         vec3 up, right;
         float temp_size;
@@ -536,7 +552,7 @@ void Particle::Draw(SceneGraph* scenegraph, DrawType draw_type, const mat4& proj
         };
 
         CHECK_GL_ERROR();
-        static VBORingContainer data_vbo(sizeof(data), kVBODynamic | kVBOFloat);
+        static VBORingContainer data_vbo(sizeof(data), kVBODynamic | kVBOFloat | kVBOFrame);
         data_vbo.Fill(sizeof(data), data);
         static VBOContainer index_vbo;
         if (!index_vbo.valid()) {
@@ -544,32 +560,10 @@ void Particle::Draw(SceneGraph* scenegraph, DrawType draw_type, const mat4& proj
             index_vbo.Fill(kVBOStatic | kVBOElement, sizeof(index), (void*)index);
         }
         CHECK_GL_ERROR();
-        int vert_attrib_id = shaders->returnShaderAttrib("vertex_attrib", shader_id);
-        int normal_attrib_id = shaders->returnShaderAttrib("normal_attrib", shader_id);
-        int tangent_attrib_id = shaders->returnShaderAttrib("tangent_attrib", shader_id);
-        int tex_coord_attrib_id = shaders->returnShaderAttrib("tex_coord_attrib", shader_id);
-        data_vbo.Bind();
-        CHECK_GL_ERROR();
-        graphics->EnableVertexAttribArray(vert_attrib_id);
-        CHECK_GL_ERROR();
-        graphics->EnableVertexAttribArray(tex_coord_attrib_id);
-        CHECK_GL_ERROR();
-        glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 11 * sizeof(GLfloat), (const void*)(data_vbo.offset() + 2 * sizeof(GLfloat)));
-        CHECK_GL_ERROR();
-        glVertexAttribPointer(tex_coord_attrib_id, 2, GL_FLOAT, false, 11 * sizeof(GLfloat), (const void*)(data_vbo.offset()));
-        CHECK_GL_ERROR();
-        if (normal_attrib_id != -1) {
-            graphics->EnableVertexAttribArray(normal_attrib_id);
-            glVertexAttribPointer(normal_attrib_id, 3, GL_FLOAT, false, 11 * sizeof(GLfloat), (const void*)(data_vbo.offset() + 8 * sizeof(GLfloat)));
-        }
-        if (tangent_attrib_id != -1) {
-            graphics->EnableVertexAttribArray(tangent_attrib_id);
-            glVertexAttribPointer(tangent_attrib_id, 3, GL_FLOAT, false, 11 * sizeof(GLfloat), (const void*)(data_vbo.offset() + 5 * sizeof(GLfloat)));
-        }
-        CHECK_GL_ERROR();
-        index_vbo.Bind();
+        begin_quad(data_vbo.id(), (GLintptr)data_vbo.offset(), index_vbo.id());
         CHECK_GL_ERROR();
         graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (const void*)index_vbo.offset());
+        graphics->EndVertexLayout();
         CHECK_GL_ERROR();
         graphics->ResetVertexAttribArrays();
         CHECK_GL_ERROR();
@@ -665,32 +659,10 @@ void Particle::Draw(SceneGraph* scenegraph, DrawType draw_type, const mat4& proj
                 index_vbo.Fill(kVBOStatic | kVBOElement, sizeof(index), (void*)index);
             }
             CHECK_GL_ERROR();
-            int vert_attrib_id = shaders->returnShaderAttrib("vertex_attrib", shader_id);
-            int normal_attrib_id = shaders->returnShaderAttrib("normal_attrib", shader_id);
-            int tangent_attrib_id = shaders->returnShaderAttrib("tangent_attrib", shader_id);
-            int tex_coord_attrib_id = shaders->returnShaderAttrib("tex_coord_attrib", shader_id);
-            data_vbo.Bind();
-            CHECK_GL_ERROR();
-            graphics->EnableVertexAttribArray(vert_attrib_id);
-            CHECK_GL_ERROR();
-            graphics->EnableVertexAttribArray(tex_coord_attrib_id);
-            CHECK_GL_ERROR();
-            glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 11 * sizeof(GLfloat), (const void*)(2 * sizeof(GLfloat)));
-            CHECK_GL_ERROR();
-            glVertexAttribPointer(tex_coord_attrib_id, 2, GL_FLOAT, false, 11 * sizeof(GLfloat), 0);
-            CHECK_GL_ERROR();
-            if (normal_attrib_id != -1) {
-                graphics->EnableVertexAttribArray(normal_attrib_id);
-                glVertexAttribPointer(normal_attrib_id, 3, GL_FLOAT, false, 11 * sizeof(GLfloat), (const void*)(8 * sizeof(GLfloat)));
-            }
-            if (tangent_attrib_id != -1) {
-                graphics->EnableVertexAttribArray(tangent_attrib_id);
-                glVertexAttribPointer(tangent_attrib_id, 3, GL_FLOAT, false, 11 * sizeof(GLfloat), (const void*)(5 * sizeof(GLfloat)));
-            }
-            CHECK_GL_ERROR();
-            index_vbo.Bind();
+            begin_quad(data_vbo.id(), 0, index_vbo.id());
             CHECK_GL_ERROR();
             graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            graphics->EndVertexLayout();
             CHECK_GL_ERROR();
             graphics->ResetVertexAttribArrays();
             CHECK_GL_ERROR();
@@ -927,7 +899,7 @@ void ParticleSystem::Draw(SceneGraph* scenegraph) {
         gl_state.depth_write = false;
         gl_state.cull_face = false;
         graphics->setGLState(gl_state);
-        glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+        Graphics::Instance()->setAlphaToCoverage(false);
 
         vec2 viewport_dims;
         for (int i = 0; i < 2; ++i) {
@@ -1238,19 +1210,19 @@ void ParticleSystem::Draw(SceneGraph* scenegraph) {
                                     index_vbo.Fill(kVBOStatic | kVBOElement, sizeof(index), (void*)index);
                                 }
                                 CHECK_GL_ERROR();
-                                int vert_attrib_id = shaders->returnShaderAttrib("vertex_attrib", shader_id);
-                                int tex_coord_attrib_id = shaders->returnShaderAttrib("tex_coord_attrib", shader_id);
-                                data_vbo.Bind();
-                                CHECK_GL_ERROR();
-                                graphics->EnableVertexAttribArray(vert_attrib_id);
-                                CHECK_GL_ERROR();
-                                graphics->EnableVertexAttribArray(tex_coord_attrib_id);
-                                CHECK_GL_ERROR();
-                                glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 5 * sizeof(GLfloat), (const void*)(data_vbo.offset() + 2 * sizeof(GLfloat)));
-                                CHECK_GL_ERROR();
-                                glVertexAttribPointer(tex_coord_attrib_id, 2, GL_FLOAT, false, 5 * sizeof(GLfloat), (const void*)data_vbo.offset());
-                                CHECK_GL_ERROR();
-                                index_vbo.Bind();
+                                // Overgrowth Online (GL 4.6 stage 2.4): the quad, interleaved
+                                // (tex coord 2, vertex 3)
+                                static VertexLayout layout;
+                                if (layout.Count() == 0) {
+                                    layout.Add("vertex_attrib", 0, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+                                    layout.Add("tex_coord_attrib", 0, 2);
+                                }
+                                {
+                                    GLuint buffers[2] = {data_vbo.id(), data_vbo.id()};
+                                    GLintptr offsets[2] = {(GLintptr)data_vbo.offset(), (GLintptr)data_vbo.offset()};
+                                    GLsizei strides[2] = {5 * sizeof(GLfloat), 5 * sizeof(GLfloat)};
+                                    graphics->BeginVertexLayout(layout, shader_id, 0x3, buffers, offsets, strides, index_vbo.id());
+                                }
                                 CHECK_GL_ERROR();
                                 {
                                     PROFILER_ZONE(g_profiler_ctx, "glDrawElementsInstanced");
@@ -1261,6 +1233,7 @@ void ParticleSystem::Draw(SceneGraph* scenegraph) {
                             }
                             CHECK_GL_ERROR();
                         }
+                        graphics->EndVertexLayout();
                     }
                 }
                 if (i != particles.size()) {

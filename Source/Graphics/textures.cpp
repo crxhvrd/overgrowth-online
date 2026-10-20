@@ -30,6 +30,7 @@
 
 #include <Compat/processpool.h>
 
+#include <Graphics/reversez.h>
 #include <Graphics/textures.h>
 #include <Graphics/shaders.h>
 #include <Graphics/graphics.h>
@@ -111,6 +112,7 @@ bool IsCompressedGLFormat(GLenum format) {
         case GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT:
             return true;
         case GL_DEPTH_COMPONENT24:
+        case GL_DEPTH_COMPONENT32F:
         case GL_RGB8:
         case GL_RGBA8:
         case GL_RGBA:
@@ -193,6 +195,13 @@ static GLuint CreateGLTexture(GLenum target) {
     return id;
 }
 
+// (a new GL object has GL's default parameters, and so has its sampler state)
+static void CreateGLTexture(Texture& tex) {
+    tex.gl_texture_id = CreateGLTexture(tex.tex_target);
+    tex.sampler = SamplerState();
+    tex.gl_sampler = 0;
+}
+
 namespace {
 #ifdef _WIN32
 const char* worker_app_path = "OvergrowthWorker.exe";
@@ -262,6 +271,8 @@ const char* CStringFromGLEnum(GLenum val) {
             return "GL_DEPTH_COMPONENT";
         case GL_DEPTH_COMPONENT24:
             return "GL_DEPTH_COMPONENT24";
+        case GL_DEPTH_COMPONENT32F:
+            return "GL_DEPTH_COMPONENT32F";
 
         case GL_UNSIGNED_BYTE:
             return "GL_UNSIGNED_BYTE";
@@ -536,6 +547,8 @@ void Texture::Init() {
     wrap_s = 0;
     min_filter = 0;
     mag_filter = 0;
+    sampler = SamplerState();
+    gl_sampler = 0;
     ref_count = 1;
     no_mipmap = false;
     no_reduce = false;
@@ -593,6 +606,10 @@ void Textures::Dispose() {
         DisposeTexture(i);
     }
     textures.clear();
+    for (const auto& entry : sampler_cache) {
+        glDeleteSamplers(1, &entry.second);
+    }
+    sampler_cache.clear();
 
     PROFILED_TEXTURE_MUTEX_UNLOCK
 }
@@ -777,24 +794,154 @@ void Textures::GenerateMipmap(const TextureRef& tex_ref) {
 
 void Textures::setSampleFilter(const TextureRef& tex_ref, enum SampleFilter filter) {
     EnsureInVRAM(tex_ref);
-    GLuint id = returnTexture(tex_ref);
+    Texture& tex = textures[tex_ref.id];
     if (filter == FILTER_NEAREST) {
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        SetSamplingi(tex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        SetSamplingi(tex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     } else if (filter == FILTER_LINEAR) {
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        SetSamplingi(tex, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        SetSamplingi(tex, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 }
 
 void Textures::setSampleWrap(const TextureRef& tex_ref, enum SampleWrap wrapping) {
     EnsureInVRAM(tex_ref);
-    GLuint id = returnTexture(tex_ref);
+    Texture& tex = textures[tex_ref.id];
 
     if (wrapping == WRAP_CLAMP_TO_EDGE) {
-        glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        SetSamplingi(tex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        SetSamplingi(tex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     }
+}
+
+void Textures::SetSamplingi(Texture& tex, GLenum pname, GLint value) {
+    glTextureParameteri(tex.gl_texture_id, pname, value);
+    SamplerState& st = tex.sampler;
+    switch (pname) {
+        case GL_TEXTURE_MIN_FILTER: st.min_filter = value; break;
+        case GL_TEXTURE_MAG_FILTER: st.mag_filter = value; break;
+        case GL_TEXTURE_WRAP_S: st.wrap_s = value; break;
+        case GL_TEXTURE_WRAP_T: st.wrap_t = value; break;
+        case GL_TEXTURE_WRAP_R: st.wrap_r = value; break;
+        case GL_TEXTURE_COMPARE_MODE: st.compare_mode = value; break;
+        case GL_TEXTURE_COMPARE_FUNC: st.compare_func = value; break;
+        default: LOGE << "Not a sampling parameter: " << pname << std::endl; return;
+    }
+    SamplingChanged(tex);
+}
+
+void Textures::SetSamplingf(Texture& tex, GLenum pname, float value) {
+    if (pname == GL_TEXTURE_MAX_ANISOTROPY_EXT) {
+        value = std::max(1.0f, value);  // (anisotropy off is 0 in the config: 1 here, 0 is an invalid value)
+    }
+    glTextureParameterf(tex.gl_texture_id, pname, value);
+    SamplerState& st = tex.sampler;
+    switch (pname) {
+        case GL_TEXTURE_LOD_BIAS: st.lod_bias = value; break;
+        case GL_TEXTURE_MAX_ANISOTROPY_EXT: st.max_anisotropy = value; break;
+        default: LOGE << "Not a sampling parameter: " << pname << std::endl; return;
+    }
+    SamplingChanged(tex);
+}
+
+void Textures::SamplingChanged(Texture& tex) {
+    tex.gl_sampler = 0;
+    for (unsigned int unit = 0; unit < _texture_units; ++unit) {
+        if (bound_texture[unit] != INVALID_ID && &textures[bound_texture[unit]] == &tex) {
+            glBindSampler(unit, SamplerFor(tex));
+        }
+    }
+}
+
+GLuint Textures::GetSampler(const SamplerState& state) {
+    for (const auto& entry : sampler_cache) {
+        if (entry.first == state) {
+            return entry.second;
+        }
+    }
+    GLuint id = 0;
+    glCreateSamplers(1, &id);
+    glSamplerParameteri(id, GL_TEXTURE_MIN_FILTER, state.min_filter);
+    glSamplerParameteri(id, GL_TEXTURE_MAG_FILTER, state.mag_filter);
+    glSamplerParameteri(id, GL_TEXTURE_WRAP_S, state.wrap_s);
+    glSamplerParameteri(id, GL_TEXTURE_WRAP_T, state.wrap_t);
+    glSamplerParameteri(id, GL_TEXTURE_WRAP_R, state.wrap_r);
+    glSamplerParameteri(id, GL_TEXTURE_COMPARE_MODE, state.compare_mode);
+    glSamplerParameteri(id, GL_TEXTURE_COMPARE_FUNC, state.compare_func);
+    glSamplerParameterf(id, GL_TEXTURE_LOD_BIAS, state.lod_bias);
+    glSamplerParameterf(id, GL_TEXTURE_MAX_ANISOTROPY_EXT, state.max_anisotropy);
+    sampler_cache.emplace_back(state, id);
+    return id;
+}
+
+GLuint Textures::SamplerFor(Texture& tex) {
+    if (tex.gl_sampler == 0) {
+        tex.gl_sampler = GetSampler(tex.sampler);
+    }
+    return tex.gl_sampler;
+}
+
+void Textures::SetSamplingParameter(const TextureRef& tex_ref, GLenum pname, GLint value) {
+    EnsureInVRAM(tex_ref);
+    SetSamplingi(textures[tex_ref.id], pname, value);
+}
+
+SamplerState Textures::GetSamplerState(const TextureRef& tex_ref) {
+    EnsureInVRAM(tex_ref);
+    return textures[tex_ref.id].sampler;
+}
+
+void Textures::BindSampler(int which_unit, const SamplerState& state) {
+    glBindSampler(which_unit, GetSampler(state));
+}
+
+TextureRef Textures::GetMipView(const TextureRef& tex_ref, int level) {
+    EnsureInVRAM(tex_ref);
+    const GLuint parent_gl = textures[tex_ref.id].gl_texture_id;
+    MipView* found = NULL;
+    for (MipView& v : mip_views) {
+        if (v.parent == tex_ref.id && v.level == level) {
+            found = &v;
+            break;
+        }
+    }
+    if (found && found->parent_gl == parent_gl && textures[found->view.id].gl_texture_id != UNLOADED_ID) {
+        return found->view;
+    }
+    unsigned int which;
+    if (found) {
+        which = found->view.id;  // (the parent was made again, or the view went out of VRAM)
+        RemoveTextureFromVRAM(which);
+    } else {
+        which = AllocateFreeSlot();  // (may move textures: no references held across it)
+        textures[which].Init();
+        MipView v;
+        v.parent = tex_ref.id;
+        v.level = level;
+        v.view = TextureRef(which);
+        DecrementRefCount(which);  // (the TextureRef holds it)
+        mip_views.push_back(v);
+        found = &mip_views.back();
+    }
+    const Texture& parent = textures[tex_ref.id];
+    Texture& view = textures[which];
+    view.name = parent.name + " (mip view)";
+    view.width = std::max(1, parent.width >> level);
+    view.height = std::max(1, parent.height >> level);
+    view.internal_format = parent.internal_format;
+    view.format = parent.format;
+    view.tex_target = parent.tex_target;
+    view.no_mipmap = true;
+    GLint storage_format = 0;
+    glGetTextureLevelParameteriv(parent_gl, 0, GL_TEXTURE_INTERNAL_FORMAT, &storage_format);
+    GLuint id = 0;
+    glGenTextures(1, &id);  // (a view needs a name never bound)
+    glTextureView(id, parent.tex_target, parent_gl, storage_format, level, 1, 0, 1);
+    view.gl_texture_id = id;
+    view.sampler = parent.sampler;
+    view.gl_sampler = 0;
+    found->parent_gl = parent_gl;
+    return found->view;
 }
 
 void Textures::subImage(const TextureRef& tex_ref, void* data) {
@@ -906,6 +1053,7 @@ void Textures::TextureToVRAM(unsigned int which) {
     if (!deferred_delete_textures.empty()) {
         for (unsigned int tex_id : deferred_delete_textures) {
             LOGI << "Deferred delete of texture " << tex_id << std::endl;
+            Graphics::Instance()->ForgetRenderTargets(tex_id);  // Overgrowth Online (2.5)
             glDeleteTextures(1, &tex_id);
         }
         deferred_delete_textures.clear();
@@ -994,21 +1142,21 @@ void Textures::TextureToVRAM(unsigned int which) {
     if (tex_compressed == false) {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Uncompressed");
         tex.tex_target = is_array ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
-        tex.gl_texture_id = CreateGLTexture(tex.tex_target);
+        CreateGLTexture(tex);
         GLuint id = tex.gl_texture_id;
 
         if (!tex.no_mipmap && num_mips > 1) {
-            glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, tex.min_filter);
+            SetSamplingi(tex, GL_TEXTURE_MIN_FILTER, tex.min_filter);
         } else {
-            glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            SetSamplingi(tex, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         }
-        glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, tex.mag_filter);
+        SetSamplingi(tex, GL_TEXTURE_MAG_FILTER, tex.mag_filter);
 
-        glTextureParameteri(id, GL_TEXTURE_WRAP_S, tex.wrap_s);
-        glTextureParameteri(id, GL_TEXTURE_WRAP_T, tex.wrap_t);
+        SetSamplingi(tex, GL_TEXTURE_WRAP_S, tex.wrap_s);
+        SetSamplingi(tex, GL_TEXTURE_WRAP_T, tex.wrap_t);
 
         if (anisotropy)
-            glTextureParameterf(id, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+            SetSamplingf(tex, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
 
         CHECK_GL_ERROR();
 
@@ -1089,20 +1237,20 @@ void Textures::TextureToVRAM(unsigned int which) {
 
         if (is_cube) {
             tex.tex_target = GL_TEXTURE_CUBE_MAP;
-            tex.gl_texture_id = CreateGLTexture(tex.tex_target);
+            CreateGLTexture(tex);
             GLuint id = tex.gl_texture_id;
 
-            glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, tex.min_filter);
-            glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, tex.mag_filter);
+            SetSamplingi(tex, GL_TEXTURE_MIN_FILTER, tex.min_filter);
+            SetSamplingi(tex, GL_TEXTURE_MAG_FILTER, tex.mag_filter);
 
-            glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTextureParameteri(id, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            SetSamplingi(tex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            SetSamplingi(tex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            SetSamplingi(tex, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
             tex.cube_map = true;
 
             if (anisotropy) {
-                glTextureParameterf(id, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+                SetSamplingf(tex, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
             }
 
             TextureData* tex_data = tex.sub_textures[0].texture_data;
@@ -1146,17 +1294,17 @@ void Textures::TextureToVRAM(unsigned int which) {
         } else {
             LOG_ASSERT(!tex.sub_textures.empty());
             tex.tex_target = is_array ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
-            tex.gl_texture_id = CreateGLTexture(tex.tex_target);
+            CreateGLTexture(tex);
             GLuint id = tex.gl_texture_id;
 
-            glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, tex.min_filter);
-            glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, tex.mag_filter);
+            SetSamplingi(tex, GL_TEXTURE_MIN_FILTER, tex.min_filter);
+            SetSamplingi(tex, GL_TEXTURE_MAG_FILTER, tex.mag_filter);
 
-            glTextureParameteri(id, GL_TEXTURE_WRAP_S, tex.wrap_s);
-            glTextureParameteri(id, GL_TEXTURE_WRAP_T, tex.wrap_t);
+            SetSamplingi(tex, GL_TEXTURE_WRAP_S, tex.wrap_s);
+            SetSamplingi(tex, GL_TEXTURE_WRAP_T, tex.wrap_t);
 
             if (anisotropy)
-                glTextureParameterf(id, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+                SetSamplingf(tex, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
 
             if (!is_array) {
                 TextureData* tex_data = tex.sub_textures[0].texture_data;
@@ -1268,8 +1416,6 @@ void Textures::drawTexture(TextureRef id, vec3 where, float size, float rotation
 
     int shader_id = shaders->returnProgram("simple_2d #TEXTURE #FLIPPED");
     shaders->createProgram(shader_id);
-    int shader_attrib_vert_coord = shaders->returnShaderAttrib("vert_coord", shader_id);
-    int shader_attrib_tex_coord = shaders->returnShaderAttrib("tex_coord", shader_id);
     int uniform_mvp_mat = shaders->returnShaderVariable("mvp_mat", shader_id);
     int uniform_color = shaders->returnShaderVariable("color", shader_id);
     shaders->setProgram(shader_id);
@@ -1284,7 +1430,7 @@ void Textures::drawTexture(TextureRef id, vec3 where, float size, float rotation
     CHECK_GL_ERROR();
 
     glm::mat4 proj_mat;
-    proj_mat = glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]);
+    proj_mat = ReverseZ(glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]));
     glm::mat4 modelview_mat(1.0f);
     modelview_mat = glm::translate(modelview_mat, glm::vec3(where[0] - size * 0.5f, where[1] - size * 0.5f, 0));
     modelview_mat = glm::scale(modelview_mat, glm::vec3(size, size, 1.0f));
@@ -1294,10 +1440,6 @@ void Textures::drawTexture(TextureRef id, vec3 where, float size, float rotation
     glm::mat4 mvp_mat = proj_mat * modelview_mat;
     CHECK_GL_ERROR();
 
-    graphics->EnableVertexAttribArray(shader_attrib_vert_coord);
-    CHECK_GL_ERROR();
-    graphics->EnableVertexAttribArray(shader_attrib_tex_coord);
-    CHECK_GL_ERROR();
     static const GLfloat verts[] = {
         0, 0, 0, 0,
         1, 0, 1, 0,
@@ -1314,25 +1456,34 @@ void Textures::drawTexture(TextureRef id, vec3 where, float size, float rotation
         index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(indices), (void*)indices);
         vbo_filled = true;
     }
-    vert_vbo.Bind();
-    index_vbo.Bind();
 
-    glVertexAttribPointer(shader_attrib_vert_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), 0);
-    CHECK_GL_ERROR();
-    glVertexAttribPointer(shader_attrib_tex_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)(sizeof(GL_FLOAT) * 2));
+    // Overgrowth Online (GL 4.6 stage 2.4): the textured quad, interleaved
+    // (vertex 2, tex coord 2)
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 2);
+        layout.Add("tex_coord", 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+    }
+    {
+        GLuint buffers[2] = {vert_vbo.id(), vert_vbo.id()};
+        GLintptr offsets[2] = {0, 0};
+        GLsizei strides[2] = {4 * sizeof(GLfloat), 4 * sizeof(GLfloat)};
+        graphics->BeginVertexLayout(layout, shader_id, 0x3, buffers, offsets, strides, index_vbo.id());
+    }
     CHECK_GL_ERROR();
 
     int num_indices = 6;
 
-    glUniformMatrix4fv(uniform_mvp_mat, 1, false, (GLfloat*)&mvp_mat);
+    Shaders::Instance()->SetUniformMat4(uniform_mvp_mat, (GLfloat*)&mvp_mat);  // (Overgrowth Online 3.4: through Shaders, a default-block member on the Vulkan build)
     CHECK_GL_ERROR();
     vec4 color(1.0f);
-    glUniform4fv(uniform_color, 1, &color[0]);
+    Shaders::Instance()->SetUniformVec4(uniform_color, &color[0]);
     CHECK_GL_ERROR();
 
     bindTexture(id, 0);
     CHECK_GL_ERROR();
     graphics->DrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, 0);
+    graphics->EndVertexLayout();
     CHECK_GL_ERROR();
 
     graphics->BindElementVBO(0);
@@ -1393,7 +1544,7 @@ unsigned int Textures::makeCubemapTextureInternal(int width, int height, GLint i
 
     texture.use_srgb = (internal_format == GL_SRGB_ALPHA);
 
-    texture.gl_texture_id = CreateGLTexture(texture.tex_target);
+    CreateGLTexture(texture);
     LOG_ASSERT(texture.gl_texture_id != INVALID_ID);
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
@@ -1408,11 +1559,11 @@ unsigned int Textures::makeCubemapTextureInternal(int width, int height, GLint i
     texture.wrap_t = GL_CLAMP_TO_EDGE;
 
     GLuint id = texture.gl_texture_id;
-    glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, texture.min_filter);
-    glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, texture.mag_filter);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_S, texture.wrap_s);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_T, texture.wrap_t);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, texture.min_filter);
+    SetSamplingi(texture, GL_TEXTURE_MAG_FILTER, texture.mag_filter);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_S, texture.wrap_s);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_T, texture.wrap_t);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     // (the levels it had: halving until a side reaches 0)
     int levels = 0;
     for (int w = width, h = height; w >= 1 && h >= 1 && (mipmap_param == MIPMAPS || levels == 0); w /= 2, h /= 2) {
@@ -1482,7 +1633,7 @@ unsigned int Textures::makeTextureInternal(int width, int height, GLint internal
     texture.format = format;
     texture.tex_target = GL_TEXTURE_2D;
 
-    texture.gl_texture_id = CreateGLTexture(texture.tex_target);
+    CreateGLTexture(texture);
     LOG_ASSERT(texture.gl_texture_id != INVALID_ID);
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
@@ -1515,12 +1666,12 @@ unsigned int Textures::makeTextureInternal(int width, int height, GLint internal
     texture.mag_filter = GL_LINEAR;
     texture.wrap_s = GL_CLAMP_TO_EDGE;
     texture.wrap_t = GL_CLAMP_TO_EDGE;
-    glTextureParameteri(id, GL_TEXTURE_WRAP_S, texture.wrap_s);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_T, texture.wrap_t);
-    glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, texture.min_filter);
-    glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, texture.mag_filter);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_S, texture.wrap_s);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_T, texture.wrap_t);
+    SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, texture.min_filter);
+    SetSamplingi(texture, GL_TEXTURE_MAG_FILTER, texture.mag_filter);
     if (Graphics::Instance()->config_.anisotropy()) {
-        glTextureParameterf(id, GL_TEXTURE_MAX_ANISOTROPY_EXT, Graphics::Instance()->config_.anisotropy());
+        SetSamplingf(texture, GL_TEXTURE_MAX_ANISOTROPY_EXT, Graphics::Instance()->config_.anisotropy());
     }
     CHECK_GL_ERROR();
     if (mipmap && !IsCompressedGLFormat(internal_format)) {
@@ -1545,7 +1696,7 @@ unsigned int Textures::make3DTextureInternal(int* dims, GLint internal_format, G
     texture.format = format;
     texture.tex_target = GL_TEXTURE_3D;
 
-    texture.gl_texture_id = CreateGLTexture(texture.tex_target);
+    CreateGLTexture(texture);
     LOG_ASSERT(texture.gl_texture_id != INVALID_ID);
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
@@ -1557,15 +1708,15 @@ unsigned int Textures::make3DTextureInternal(int* dims, GLint internal_format, G
     }
     CHECK_GL_ERROR();
     if (mipmap)
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     else
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    SetSamplingi(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     if (Graphics::Instance()->config_.anisotropy()) {
-        glTextureParameterf(id, GL_TEXTURE_MAX_ANISOTROPY_EXT, Graphics::Instance()->config_.anisotropy());
+        SetSamplingf(texture, GL_TEXTURE_MAX_ANISOTROPY_EXT, Graphics::Instance()->config_.anisotropy());
     }
     CHECK_GL_ERROR();
     if (mipmap) {
@@ -1627,7 +1778,7 @@ unsigned int Textures::makeTextureColorInternal(int width, int height, GLint int
         }
     }
 
-    texture.gl_texture_id = CreateGLTexture(texture.tex_target);
+    CreateGLTexture(texture);
     LOG_ASSERT(texture.gl_texture_id != INVALID_ID);
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
@@ -1637,12 +1788,12 @@ unsigned int Textures::makeTextureColorInternal(int width, int height, GLint int
     // as floats for GL_RGBA16F read past its end)
     glTextureSubImage2D(id, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, &data[0]);
     if (mipmap)
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     else
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    SetSamplingi(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     if (mipmap) {
         glGenerateTextureMipmap(id);
     }
@@ -1696,7 +1847,7 @@ unsigned int Textures::makeTextureTestPatternInternal(int width, int height, GLi
         }
     }
 
-    texture.gl_texture_id = CreateGLTexture(texture.tex_target);
+    CreateGLTexture(texture);
     LOG_ASSERT(texture.gl_texture_id != INVALID_ID);
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
@@ -1706,12 +1857,12 @@ unsigned int Textures::makeTextureTestPatternInternal(int width, int height, GLi
     // as floats for GL_RGBA16F read past its end)
     glTextureSubImage2D(id, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, &data[0]);
     if (mipmap)
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     else
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    SetSamplingi(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     if (mipmap) {
         glGenerateTextureMipmap(id);
     }
@@ -1767,21 +1918,21 @@ unsigned int Textures::makeCubemapArrayTextureInternal(int num_slices, int width
     texture.no_reduce = (flags & PX_NOREDUCE) != 0;
 
     CHECK_GL_ERROR();
-    texture.gl_texture_id = CreateGLTexture(texture.tex_target);
+    CreateGLTexture(texture);
     LOG_ASSERT(texture.gl_texture_id != INVALID_ID);
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
     CHECK_GL_ERROR();
     GLuint id = texture.gl_texture_id;
     if (texture.no_mipmap) {
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     } else {
-        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     }
-    glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     CHECK_GL_ERROR();
     std::vector<float> pixels(width * height * num_slices * 6 * 4);
     for (int i = 0, len = pixels.size(); i < len; i += 16) {
@@ -1833,7 +1984,7 @@ unsigned int Textures::makeFlatCubemapArrayTextureInternal(int num_slices, int w
     texture.no_reduce = (flags & PX_NOREDUCE) != 0;
 
     CHECK_GL_ERROR();
-    texture.gl_texture_id = CreateGLTexture(texture.tex_target);
+    CreateGLTexture(texture);
     LOG_ASSERT(texture.gl_texture_id != INVALID_ID);
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
@@ -1843,10 +1994,10 @@ unsigned int Textures::makeFlatCubemapArrayTextureInternal(int num_slices, int w
     texture.wrap_t = m_wrap_t;
     texture.min_filter = min_filter;
     texture.mag_filter = mag_filter;
-    glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, texture.min_filter);
-    glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, texture.mag_filter);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_S, texture.wrap_s);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_T, texture.wrap_t);
+    SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, texture.min_filter);
+    SetSamplingi(texture, GL_TEXTURE_MAG_FILTER, texture.mag_filter);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_S, texture.wrap_s);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_T, texture.wrap_t);
     CHECK_GL_ERROR();
     std::vector<float> pixels(width * height * num_slices * 6 * 4, 0.0f);
     glTextureStorage3D(id, FullMipCount(width * 6, height), SizedFormat(internal_format), width * 6, height, num_slices);
@@ -2210,7 +2361,7 @@ unsigned int Textures::makeRectangularTextureInternal(int width, int height, GLi
     texture.format = format;
     texture.tex_target = GL_TEXTURE_2D;
 
-    texture.gl_texture_id = CreateGLTexture(texture.tex_target);
+    CreateGLTexture(texture);
     LOG_ASSERT(texture.gl_texture_id != INVALID_ID);
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
@@ -2218,17 +2369,17 @@ unsigned int Textures::makeRectangularTextureInternal(int width, int height, GLi
     GLuint id = texture.gl_texture_id;
     // The full chain, as before; float and depth formats fall back to RGBA without HDR
     GLenum storage_format = internal_format;
-    if ((internal_format == GL_RGBA16F || internal_format == GL_RGBA32F || internal_format == GL_DEPTH_COMPONENT || internal_format == GL_DEPTH_COMPONENT24) &&
+    if ((internal_format == GL_RGBA16F || internal_format == GL_RGBA32F || internal_format == GL_DEPTH_COMPONENT || internal_format == GL_DEPTH_COMPONENT24 || internal_format == GL_DEPTH_COMPONENT32F) &&
         !Graphics::Instance()->features().HDR_enable()) {
         storage_format = GL_RGBA;
     }
     glTextureStorage2D(id, FullMipCount(width, height), SizedFormat(storage_format), width, height);
     CHECK_GL_ERROR();
-    glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTextureParameteri(id, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+    SetSamplingi(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    SetSamplingi(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    SetSamplingi(texture, GL_TEXTURE_COMPARE_MODE, GL_NONE);
 
     CHECK_GL_ERROR();
 
@@ -2277,7 +2428,7 @@ unsigned int Textures::makeBufferTextureInternal(size_t size, GLint internal_for
     glBufferData(GL_TEXTURE_BUFFER, size, data, GL_DYNAMIC_DRAW);
     CHECK_GL_ERROR();
 
-    texture.gl_texture_id = CreateGLTexture(texture.tex_target);
+    CreateGLTexture(texture);
     LOG_ASSERT(texture.gl_texture_id != INVALID_ID);
     LOG_ASSERT(texture.gl_texture_id != UNLOADED_ID);
 
@@ -2387,6 +2538,8 @@ void Textures::RebindTexture(int unit) {
         LOGE << "Trying to rebind invalid texture id." << std::endl;
     } else {
         glBindTextureUnit(unit, texture.gl_texture_id);
+        // (stage 2.2: and the sampler for how it's sampled; buffer textures have none)
+        glBindSampler(unit, texture.tex_target == GL_TEXTURE_BUFFER ? 0 : SamplerFor(texture));
     }
 }
 
@@ -2443,7 +2596,11 @@ void Textures::bindTexture(const unsigned int& which_texture, int which_unit) {
         GLenum old_tex_target = textures[bound_texture[which_unit]].tex_target;
         if (textures[which_texture].tex_target != old_tex_target) {
             if (old_tex_target != GL_NONE) {
-                glBindTextureUnit(which_unit, 0);
+                // that target only, as before (glBindTextureUnit(unit, 0) would
+                // empty the unit's other targets too: see ClearUnits)
+                glActiveTexture(GL_TEXTURE0 + which_unit);
+                glBindTexture(old_tex_target, 0);
+                glActiveTexture(GL_TEXTURE0 + active_texture);  // (bare GL code expects its unit)
             }
         }
     }
@@ -2459,7 +2616,13 @@ void Textures::bindTexture(const unsigned int& which_texture, int which_unit) {
 void Textures::InvalidateBindCacheInternal() {
     for (unsigned int i = 0; i < _texture_units; i++) {
         if (bound_texture[i] != INVALID_ID) {
-            glBindTextureUnit(i, 0);
+            // 2D and cube textures only, as before (see ClearUnits)
+            const Texture& t = textures[bound_texture[i]];
+            GLenum target = t.cube_map ? GL_TEXTURE_CUBE_MAP : t.tex_target;
+            if (target == GL_TEXTURE_2D || target == GL_TEXTURE_CUBE_MAP) {
+                glActiveTexture(GL_TEXTURE0 + i);
+                glBindTexture(target, 0);
+            }
             bound_texture[i] = INVALID_ID;
         }
     }
@@ -2478,7 +2641,20 @@ void Textures::ClearUnits(const std::vector<int>& units) {
     PROFILED_TEXTURE_MUTEX_LOCK
     for (int unit : units) {
         if (unit >= 0 && unit < (int)_texture_units && bound_texture[unit] != INVALID_ID) {
-            glBindTextureUnit(unit, 0);
+            // As the GL 3.2 code did (InvalidateBindCache): only a 2D or cube
+            // texture leaves its unit. Array and 3D textures stay bound across
+            // programs and some draws sample them there: grass (detail objects)
+            // runs inside its object's draw and reads the light probe volume
+            // (tex16), reflection captures (tex19) and detail arrays (tex6/7)
+            // that the object bound. glBindTextureUnit(unit, 0) emptied every
+            // target: the distant grass band went dark (render_compare)
+            const Texture& t = textures[bound_texture[unit]];
+            GLenum target = t.cube_map ? GL_TEXTURE_CUBE_MAP : t.tex_target;
+            if (target == GL_TEXTURE_2D || target == GL_TEXTURE_CUBE_MAP) {
+                glActiveTexture(GL_TEXTURE0 + unit);
+                glBindTexture(target, 0);
+                glActiveTexture(GL_TEXTURE0 + active_texture);  // (bare GL code expects its unit)
+            }
             bound_texture[unit] = INVALID_ID;
         }
     }
@@ -2650,7 +2826,15 @@ void Textures::ResetVRAM() {
 }
 
 void Textures::RemoveTextureFromVRAM(int which) {
+    // Overgrowth Online (GL 4.6 stage 2.5): its mip views (they keep its storage)
+    // and the render targets made with its name (GL gives the name out again)
+    for (const MipView& v : mip_views) {
+        if (v.parent == (unsigned int)which && v.view.id != (unsigned int)which) {
+            RemoveTextureFromVRAM(v.view.id);
+        }
+    }
     if (textures[which].gl_texture_id != UNLOADED_ID && textures[which].gl_texture_id != INVALID_ID) {
+        Graphics::Instance()->ForgetRenderTargets(textures[which].gl_texture_id);
         if (glIsTexture(textures[which].gl_texture_id)) {
             glDeleteTextures(1, &textures[which].gl_texture_id);
         }
@@ -2702,11 +2886,11 @@ void Textures::SetProcessPoolsEnabled(bool val) {
 
 void Textures::ApplyAnisotropy() {
     for (unsigned int i = 0; i < textures.size(); i++) {
-        const Texture& tex = textures[i];
+        Texture& tex = textures[i];
         if (tex.gl_texture_id == 0 || tex.gl_texture_id == UNLOADED_ID || tex.gl_texture_id == INVALID_ID || tex.tex_target == GL_TEXTURE_BUFFER) {
             continue;  // not in VRAM yet (it gets it on upload), or a buffer
         }
-        glTextureParameterf(tex.gl_texture_id, GL_TEXTURE_MAX_ANISOTROPY_EXT, Graphics::Instance()->config_.anisotropy());
+        SetSamplingf(tex, GL_TEXTURE_MAX_ANISOTROPY_EXT, Graphics::Instance()->config_.anisotropy());
     }
 }
 

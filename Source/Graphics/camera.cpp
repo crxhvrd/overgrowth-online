@@ -23,6 +23,7 @@
 //-----------------------------------------------------------------------------
 #include "camera.h"
 
+#include <Graphics/reversez.h>
 #include <Graphics/graphics.h>
 #include <Graphics/vbocontainer.h>
 #include <Graphics/shaders.h>
@@ -78,10 +79,10 @@ Camera::Camera() : m_camera_object(NULL),
                    far_sharp_dist((float)pow(5.0f, 0.5f)),
                    near_blur_transition_size(1.0f),
                    far_blur_transition_size(2.0f),
-                   biasMatrix(0.5f, 0.0f, 0.0f, 0.0f,
+                   biasMatrix(0.5f, 0.0f, 0.0f, 0.0f,  // (reversed-Z, stage 4a: z is [0, 1] already)
                               0.0f, 0.5f, 0.0f, 0.0f,
-                              0.0f, 0.0f, 0.5f, 0.0f,
-                              0.5f, 0.5f, 0.5f, 1.0f) {
+                              0.0f, 0.0f, 1.0f, 0.0f,
+                              0.5f, 0.5f, 0.0f, 1.0f) {
     for (unsigned int i = 0; i < 16; i++) {
         modelview_matrix[i] = 0.0;
         projection_matrix[i] = 0.0;
@@ -286,7 +287,7 @@ void Camera::applyViewpoint() {
     vec3 mouse;
     mouse.x() = (float)userInput->getMouse().pos_[0];
     mouse.y() = (float)(userInput->getMouse().pos_[1] * -1 + gi->window_dims[1]);
-    mouse.z() = 0.5f;
+    mouse.z() = 0.75f;  // (depth 0.5, two near planes out: see UnProjectPixel)
 
     for (unsigned i = 0; i < 16; ++i) {
         modelview_matrix[i] = cameraViewMatrix.entries[i];
@@ -333,7 +334,9 @@ vec3 Camera::GetRayThroughPixel(int x, int y) {
 }
 
 vec3 Camera::UnProjectPixel(int x, int y) {
-    float z = 0.5f;
+    // (glm 0.9.4 maps window z [0, 1] to clip [-1, 1]; ours is [0, 1]: 0.75 is depth 0.5,
+    // two near planes out, the point 0.5 gave before reversed-Z)
+    float z = 0.75f;
     glm::vec3 ray = glm::unProject(glm::vec3(x, y, z),
                                    glm::make_mat4(modelview_matrix),
                                    glm::make_mat4(projection_matrix),
@@ -349,7 +352,8 @@ vec3 Camera::ProjectPoint(const vec3& point) {
                                         glm::make_mat4(projection_matrix),
                                         glm::make_vec4(viewport));
 
-    vec3 screen_coords(screen_pos.x, screen_pos.y, screen_pos.z);
+    // (window z = depth: glm 0.9.4 maps clip z [-1, 1] to [0, 1], ours is [0, 1] already)
+    vec3 screen_coords(screen_pos.x, screen_pos.y, screen_pos.z * 2.0f - 1.0f);
     return screen_coords;
 }
 
@@ -367,7 +371,7 @@ vec3 Camera::worldToScreen(const vec3 point) const {
     vec3 window;
     window.x() = window_pos.x;
     window.y() = window_pos.y;
-    window.z() = window_pos.z;
+    window.z() = window_pos.z * 2.0f - 1.0f;  // (depth: see ProjectPoint)
 
     return window;
 }
@@ -432,7 +436,7 @@ void Camera::DrawSafeZone() {
     safe_pos = perspective_matrix * safe_pos;
     const float safe_pos_extend = 0.8f;
 
-    glm::mat4 proj = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f);
+    glm::mat4 proj = ReverseZ(glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f));
     Shaders::Instance()->SetUniformMat4("mvp_mat", (const GLfloat*)&proj);
     Shaders::Instance()->SetUniformVec4("color", vec4(1.0f));
 
@@ -464,15 +468,19 @@ void Camera::DrawSafeZone() {
 
     static VBOContainer safe_zone_vbo;
     safe_zone_vbo.Fill(kVBODynamic | kVBOFloat, sizeof(data), data);
-    safe_zone_vbo.Bind();
 
-    int vert_attrib_id = Shaders::Instance()->returnShaderAttrib("vert_coord", shader_id);
-    Graphics::Instance()->EnableVertexAttribArray(vert_attrib_id);
+    // Overgrowth Online (GL 4.6 stage 2.4): the safe zone's lines (positions only)
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 3);
+    }
+    VBOContainer* vbos[1] = {&safe_zone_vbo};
+    Graphics::Instance()->BeginVertexLayout(layout, shader_id, vbos, 0);
     CHECK_GL_ERROR();
-    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 3 * sizeof(float), 0);
     Graphics::Instance()->DrawArrays(GL_LINES, 0, 16);
     CHECK_GL_ERROR();
     Graphics::Instance()->DrawArrays(GL_LINES, 16, 2);
+    Graphics::Instance()->EndVertexLayout();
     Graphics::Instance()->ResetVertexAttribArrays();
     CHECK_GL_ERROR();
 }
@@ -614,6 +622,7 @@ void Camera::calcFrustumPlanes(const mat4& _p, const mat4& _mv) {
     // Extract the frustum's far clipping plane and normalize it.
     //
 
+    // (reversed-Z, stage 4a: clip 0 <= z <= w; z <= w is the near plane now)
     frustumPlanes[4][0] = mvp[3] - mvp[2];
     frustumPlanes[4][1] = mvp[7] - mvp[6];
     frustumPlanes[4][2] = mvp[11] - mvp[10];
@@ -632,14 +641,23 @@ void Camera::calcFrustumPlanes(const mat4& _p, const mat4& _mv) {
     // Extract the frustum's near clipping plane and normalize it.
     //
 
-    frustumPlanes[5][0] = mvp[3] + mvp[2];
-    frustumPlanes[5][1] = mvp[7] + mvp[6];
-    frustumPlanes[5][2] = mvp[11] + mvp[10];
-    frustumPlanes[5][3] = mvp[15] + mvp[14];
+    // (reversed-Z, stage 4a: z >= 0, the far plane; an infinite projection has none,
+    // then a plane everything is in front of)
+    frustumPlanes[5][0] = mvp[2];
+    frustumPlanes[5][1] = mvp[6];
+    frustumPlanes[5][2] = mvp[10];
+    frustumPlanes[5][3] = mvp[14];
 
     t = (float)sqrtf(frustumPlanes[5][0] * frustumPlanes[5][0] +
                      frustumPlanes[5][1] * frustumPlanes[5][1] +
                      frustumPlanes[5][2] * frustumPlanes[5][2]);
+    if (t < 1e-6f) {
+        frustumPlanes[5][0] = 0.0f;
+        frustumPlanes[5][1] = 0.0f;
+        frustumPlanes[5][2] = 0.0f;
+        frustumPlanes[5][3] = 1.0f;
+        t = 1.0f;
+    }
 
     frustumPlanes[5][0] /= t;
     frustumPlanes[5][1] /= t;

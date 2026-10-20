@@ -29,5 +29,6 @@ enum {
     kVBOStatic = 1 << 2,
     kVBODynamic = 1 << 3,
     kVBOStream = 1 << 4,
-    kVBOForceReBufferData = 1 << 5
+    kVBOForceReBufferData = 1 << 5,
+    kVBOFrame = 1 << 6  // Overgrowth Online: VBORingContainer filled for this frame's draws only (the frame ring)
 };

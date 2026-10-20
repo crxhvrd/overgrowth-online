@@ -22,6 +22,7 @@
 //
 //-----------------------------------------------------------------------------
 
+#include <Graphics/reversez.h>
 #include <Graphics/graphics.h>
 #include <Graphics/shaders.h>
 #include <Graphics/vbocontainer.h>
@@ -160,9 +161,9 @@ void IMUIText::setRotation(float newRotation) {
 }
 
 IMUIContext::IMUIContext() : image_index_vbo(new VBOContainer()),
-                             image_data_vbo(new VBORingContainer(sizeof(GLfloat) * 4 * 4, kVBOFloat | kVBODynamic)),
-                             character_data_vbo(new VBORingContainer(sizeof(GLfloat) * kMaxCharacters * 4 * kFloatsPerVert, kVBOFloat | kVBODynamic)),
-                             character_index_vbo(new VBORingContainer(sizeof(GLuint) * kMaxCharacters * 6, kVBOElement | kVBODynamic)) {
+                             image_data_vbo(new VBORingContainer(sizeof(GLfloat) * 4 * 4, kVBOFloat | kVBODynamic | kVBOFrame)),
+                             character_data_vbo(new VBORingContainer(sizeof(GLfloat) * kMaxCharacters * 4 * kFloatsPerVert, kVBOFloat | kVBODynamic | kVBOFrame)),
+                             character_index_vbo(new VBORingContainer(sizeof(GLuint) * kMaxCharacters * 6, kVBOElement | kVBODynamic | kVBOFrame)) {
 }
 
 void IMUIContext::Init() {
@@ -444,8 +445,6 @@ void IMUIContext::render() {
 
     int shader_id = shaders->returnProgram("simple_2d #TEXTURE #FLIPPED");
     shaders->setProgram(shader_id);
-    int vert_coord_id = shaders->returnShaderAttrib("vert_coord", shader_id);
-    int tex_coord_id = shaders->returnShaderAttrib("tex_coord", shader_id);
     int mvp_mat_id = shaders->returnShaderVariable("mvp_mat", shader_id);
     int color_id = shaders->returnShaderVariable("color", shader_id);
     graphics->setGLState(hud_gl_state.gl_state);
@@ -469,7 +468,7 @@ void IMUIContext::render() {
             }
         }
 
-        proj_mat = glm::translate(glm::ortho(0.0f, winWidth, 0.0f, winHeight), glm::vec3(xOffset, 0.0f, 0.0f));
+        proj_mat = ReverseZ(glm::translate(glm::ortho(0.0f, winWidth, 0.0f, winHeight), glm::vec3(xOffset, 0.0f, 0.0f)));
 
         if (renderable->enableClip) {
             glScissor((GLint)(renderable->clipPosition[0] + xOffset),
@@ -477,7 +476,7 @@ void IMUIContext::render() {
                       (GLsizei)(renderable->clipSize[0]),
                       (GLsizei)(renderable->clipSize[1]));
 
-            glEnable(GL_SCISSOR_TEST);
+            Graphics::Instance()->setScissorTest(true);
         }
 
         switch (renderable->type) {
@@ -503,15 +502,15 @@ void IMUIContext::render() {
 
                 // Bind the texture
                 textures->bindTexture(image->textureRef);
-                GLuint image_tex_id = textures->returnTexture(image->textureRef);  // (DSA: binding doesn't set the active unit)
-                glTextureParameterf(image_tex_id, GL_TEXTURE_LOD_BIAS, -1.0f);
-
-                //  Setup our texture parameters
-                glTextureParameteri(image_tex_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTextureParameteri(image_tex_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                // This draw's sampling (sharper, clamped), by a sampler (the texture keeps its own)
+                SamplerState image_sampler = textures->GetSamplerState(image->textureRef->GetTextureRef());
+                image_sampler.lod_bias = -1.0f;
+                image_sampler.wrap_s = GL_CLAMP_TO_EDGE;
+                image_sampler.wrap_t = GL_CLAMP_TO_EDGE;
+                textures->BindSampler(0, image_sampler);
 
                 // Inform the shader of the color
-                glUniform4fv(color_id, 1, (GLfloat*)&(image->color));
+                Shaders::Instance()->SetUniformVec4(color_id, (GLfloat*)&(image->color));
 
                 // Now we get to build some triangles and attach some texture coordinates
                 const vec2 to = vec2(image->textureOffset[0] / width,
@@ -550,24 +549,30 @@ void IMUIContext::render() {
 
                 glm::mat4 mvp_mat = proj_mat * model_mat;
 
-                glUniformMatrix4fv(mvp_mat_id, 1, false, (GLfloat*)&mvp_mat);
-                graphics->EnableVertexAttribArray(vert_coord_id);
-                graphics->EnableVertexAttribArray(tex_coord_id);
+                Shaders::Instance()->SetUniformMat4(mvp_mat_id, (GLfloat*)&mvp_mat);  // (Overgrowth Online 3.4: through Shaders, a default-block member on the Vulkan build)
 
                 if (!image_index_vbo->valid()) {
                     image_index_vbo->Fill(kVBOElement | kVBOStatic, sizeof(indices), (void*)indices);
                 }
 
                 image_data_vbo->Fill(sizeof(data), (void*)data);
-                image_data_vbo->Bind();
-                image_index_vbo->Bind();
 
-                glVertexAttribPointer(vert_coord_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void*)(image_data_vbo->offset() + 2 * sizeof(GLfloat)));
-                glVertexAttribPointer(tex_coord_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void*)(image_data_vbo->offset()));
+                // Overgrowth Online (GL 4.6 stage 2.4): tex coord then position, interleaved
+                static VertexLayout layout;
+                if (layout.Count() == 0) {
+                    layout.Add("vert_coord", 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+                    layout.Add("tex_coord", 0, 2);
+                }
+                {
+                    const GLuint buffers[2] = {image_data_vbo->id(), image_data_vbo->id()};
+                    const GLintptr offsets[2] = {(GLintptr)image_data_vbo->offset(), (GLintptr)image_data_vbo->offset()};
+                    const GLsizei strides[2] = {4 * sizeof(GLfloat), 4 * sizeof(GLfloat)};
+                    graphics->BeginVertexLayout(layout, shader_id, image_data_vbo->valid() ? 3u : 0u, buffers, offsets, strides, image_index_vbo->id());
+                }
 
                 graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (const void*)image_index_vbo->offset());
+                graphics->EndVertexLayout();
 
-                glTextureParameterf(image_tex_id, GL_TEXTURE_LOD_BIAS, 0.0f);
 
             } break;
 
@@ -687,16 +692,23 @@ void IMUIContext::render() {
                 character_data_vbo->Fill(sizeof(verts) * num_characters / kMaxCharacters, verts);
                 character_index_vbo->Fill(sizeof(indices) * num_characters / kMaxCharacters, indices);
 
-                character_data_vbo->Bind();
-                character_index_vbo->Bind();
-
-                graphics->EnableVertexAttribArray(vert_coord_id);
-                graphics->EnableVertexAttribArray(tex_coord_id);
-
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, atlas->tex);
-                glVertexAttribPointer(vert_coord_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void*)(character_data_vbo->offset()));
-                glVertexAttribPointer(tex_coord_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void*)(character_data_vbo->offset() + sizeof(GL_FLOAT) * 2));
+                glBindSampler(0, 0);  // Overgrowth Online: its own parameters, not a sampler left on the unit
+
+                // Overgrowth Online (GL 4.6 stage 2.4): position then tex coord, interleaved
+                static VertexLayout layout;
+                if (layout.Count() == 0) {
+                    layout.Add("vert_coord", 0, 2);
+                    layout.Add("tex_coord", 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+                }
+                {
+                    const GLuint buffers[2] = {character_data_vbo->id(), character_data_vbo->id()};
+                    const GLintptr offsets[2] = {(GLintptr)character_data_vbo->offset(), (GLintptr)character_data_vbo->offset()};
+                    const GLsizei strides[2] = {4 * sizeof(GLfloat), 4 * sizeof(GLfloat)};
+                    graphics->BeginVertexLayout(layout, shader_id, character_data_vbo->valid() ? 3u : 0u, buffers, offsets, strides,
+                                                character_index_vbo->valid() ? character_index_vbo->id() : 0);
+                }
 
                 int num_indices = sizeof(indices) * num_characters / kMaxCharacters / sizeof(float);
 
@@ -718,14 +730,15 @@ void IMUIContext::render() {
                                                                 winHeight - (text->pos[1] + (0.5 * text->boundingBox[1]) + 2.0),
                                                                 0.0f));
                     glm::mat4 mat = proj_mat * offset_model_mat;
-                    glUniformMatrix4fv(mvp_mat_id, 1, false, (GLfloat*)&mat);
-                    glUniform4f(color_id, 0.0f, 0.0f, 0.0f, text->color.a());
+                    Shaders::Instance()->SetUniformMat4(mvp_mat_id, (GLfloat*)&mat);
+                    Shaders::Instance()->SetUniformVec4(color_id, vec4(0.0f, 0.0f, 0.0f, text->color.a()));
                     graphics->DrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, (const void*)character_index_vbo->offset());
                 }
 
-                glUniformMatrix4fv(mvp_mat_id, 1, false, (GLfloat*)&mvp_mat);
-                glUniform4fv(color_id, 1, &(text->color[0]));
+                Shaders::Instance()->SetUniformMat4(mvp_mat_id, (GLfloat*)&mvp_mat);
+                Shaders::Instance()->SetUniformVec4(color_id, &(text->color[0]));
                 graphics->DrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, (const void*)character_index_vbo->offset());
+                graphics->EndVertexLayout();
 
                 graphics->BindElementVBO(0);
                 graphics->BindArrayVBO(0);
@@ -738,7 +751,7 @@ void IMUIContext::render() {
         }
 
         if (renderable->enableClip) {
-            glDisable(GL_SCISSOR_TEST);
+            Graphics::Instance()->setScissorTest(false);
         }
 
         // Clean up the copy

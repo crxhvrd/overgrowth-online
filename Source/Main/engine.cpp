@@ -22,6 +22,7 @@
 //-----------------------------------------------------------------------------
 #include "engine.h"
 
+#include <Graphics/reversez.h>
 #include <Graphics/frame_timers.h>
 #include <Game/hardcoded_assets.h>
 #include <Game/level.h>
@@ -2360,7 +2361,6 @@ static void CreateHistogram(const TextureRef& color_tex) {
 
     static FramebufferObject framebuffer;
     static int shader_id;
-    static int vert_attrib_id;
     // static int buckets_uniform_id;
     static VBOContainer pixel_vbo;
     if (!histogram_tex.valid()) {
@@ -2376,7 +2376,6 @@ static void CreateHistogram(const TextureRef& color_tex) {
         CHECK_GL_ERROR();
         shader_id = shaders->returnProgram("histogram_create");
         shaders->setProgram(shader_id);
-        vert_attrib_id = shaders->returnShaderAttrib("pixel_uv", shader_id);
         CHECK_GL_ERROR();
         std::vector<GLfloat> pixel_data;
         pixel_data.resize(kHistogramRes * kHistogramRes * 2);
@@ -2413,13 +2412,17 @@ static void CreateHistogram(const TextureRef& color_tex) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     CHECK_GL_ERROR();
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    CHECK_GL_ERROR();
-    pixel_vbo.Bind();
-    glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+    // Overgrowth Online (GL 4.6 stage 2.4): one texel uv per point
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("pixel_uv", 0, 2);
+    }
+    VBOContainer* vbos[1] = {&pixel_vbo};
+    graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
     CHECK_GL_ERROR();
     glPointSize(1);
     graphics->DrawArrays(GL_POINTS, 0, kHistogramRes * kHistogramRes);
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
     CHECK_GL_ERROR();
 
@@ -2458,32 +2461,47 @@ static void DrawHistogram() {
     gl_state.cull_face = false;
     graphics->setGLState(gl_state);
     shaders->setProgram(shader_id);
-    int vert_attrib_id = shaders->returnShaderAttrib("lines", shader_id);
     int uniform_mvp_id = shaders->returnShaderVariable("mvp", shader_id);
     int uniform_buckets_id = shaders->returnShaderVariable("num_buckets", shader_id);
     glm::mat4 proj_mat;
-    proj_mat = glm::ortho(0.0f, (float)graphics->viewport_dim[2], 0.0f, (float)graphics->viewport_dim[3]);
+    proj_mat = ReverseZ(glm::ortho(0.0f, (float)graphics->viewport_dim[2], 0.0f, (float)graphics->viewport_dim[3]));
     glm::mat4 mvp_mat = proj_mat;
     shaders->SetUniformInt(uniform_buckets_id, kHistogramBuckets);
     shaders->SetUniformMat4(uniform_mvp_id, (const GLfloat*)&mvp_mat);
     textures->bindTexture(histogram_tex);
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    vbo.Bind();
-    glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+    // Overgrowth Online (GL 4.6 stage 2.4): the bucket lines' 2D ends
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("lines", 0, 2);
+    }
+    VBOContainer* vbos[1] = {&vbo};
+    graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
     glLineWidth(1);
     graphics->DrawArrays(GL_LINES, 0, kHistogramBuckets * 2);
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
     graphics->BindArrayVBO(0);
 }
 
-static void DrawQuad(int shader_id) {
+// Overgrowth Online (GL 4.6 stage 2.4): the screen quad's 2D corners, for this post
+// program; draw it with DrawElements(GL_TRIANGLES, 6, ...), then EndVertexLayout
+static void BeginPostQuad(int shader_id, const VBOContainer& quad_vert_vbo, const VBOContainer& quad_index_vbo) {
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_attrib", 0, 2);
+    }
+    GLuint buffers[1] = {quad_vert_vbo.id()};
+    GLintptr offsets[1] = {0};
+    GLsizei strides[1] = {2 * sizeof(GLfloat)};
+    Graphics::Instance()->BeginVertexLayout(layout, shader_id, quad_vert_vbo.valid() ? 1u : 0u, buffers, offsets, strides, quad_index_vbo.id());
+}
+
+static void DrawQuad(int shader_id, const VBOContainer& quad_vert_vbo, const VBOContainer& quad_index_vbo) {
     PROFILER_GPU_ZONE(g_profiler_ctx, "Engine.cpp DrawQuad");
-    Shaders* shaders = Shaders::Instance();
     Graphics* graphics = Graphics::Instance();
-    int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+    BeginPostQuad(shader_id, quad_vert_vbo, quad_index_vbo);
     graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
 }
 
@@ -2514,8 +2532,6 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
     graphics->setGLState(gl_state);
 
     // Blur screen
-    quad_vert_vbo.Bind();
-    quad_index_vbo.Bind();
     CHECK_GL_ERROR();
 
     if (post_effects_type == Engine::kStraight) {
@@ -2531,7 +2547,7 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
         shaders->setProgram(shader_id);
         textures->bindTexture(graphics->screen_color_tex);
         // glEnable(GL_FRAMEBUFFER_SRGB );
-        DrawQuad(shader_id);
+        DrawQuad(shader_id, quad_vert_vbo, quad_index_vbo);
         // glDisable(GL_FRAMEBUFFER_SRGB );
         graphics->PopViewport();
         graphics->PopViewport();
@@ -2556,13 +2572,17 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
         graphics->PushFramebuffer();
 
         graphics->setViewport(0, 0, graphics->render_dims[0], graphics->render_dims[1]);
-        graphics->bindFramebuffer(graphics->post_effects.post_framebuffer);
 
         TextureRef final_texture = graphics->screen_color_tex;
         TextureRef temp_texture = graphics->post_effects.temp_screen_tex;
 
-        graphics->EnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+        // Overgrowth Online (GL 4.6 stage 2.4): each pass draws the screen quad with
+        // the program bound then (was: location 0, set once)
+        // (stage 2.5: each pass binds its prebuilt render target, BindRenderTarget)
+        auto draw_quad = [&]() {
+            BeginPostQuad(shaders->bound_program, quad_vert_vbo, quad_index_vbo);
+            graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        };
 
         float curr_time = game_timer.game_time + game_timer.GetInterpWeight() / 120.0f;
         if (graphics->config_.motion_blur_amount_ > 0.01f) {
@@ -2591,8 +2611,8 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                 textures->bindTexture(graphics->screen_vel_tex, 2);
                 textures->bindTexture(graphics->pure_noise_ref, TEX_PURE_NOISE);
                 textures->bindTexture(graphics->screen_depth_tex, TEX_SCREEN_DEPTH);
-                graphics->framebufferColorTexture2D(temp_texture);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                graphics->BindRenderTarget(temp_texture);
+                draw_quad();
             }
 
             {  // Find dominant motion blur directions
@@ -2605,9 +2625,9 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                     shaders->SetUniformInt("screen_width", graphics->render_dims[0]);
                     shaders->SetUniformInt("screen_height", graphics->render_dims[1]);
                     shaders->SetUniformFloat("src_lod", 0.0f);
-                    textures->bindTexture(temp_texture);
-                    graphics->framebufferColorTexture2D(temp_texture, 2);
-                    graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    textures->bindTexture(textures->GetMipView(temp_texture, 0));  // (not the level rendered into)
+                    graphics->BindRenderTarget(temp_texture, 2);
+                    draw_quad();
                 }
 
                 // Downsample bloom again
@@ -2619,10 +2639,10 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                     shaders->setProgram(shader_id);
                     shaders->SetUniformInt("screen_width", intermediate_width);
                     shaders->SetUniformInt("screen_height", intermediate_height);
-                    shaders->SetUniformFloat("src_lod", 2.0f);
-                    textures->bindTexture(temp_texture);
-                    graphics->framebufferColorTexture2D(temp_texture, 4);
-                    graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    shaders->SetUniformFloat("src_lod", 0.0f);  // (level 2, through its view)
+                    textures->bindTexture(textures->GetMipView(temp_texture, 2));
+                    graphics->BindRenderTarget(temp_texture, 4);
+                    draw_quad();
                 }
 
                 // Apply separable guassian blur to further down-sampled overbright image
@@ -2633,8 +2653,8 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                     shaders->SetUniformInt("screen_height", downsampled_height);
                     shaders->SetUniformFloat("src_lod", 4.0f);
                     textures->bindTexture(temp_texture);
-                    graphics->framebufferColorTexture2D(final_texture, 4);
-                    graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    graphics->BindRenderTarget(final_texture, 4);
+                    draw_quad();
                 }
                 {
                     int shader_id = shaders->returnProgram(post_shader + " #BLUR_VERT");
@@ -2643,8 +2663,8 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                     shaders->SetUniformInt("screen_height", downsampled_height);
                     shaders->SetUniformFloat("src_lod", 4.0f);
                     textures->bindTexture(final_texture);
-                    graphics->framebufferColorTexture2D(temp_texture, 4);
-                    graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    graphics->BindRenderTarget(temp_texture, 4);
+                    draw_quad();
                 }
                 graphics->setViewport(0, 0, graphics->render_dims[0], graphics->render_dims[1]);
             }
@@ -2661,8 +2681,8 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                 textures->bindTexture(temp_texture, 2);
                 textures->bindTexture(graphics->pure_noise_ref, TEX_PURE_NOISE);
                 textures->bindTexture(graphics->screen_depth_tex, TEX_SCREEN_DEPTH);
-                graphics->framebufferColorTexture2D(graphics->screen_vel_tex);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                graphics->BindRenderTarget(graphics->screen_vel_tex);
+                draw_quad();
                 final_texture = graphics->screen_vel_tex;
             }
         }
@@ -2688,14 +2708,14 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
             textures->bindTexture(final_texture);
             textures->bindTexture(graphics->pure_noise_ref, TEX_PURE_NOISE);
             textures->bindTexture(graphics->screen_depth_tex, TEX_SCREEN_DEPTH);
-            graphics->framebufferColorTexture2D(temp_texture);
-            graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            graphics->BindRenderTarget(temp_texture);
+            draw_quad();
 
             shader_id = shaders->returnProgram(post_shader + " #COPY");
 
             textures->bindTexture(temp_texture);
-            graphics->framebufferColorTexture2D(final_texture);
-            graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            graphics->BindRenderTarget(final_texture);
+            draw_quad();
         }
 
         CHECK_GL_ERROR();
@@ -2716,8 +2736,8 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
             shaders->SetUniformVec3("tint", camera->tint);
             shaders->SetUniformVec3("vignette_tint", camera->vignette_tint);
             textures->bindTexture(final_texture);
-            graphics->framebufferColorTexture2D(graphics->post_effects.tone_mapped_tex);
-            graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            graphics->BindRenderTarget(graphics->post_effects.tone_mapped_tex);
+            draw_quad();
             final_texture = graphics->post_effects.tone_mapped_tex;
         }
 
@@ -2728,7 +2748,6 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
             int intermediate_width = graphics->render_dims[0] / 4;
             int intermediate_height = graphics->render_dims[1] / 4;
             graphics->setViewport(0, 0, intermediate_width, intermediate_height);
-            graphics->bindFramebuffer(graphics->post_effects.post_framebuffer);
 
             {  // Isolate pixels that are brighter than pure white
                 int shader_id = shaders->returnProgram(post_shader + " #DOWNSAMPLE #OVERBRIGHT");
@@ -2745,8 +2764,8 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                 shaders->SetUniformFloat("bloom_mult", graphics->hdr_bloom_mult);
                 shaders->SetUniformFloat("src_lod", 0.0f);
                 textures->bindTexture(final_texture);
-                graphics->framebufferColorTexture2D(temp_texture, 2);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                graphics->BindRenderTarget(temp_texture, 2);
+                draw_quad();
             }
 
             {
@@ -2758,29 +2777,28 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
 
                 shaders->SetUniformInt("horz", 1);
                 textures->bindTexture(temp_texture);
-                graphics->framebufferColorTexture2D(final_texture, 2);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                graphics->BindRenderTarget(final_texture, 2);
+                draw_quad();
 
                 shaders->SetUniformInt("horz", 0);
                 textures->bindTexture(final_texture);
-                graphics->framebufferColorTexture2D(temp_texture, 2);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                graphics->BindRenderTarget(temp_texture, 2);
+                draw_quad();
             }
 
             // Downsample bloom again
             int downsampled_width = graphics->render_dims[0] / 16;
             int downsampled_height = graphics->render_dims[1] / 16;
             graphics->setViewport(0, 0, downsampled_width, downsampled_height);
-            graphics->bindFramebuffer(graphics->post_effects.post_framebuffer);
             {
                 int shader_id = shaders->returnProgram(post_shader + " #DOWNSAMPLE");
                 shaders->setProgram(shader_id);
                 shaders->SetUniformInt("screen_width", intermediate_width);
                 shaders->SetUniformInt("screen_height", intermediate_height);
-                shaders->SetUniformFloat("src_lod", 2.0f);
-                textures->bindTexture(temp_texture);
-                graphics->framebufferColorTexture2D(temp_texture, 4);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                shaders->SetUniformFloat("src_lod", 0.0f);  // (level 2, through its view)
+                textures->bindTexture(textures->GetMipView(temp_texture, 2));
+                graphics->BindRenderTarget(temp_texture, 4);
+                draw_quad();
             }
 
             // Apply separable guassian blur to further down-sampled overbright image
@@ -2793,13 +2811,13 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
 
                 shaders->SetUniformInt("horz", 1);
                 textures->bindTexture(temp_texture);
-                graphics->framebufferColorTexture2D(final_texture, 4);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                graphics->BindRenderTarget(final_texture, 4);
+                draw_quad();
 
                 shaders->SetUniformInt("horz", 0);
                 textures->bindTexture(final_texture);
-                graphics->framebufferColorTexture2D(temp_texture, 4);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                graphics->BindRenderTarget(temp_texture, 4);
+                draw_quad();
             }
 
             // Add downsampled and super downsampled bloom to the original tone-mapped image
@@ -2809,14 +2827,15 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                 shaders->setProgram(shader_id);
                 textures->bindTexture(final_texture, TEX_TONE_MAPPED);
                 textures->bindTexture(temp_texture, TEX_INTERMEDIATE);
-                graphics->framebufferColorTexture2D(final_texture);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                graphics->BindRenderTarget(final_texture);
+                glTextureBarrier();  // (each pixel reads the texel it writes: defined after a barrier)
+                draw_quad();
             }
             // final_texture = temp_texture;
         }
         const bool kMinZDepth = false;
         if (kMinZDepth) {
-            glColorMask(false, false, false, false);
+            Graphics::Instance()->setColorMask(false, false, false, false);
             graphics->setDepthWrite(true);
             graphics->setDepthTest(true);
             graphics->setDepthFunc(GL_ALWAYS);
@@ -2831,15 +2850,13 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                 height = max(1, height / 2);
                 ++level;
                 graphics->setViewport(0, 0, width, height);
-                graphics->bindFramebuffer(graphics->post_effects.post_framebuffer);
                 shaders->SetUniformInt("screen_width", width);
                 shaders->SetUniformInt("screen_height", height);
                 shaders->SetUniformFloat("src_lod", (float)(level - 1));
-                graphics->framebufferColorTexture2D(final_texture, level);
-                graphics->framebufferDepthTexture2D(graphics->screen_depth_tex, level);
-                graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                graphics->BindRenderTarget(final_texture, level, graphics->screen_depth_tex, level);
+                draw_quad();
             }
-            glColorMask(true, true, true, true);
+            Graphics::Instance()->setColorMask(true, true, true, true);
             graphics->setDepthWrite(false);
             graphics->setDepthTest(false);
             graphics->setDepthFunc(GL_LEQUAL);
@@ -2865,7 +2882,7 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
             assert(sizeof(temp_viewport_dims) == sizeof(graphics->viewport_dim));
             memcpy(temp_viewport_dims, graphics->viewport_dim, sizeof(temp_viewport_dims));
             graphics->setViewport((GLint)0.0f, (GLint)0.0f, (GLint)graphics->window_dims[0], (GLint)graphics->window_dims[1]);
-            glEnable(GL_SCISSOR_TEST);
+            Graphics::Instance()->setScissorTest(true);
             glScissor(temp_viewport_dims[0], temp_viewport_dims[1], temp_viewport_dims[2], temp_viewport_dims[3]);
             shaders->SetUniformInt("screen_width", graphics->config_.screen_width());
             shaders->SetUniformInt("screen_height", graphics->config_.screen_height());
@@ -2900,9 +2917,10 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
             // so for now, we do gamma correction in the shader
             // via #GAMMA_CORRECT_OUTPUT
             // glEnable(GL_FRAMEBUFFER_SRGB );
-            graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            draw_quad();
             // glDisable(GL_FRAMEBUFFER_SRGB );
         }
+        graphics->EndVertexLayout();
         graphics->PopViewport();
         graphics->ResetVertexAttribArrays();
     }
@@ -3060,6 +3078,20 @@ void Engine::LoadScreenLoop(bool loading_in_progress) {
     }
 }
 
+// Overgrowth Online (GL 4.6 stage 2.4): simple_2d's textured quad, corner and uv
+// interleaved (4 floats a vertex); draw it, then EndVertexLayout
+static void BeginTexturedQuad(int shader_id, const VBOContainer& vert_vbo, const VBOContainer& index_vbo) {
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 2, GL_FLOAT, GL_FALSE, 0);
+        layout.Add("tex_coord", 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+    }
+    GLuint buffers[2] = {vert_vbo.id(), vert_vbo.id()};
+    GLintptr offsets[2] = {0, 0};
+    GLsizei strides[2] = {4 * sizeof(GLfloat), 4 * sizeof(GLfloat)};
+    Graphics::Instance()->BeginVertexLayout(layout, shader_id, vert_vbo.valid() ? 3u : 0u, buffers, offsets, strides, index_vbo.id());
+}
+
 void Engine::DrawLoadScreen(bool loading_in_progress) {
 #ifndef GLDEBUG
     // don't draw loading screen on gl debug
@@ -3090,8 +3122,6 @@ void Engine::DrawLoadScreen(bool loading_in_progress) {
 
             int shader_id = shaders->returnProgram("simple_2d #TEXTURE #FLIPPED #LEVEL_SCREENSHOT");
             shaders->createProgram(shader_id);
-            int shader_attrib_vert_coord = shaders->returnShaderAttrib("vert_coord", shader_id);
-            int shader_attrib_tex_coord = shaders->returnShaderAttrib("tex_coord", shader_id);
             int uniform_mvp_mat = shaders->returnShaderVariable("mvp_mat", shader_id);
             int uniform_color = shaders->returnShaderVariable("color", shader_id);
             shaders->setProgram(shader_id);
@@ -3106,7 +3136,7 @@ void Engine::DrawLoadScreen(bool loading_in_progress) {
             CHECK_GL_ERROR();
 
             glm::mat4 proj_mat;
-            proj_mat = glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]);
+            proj_mat = ReverseZ(glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]));
             glm::mat4 modelview_mat(1.0f);
             vec2 where;
             vec2 size(Textures::Instance()->getWidth(level_screenshot->GetTextureRef()),
@@ -3121,10 +3151,6 @@ void Engine::DrawLoadScreen(bool loading_in_progress) {
             glm::mat4 mvp_mat = proj_mat * modelview_mat;
             CHECK_GL_ERROR();
 
-            graphics->EnableVertexAttribArray(shader_attrib_vert_coord);
-            CHECK_GL_ERROR();
-            graphics->EnableVertexAttribArray(shader_attrib_tex_coord);
-            CHECK_GL_ERROR();
             static const GLfloat verts[] = {
                 0, 0, 0, 0,
                 1, 0, 1, 0,
@@ -3141,25 +3167,21 @@ void Engine::DrawLoadScreen(bool loading_in_progress) {
                 index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(indices), (void*)indices);
                 vbo_filled = true;
             }
-            vert_vbo.Bind();
-            index_vbo.Bind();
-
-            glVertexAttribPointer(shader_attrib_vert_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), 0);
-            CHECK_GL_ERROR();
-            glVertexAttribPointer(shader_attrib_tex_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)(sizeof(GL_FLOAT) * 2));
+            BeginTexturedQuad(shader_id, vert_vbo, index_vbo);
             CHECK_GL_ERROR();
 
             int num_indices = 6;
 
-            glUniformMatrix4fv(uniform_mvp_mat, 1, false, (GLfloat*)&mvp_mat);
+            Shaders::Instance()->SetUniformMat4(uniform_mvp_mat, (GLfloat*)&mvp_mat);  // (Overgrowth Online 3.4: through Shaders, a default-block member on the Vulkan build)
             CHECK_GL_ERROR();
             vec4 color(base_color, 1.0f);
-            glUniform4fv(uniform_color, 1, &color[0]);
+            Shaders::Instance()->SetUniformVec4(uniform_color, &color[0]);
             CHECK_GL_ERROR();
 
             Textures::Instance()->bindTexture(level_screenshot, 0);
             CHECK_GL_ERROR();
             graphics->DrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, 0);
+            graphics->EndVertexLayout();
             CHECK_GL_ERROR();
 
             graphics->BindElementVBO(0);
@@ -3177,8 +3199,6 @@ void Engine::DrawLoadScreen(bool loading_in_progress) {
 
             int shader_id = shaders->returnProgram("simple_2d #TEXTURE #FLIPPED #LOADING_LOGO");
             shaders->createProgram(shader_id);
-            int shader_attrib_vert_coord = shaders->returnShaderAttrib("vert_coord", shader_id);
-            int shader_attrib_tex_coord = shaders->returnShaderAttrib("tex_coord", shader_id);
             int uniform_mvp_mat = shaders->returnShaderVariable("mvp_mat", shader_id);
             int uniform_color = shaders->returnShaderVariable("color", shader_id);
             int uniform_time = shaders->returnShaderVariable("time", shader_id);
@@ -3194,7 +3214,7 @@ void Engine::DrawLoadScreen(bool loading_in_progress) {
             CHECK_GL_ERROR();
 
             glm::mat4 proj_mat;
-            proj_mat = glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]);
+            proj_mat = ReverseZ(glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]));
             glm::mat4 modelview_mat(1.0f);
             vec2 where;
             vec2 size(graphics->window_dims[1] * 0.1f);
@@ -3206,10 +3226,6 @@ void Engine::DrawLoadScreen(bool loading_in_progress) {
             glm::mat4 mvp_mat = proj_mat * modelview_mat;
             CHECK_GL_ERROR();
 
-            graphics->EnableVertexAttribArray(shader_attrib_vert_coord);
-            CHECK_GL_ERROR();
-            graphics->EnableVertexAttribArray(shader_attrib_tex_coord);
-            CHECK_GL_ERROR();
             static const GLfloat verts[] = {
                 0, 0, 0, 0,
                 1, 0, 1, 0,
@@ -3226,26 +3242,22 @@ void Engine::DrawLoadScreen(bool loading_in_progress) {
                 index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(indices), (void*)indices);
                 vbo_filled = true;
             }
-            vert_vbo.Bind();
-            index_vbo.Bind();
-
-            glVertexAttribPointer(shader_attrib_vert_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), 0);
-            CHECK_GL_ERROR();
-            glVertexAttribPointer(shader_attrib_tex_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)(sizeof(GL_FLOAT) * 2));
+            BeginTexturedQuad(shader_id, vert_vbo, index_vbo);
             CHECK_GL_ERROR();
 
             int num_indices = 6;
 
-            glUniformMatrix4fv(uniform_mvp_mat, 1, false, (GLfloat*)&mvp_mat);
+            Shaders::Instance()->SetUniformMat4(uniform_mvp_mat, (GLfloat*)&mvp_mat);
             CHECK_GL_ERROR();
             vec4 color(base_color, 1.0f);
-            glUniform4fv(uniform_color, 1, &color[0]);
-            glUniform1f(uniform_time, SDL_GetTicks() / 1000.0f);
+            Shaders::Instance()->SetUniformVec4(uniform_color, &color[0]);
+            Shaders::Instance()->SetUniformFloat(uniform_time, SDL_GetTicks() / 1000.0f);
             CHECK_GL_ERROR();
 
             Textures::Instance()->bindTexture(loading_screen_og_logo->GetTextureRef(), 0);
             CHECK_GL_ERROR();
             graphics->DrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, 0);
+            graphics->EndVertexLayout();
             CHECK_GL_ERROR();
 
             graphics->BindElementVBO(0);
@@ -3454,13 +3466,16 @@ void DrawShadowCache(const mat4& proj_view_matrix, const char* special) {
     int shader_id = shaders->returnProgram(shader_name);
     shaders->setProgram(shader_id);
     shaders->SetUniformMat4("projection_view_mat", proj_view_matrix);
-    int vert_attrib_id = shaders->returnShaderAttrib("vert", shader_id);
 
-    shadow_cache_verts_vbo.Bind();
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 0, 0);
-    shadow_cache_indices_vbo.Bind();
+    // Overgrowth Online (GL 4.6 stage 2.4): the cache's positions
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert", 0, 3);
+    }
+    VBOContainer* vbos[1] = {&shadow_cache_verts_vbo};
+    graphics->BeginVertexLayout(layout, shader_id, vbos, shadow_cache_indices_vbo.id());
     graphics->DrawElements(GL_TRIANGLES, shadow_cache_indices.size(), GL_UNSIGNED_INT, 0);
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
 }
 
@@ -3574,12 +3589,12 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
         int num_shadow_view_frustum_planes = 6;
         vec4 shadow_view_frustum_planes[6];
         CHECK_GL_ERROR();
-        glColorMask(0, 0, 0, 0);
+        Graphics::Instance()->setColorMask(0, 0, 0, 0);
         graphics->drawing_shadow = true;
         graphics->PushFramebuffer();
         graphics->bindFramebuffer(graphics->static_shadow_fb);
         graphics->PushViewport();
-        glEnable(GL_SCISSOR_TEST);
+        Graphics::Instance()->setScissorTest(true);
         float shadow_size = max(bounds[2] - bounds[0], bounds[3] - bounds[1]);
         // float shadow_radius = shadow_size / 1.414213563731f / 2.0f; // Get radius of circle inscribed in square with sides 'shadow_size'
         vec3 shadow_center = (bounds[0] + bounds[2]) * 0.5f * light_to_world_basis[0] + (bounds[1] + bounds[3]) * 0.5f * light_to_world_basis[1];
@@ -3608,11 +3623,11 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
             }
         }
         scenegraph->DrawDepthMap(proj_view_matrix, shadow_view_frustum_planes, num_shadow_view_frustum_planes, SceneGraph::kDepthShadow, SceneGraph::kStaticOnly);
-        glDisable(GL_SCISSOR_TEST);
+        Graphics::Instance()->setScissorTest(false);
         graphics->PopViewport();
         graphics->PopFramebuffer();
         graphics->drawing_shadow = false;
-        glColorMask(1, 1, 1, 1);
+        Graphics::Instance()->setColorMask(1, 1, 1, 1);
     }
 
     if (false) {  // Create shadow cache VBO of only triangles that affect shadows
@@ -3693,15 +3708,15 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
                     camera->applyShadowViewpoint(light_dir, shadow_center, shadow_sizes[cascade], &proj, &view);
                     mat4 proj_view_matrix = proj * view;
                     // Draw triangle ids as color to RGB channels
-                    glColorMask(1, 1, 1, 0);
+                    Graphics::Instance()->setColorMask(1, 1, 1, 0);
                     graphics->setDepthFunc(GL_LESS);
                     DrawShadowCache(proj_view_matrix, " #TRI_COLOR");
                     // Draw to alpha channel if there is another fragment behind the front one
-                    glColorMask(0, 0, 0, 1);
+                    Graphics::Instance()->setColorMask(0, 0, 0, 1);
                     graphics->setDepthFunc(GL_GREATER);
                     DrawShadowCache(proj_view_matrix, "");
                     // Calculate visible tris on GPU
-                    glColorMask(1, 1, 1, 1);
+                    Graphics::Instance()->setColorMask(1, 1, 1, 1);
                     graphics->setBlend(true);
                     graphics->bindFramebuffer(cascade_tri_visible_fb);
                     graphics->setViewport(0, 0, render_size, render_size);
@@ -3709,11 +3724,15 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
                     shaders->SetUniformInt("output_width", render_size);
                     shaders->SetUniformInt("output_height", render_size);
                     textures->bindTexture(graphics->cascade_shadow_color_ref);
-                    pixel_vbo.Bind();
-                    int vert_attrib_id = shaders->returnShaderAttrib("pixel_uv", tri_visible_shader_id);
-                    graphics->EnableVertexAttribArray(vert_attrib_id);
-                    glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
-                    glDrawArrays(GL_POINTS, 0, render_size * render_size);
+                    // Overgrowth Online (GL 4.6 stage 2.4): one texel uv per point
+                    static VertexLayout layout;
+                    if (layout.Count() == 0) {
+                        layout.Add("pixel_uv", 0, 2);
+                    }
+                    VBOContainer* vbos[1] = {&pixel_vbo};
+                    graphics->BeginVertexLayout(layout, tri_visible_shader_id, vbos, 0);
+                    graphics->DrawArrays(GL_POINTS, 0, render_size * render_size);
+                    graphics->EndVertexLayout();
                     graphics->ResetVertexAttribArrays();
                 }
             }
@@ -3741,7 +3760,7 @@ static bool UpdateShadowCache(SceneGraph* scenegraph) {
                 delete[] pixels;
                 LOGI << "NUM GPU TRIS: " << num_tris << std::endl;
             }
-            glColorMask(1, 1, 1, 1);
+            Graphics::Instance()->setColorMask(1, 1, 1, 1);
             std::vector<GLuint> new_shadow_cache_indices;
             for (size_t i = 0, index = 0, len = visible_gpu.size(); i < len; ++i, index += 3) {
                 if (visible_gpu[i]) {
@@ -3877,13 +3896,13 @@ void GetShadowableTris(SceneGraph* scenegraph) {
     int num_shadow_view_frustum_planes = 6;
     vec4 shadow_view_frustum_planes[6];
     CHECK_GL_ERROR();
-    glColorMask(1, 1, 1, 1);
+    Graphics::Instance()->setColorMask(1, 1, 1, 1);
     graphics->drawing_shadow = true;
     graphics->PushFramebuffer();
     graphics->bindFramebuffer(graphics->cascade_shadow_fb);
     graphics->PushViewport();
     graphics->setViewport(0, 0, graphics->cascade_shadow_res, graphics->cascade_shadow_res);
-    glEnable(GL_SCISSOR_TEST);
+    Graphics::Instance()->setScissorTest(true);
 
     for (int i = 0; i < NUM_SHADOW_CASCADES; ++i) {
         const uvec4& viewport = shadow_params.viewport[i];
@@ -3906,11 +3925,11 @@ void GetShadowableTris(SceneGraph* scenegraph) {
         }
     }
 
-    glDisable(GL_SCISSOR_TEST);
+    Graphics::Instance()->setScissorTest(false);
     graphics->PopViewport();
     graphics->PopFramebuffer();
     graphics->drawing_shadow = false;
-    glColorMask(1, 1, 1, 1);
+    Graphics::Instance()->setColorMask(1, 1, 1, 1);
 }
 
 float last_shadow_update_time = 0.0f;
@@ -3940,10 +3959,11 @@ static void UpdateShadowCascades(SceneGraph* scenegraph) {
     mat4 camera_view_mat = camera->GetViewMatrix();
     mat4 inv_camera_mat = invert(camera_proj_mat * camera_view_mat);
     vec3 camera_corner_dir[4];
-    camera_corner_dir[0] = inv_camera_mat * vec3(-1.0f, -1.0f, 1.0f);
-    camera_corner_dir[1] = inv_camera_mat * vec3(1.0f, -1.0f, 1.0f);
-    camera_corner_dir[2] = inv_camera_mat * vec3(1.0f, 1.0f, 1.0f);
-    camera_corner_dir[3] = inv_camera_mat * vec3(-1.0f, 1.0f, 1.0f);
+    // (reversed-Z: depth 0 is infinitely far, where the corners are directions)
+    camera_corner_dir[0] = inv_camera_mat * vec3(-1.0f, -1.0f, 0.0f);
+    camera_corner_dir[1] = inv_camera_mat * vec3(1.0f, -1.0f, 0.0f);
+    camera_corner_dir[2] = inv_camera_mat * vec3(1.0f, 1.0f, 0.0f);
+    camera_corner_dir[3] = inv_camera_mat * vec3(-1.0f, 1.0f, 0.0f);
     vec4 view_frustum_planes[6];
     for (int i = 0; i < 6; ++i) {
         for (int j = 0; j < 4; ++j) {
@@ -4083,13 +4103,13 @@ static void UpdateShadowCascades(SceneGraph* scenegraph) {
     // Make room for the shadow frustum planes for each cascade
     num_shadow_view_frustum_planes += 6;
     CHECK_GL_ERROR();
-    glColorMask(0, 0, 0, 0);
+    Graphics::Instance()->setColorMask(0, 0, 0, 0);
     graphics->drawing_shadow = true;
     graphics->PushFramebuffer();
     graphics->bindFramebuffer(graphics->cascade_shadow_fb);
     graphics->PushViewport();
     graphics->setViewport(0, 0, graphics->cascade_shadow_res, graphics->cascade_shadow_res);
-    glEnable(GL_SCISSOR_TEST);
+    Graphics::Instance()->setScissorTest(true);
 
     if (g_single_pass_shadow_cascade) {
         static GLuint shadow_cascade_ubo_id = 0;
@@ -4170,11 +4190,11 @@ static void UpdateShadowCascades(SceneGraph* scenegraph) {
         }
     }
 
-    glDisable(GL_SCISSOR_TEST);
+    Graphics::Instance()->setScissorTest(false);
     graphics->PopViewport();
     graphics->PopFramebuffer();
     graphics->drawing_shadow = false;
-    glColorMask(1, 1, 1, 1);
+    Graphics::Instance()->setColorMask(1, 1, 1, 1);
 }
 
 void ReadAverageColorsFromCubemap(vec3* avg_color, TextureRef cubemap) {
@@ -4543,7 +4563,7 @@ void Engine::Draw() {
                         Graphics::Instance()->genFramebuffers(&framebuffers[1], "cubemap_2");
                         initialized_framebuffers = true;
                     }
-                    glColorMask(true, true, true, true);
+                    Graphics::Instance()->setColorMask(true, true, true, true);
                     graphics->setViewport(0, 0, 128 * 6, 128);
                     for (size_t tex_index = 0, num_tex = textures.size(); tex_index < num_tex; ++tex_index) {
                         TextureRef tex = textures[tex_index];
@@ -4566,7 +4586,7 @@ void Engine::Draw() {
                                 CHECK_GL_ERROR();
                                 glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffers[1]);
                                 CHECK_GL_ERROR();
-                                glDisable(GL_SCISSOR_TEST);
+                                Graphics::Instance()->setScissorTest(false);
                                 glBlitFramebuffer(0, 0, width, height, width * i, 0, width * i + width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
                                 glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                                 CHECK_GL_ERROR();
@@ -4885,8 +4905,6 @@ void Engine::Draw() {
 
             int shader_id = shaders->returnProgram("simple_2d #TEXTURE #FLIPPED #LEVEL_SCREENSHOT");
             shaders->createProgram(shader_id);
-            int shader_attrib_vert_coord = shaders->returnShaderAttrib("vert_coord", shader_id);
-            int shader_attrib_tex_coord = shaders->returnShaderAttrib("tex_coord", shader_id);
             int uniform_mvp_mat = shaders->returnShaderVariable("mvp_mat", shader_id);
             int uniform_color = shaders->returnShaderVariable("color", shader_id);
             shaders->setProgram(shader_id);
@@ -4901,7 +4919,7 @@ void Engine::Draw() {
             CHECK_GL_ERROR();
 
             glm::mat4 proj_mat;
-            proj_mat = glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]);
+            proj_mat = ReverseZ(glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]));
             glm::mat4 modelview_mat(1.0f);
             vec2 where;
             vec2 size(Textures::Instance()->getWidth(level_screenshot->GetTextureRef()),
@@ -4916,10 +4934,6 @@ void Engine::Draw() {
             glm::mat4 mvp_mat = proj_mat * modelview_mat;
             CHECK_GL_ERROR();
 
-            graphics->EnableVertexAttribArray(shader_attrib_vert_coord);
-            CHECK_GL_ERROR();
-            graphics->EnableVertexAttribArray(shader_attrib_tex_coord);
-            CHECK_GL_ERROR();
             static const GLfloat verts[] = {
                 0, 0, 0, 0,
                 1, 0, 1, 0,
@@ -4936,28 +4950,24 @@ void Engine::Draw() {
                 index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(indices), (void*)indices);
                 vbo_filled = true;
             }
-            vert_vbo.Bind();
-            index_vbo.Bind();
-
-            glVertexAttribPointer(shader_attrib_vert_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), 0);
-            CHECK_GL_ERROR();
-            glVertexAttribPointer(shader_attrib_tex_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)(sizeof(GL_FLOAT) * 2));
+            BeginTexturedQuad(shader_id, vert_vbo, index_vbo);
             CHECK_GL_ERROR();
 
             int num_indices = 6;
 
-            glUniformMatrix4fv(uniform_mvp_mat, 1, false, (GLfloat*)&mvp_mat);
+            Shaders::Instance()->SetUniformMat4(uniform_mvp_mat, (GLfloat*)&mvp_mat);
             CHECK_GL_ERROR();
             vec4 color(1.0f);
             if (!waiting_for_input_) {
                 color[3] = 1.0f - (SDL_TS_GetTicks() - first_level_drawn) / fade_ticks;
             }
-            glUniform4fv(uniform_color, 1, &color[0]);
+            Shaders::Instance()->SetUniformVec4(uniform_color, &color[0]);
             CHECK_GL_ERROR();
 
             Textures::Instance()->bindTexture(level_screenshot, 0);
             CHECK_GL_ERROR();
             graphics->DrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, 0);
+            graphics->EndVertexLayout();
             CHECK_GL_ERROR();
 
             graphics->BindElementVBO(0);
@@ -5071,6 +5081,8 @@ void Engine::Draw() {
                               vr_proj_mat.m[0][1], vr_proj_mat.m[1][1], vr_proj_mat.m[2][1], vr_proj_mat.m[3][1],
                               vr_proj_mat.m[0][2], vr_proj_mat.m[1][2], vr_proj_mat.m[2][2], vr_proj_mat.m[3][2],
                               vr_proj_mat.m[0][3], vr_proj_mat.m[1][3], vr_proj_mat.m[2][3], vr_proj_mat.m[3][3]);
+
+                proj_mat = ReverseZ(proj_mat);  // (reversed-Z; OpenVR gives the GL way)
 
                 mat4 eye_mat(vr_eye_mat.m[0][0], vr_eye_mat.m[1][0], vr_eye_mat.m[2][0], 0.0,
                              vr_eye_mat.m[0][1], vr_eye_mat.m[1][1], vr_eye_mat.m[2][1], 0.0,

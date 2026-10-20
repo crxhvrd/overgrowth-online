@@ -15,7 +15,9 @@
 //-----------------------------------------------------------------------------
 #version 150
 #extension GL_ARB_shading_language_420pack : enable
-in vec3 normal_frag;
+#ifdef HAS_GEOM
+in vec3 normal_frag;  // (from the geometry stage: only the nav mesh's variant has one)
+#endif
 #ifndef HAS_GEOM 
     #define position_frag world_position
 #endif

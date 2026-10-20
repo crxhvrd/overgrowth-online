@@ -685,45 +685,17 @@ static void DrawItemModel(Model& model, Graphics* graphics, Shaders* shaders, in
     if (!model.vbo_loaded) {
         model.createVBO();
     }
-    model.VBO_faces.Bind();
-    static const int kNumAttribs = 3;
-    int attrib_ids[kNumAttribs];
-    for (int i = 0; i < kNumAttribs; ++i) {
-        const char* attrib_str;
-        int num_el;
-        VBOContainer* vbo;
-        switch (i) {
-            case 0:
-                attrib_str = "vertex_attrib";
-                num_el = 3;
-                vbo = &model.VBO_vertices;
-                break;
-            case 1:
-                attrib_str = "tex_coord_attrib";
-                num_el = 2;
-                vbo = &model.VBO_tex_coords;
-                break;
-            case 2:
-                attrib_str = "normal_attrib";
-                num_el = 3;
-                vbo = &model.VBO_normals;
-                break;
-            default:
-                __builtin_unreachable();
-                break;
-        }
-        CHECK_GL_ERROR();
-        attrib_ids[i] = shaders->returnShaderAttrib(attrib_str, shader);
-        CHECK_GL_ERROR();
-        if (attrib_ids[i] != -1) {
-            vbo->Bind();
-            graphics->EnableVertexAttribArray(attrib_ids[i]);
-            CHECK_GL_ERROR();
-            glVertexAttribPointer(attrib_ids[i], num_el, GL_FLOAT, false, num_el * sizeof(GLfloat), 0);
-            CHECK_GL_ERROR();
-        }
+    // Overgrowth Online (GL 4.6 stage 2.4): the item layout
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vertex_attrib", 0, 3);
+        layout.Add("tex_coord_attrib", 1, 2);
+        layout.Add("normal_attrib", 2, 3);
     }
+    VBOContainer* vbos[3] = {&model.VBO_vertices, &model.VBO_tex_coords, &model.VBO_normals};
+    graphics->BeginVertexLayout(layout, shader, vbos, model.VBO_faces.id());
     graphics->DrawElements(GL_TRIANGLES, model.faces.size(), GL_UNSIGNED_INT, 0);
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
     graphics->BindArrayVBO(0);
     graphics->BindElementVBO(0);

@@ -23,6 +23,7 @@
 //-----------------------------------------------------------------------------
 #include "flares.h"
 
+#include <Graphics/reversez.h>
 #include <Graphics/shaders.h>
 #include <Graphics/graphics.h>
 #include <Graphics/camera.h>
@@ -279,7 +280,8 @@ void Flares::OcclusionQuery(int which) {
                     if (flare->distant) {
                         modelview = glm::translate(modelview, glm::vec3(projected[0], projected[1], -99.9f));
                     } else {
-                        modelview = glm::translate(modelview, glm::vec3(projected[0], projected[1], projected[2] * -200.0f + 100.0f));
+                        // (reversed-Z: the ortho below puts eye z 200 * depth - 100 at that depth)
+                        modelview = glm::translate(modelview, glm::vec3(projected[0], projected[1], projected[2] * 200.0f - 100.0f));
                     }
                     CHECK_GL_ERROR();
                     modelview = glm::scale(modelview, glm::vec3(_occlusion_size * 0.5f, _occlusion_size * 0.5f, 1.0f));
@@ -319,7 +321,7 @@ void Flares::Draw(Flares::FlareType flare_type) {
     Shaders::Instance()->setProgram(shader_id);
     // Set viewport projection matrix
     glm::mat4 proj;
-    proj = glm::ortho(0.0f, (float)graphics->viewport_dim[2], 0.0f, (float)graphics->viewport_dim[3], -100.0f, 100.0f);
+    proj = ReverseZ(glm::ortho(0.0f, (float)graphics->viewport_dim[2], 0.0f, (float)graphics->viewport_dim[3], -100.0f, 100.0f));
     shaders->SetUniformMat4("proj_mat", (const GLfloat*)&proj);
     // Make sure quad-drawing VBOs are filled
     static const GLfloat data[] = {
@@ -335,17 +337,19 @@ void Flares::Draw(Flares::FlareType flare_type) {
         index_vbo.Fill(kVBOStatic | kVBOElement, sizeof(index), (void*)index);
     }
     CHECK_GL_ERROR();
-    // Assign vertex attributes
-    int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shaders->bound_program);
-    int tex_attrib_id = shaders->returnShaderAttrib("tex_attrib", shaders->bound_program);
-    CHECK_GL_ERROR();
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    graphics->EnableVertexAttribArray(tex_attrib_id);
-    vert_vbo.Bind();
-    index_vbo.Bind();
-    CHECK_GL_ERROR();
-    glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void*)(sizeof(GLfloat) * 2));
-    glVertexAttribPointer(tex_attrib_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), 0);
+    // Overgrowth Online (GL 4.6 stage 2.4): the flare quad, interleaved
+    // (tex coord 2, vertex 2); bound for all the flares' draws
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_attrib", 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+        layout.Add("tex_attrib", 0, 2);
+    }
+    {
+        GLuint buffers[2] = {vert_vbo.id(), vert_vbo.id()};
+        GLintptr offsets[2] = {0, 0};
+        GLsizei strides[2] = {4 * sizeof(GLfloat), 4 * sizeof(GLfloat)};
+        graphics->BeginVertexLayout(layout, shaders->bound_program, 0x3, buffers, offsets, strides, index_vbo.id());
+    }
     CHECK_GL_ERROR();
 
     for (unsigned i = 0; i < flares.size(); i++) {
@@ -374,6 +378,7 @@ void Flares::Draw(Flares::FlareType flare_type) {
 
     // Reset vertex attribute state
     CHECK_GL_ERROR();
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
     CHECK_GL_ERROR();
     graphics->BindElementVBO(0);

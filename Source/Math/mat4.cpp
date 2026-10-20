@@ -695,11 +695,12 @@ void mat4::SetRotationEuler(const double angleX, const double angleY, const doub
     SetRotationPartEuler(angleX, angleY, angleZ);
 }
 
+// Overgrowth Online (GL 4.6 stage 4a): the projections are reversed-Z, clip z from w
+// at the near plane to 0 at the far one (see Graphics/reversez.h)
 void mat4::SetPerspectiveInfinite(float fovyInDegrees, float aspectRatio, float znear, float zfar) {
     float e = 1 / tanf(fovyInDegrees * ((float)PI / 180.0f) * 0.5f);
     float a = aspectRatio;
     float n = znear;
-    float epsilon = 0.000001f;
 
     entries[0] = e / a;
     entries[1] = 0.0f;
@@ -713,12 +714,12 @@ void mat4::SetPerspectiveInfinite(float fovyInDegrees, float aspectRatio, float 
 
     entries[8] = 0.0f;
     entries[9] = 0.0f;
-    entries[10] = epsilon - 1.0f;
+    entries[10] = 0.0f;  // (depth = near / distance: 1 at the near plane, 0 at infinity)
     entries[11] = -1.0f;
 
     entries[12] = 0.0f;
     entries[13] = 0.0f;
-    entries[14] = (epsilon - 2.0f) * n;
+    entries[14] = n;
     entries[15] = 0.0f;
 }
 
@@ -740,12 +741,12 @@ void mat4::SetPerspective(float fovyInDegrees, float aspectRatio, float znear, f
 
     entries[8] = 0.0f;
     entries[9] = 0.0f;
-    entries[10] = (-f - n) / (f - n);
+    entries[10] = n / (f - n);  // (1 at the near plane, 0 at the far one)
     entries[11] = -1.0f;
 
     entries[12] = 0.0f;
     entries[13] = 0.0f;
-    entries[14] = (-2.0f * f * n) / (f - n);
+    entries[14] = (f * n) / (f - n);
     entries[15] = 0.0f;
 }
 
@@ -762,12 +763,12 @@ void mat4::SetOrtho(float left, float right, float bottom, float top, float _nea
 
     entries[8] = 0.0f;
     entries[9] = 0.0f;
-    entries[10] = -2.0f / (_far - _near);
+    entries[10] = 1.0f / (_far - _near);  // (1 at the near plane, 0 at the far one)
     entries[11] = 0.0f;
 
     entries[12] = -(right + left) / (right - left);
     entries[13] = -(top + bottom) / (top - bottom);
-    entries[14] = -(_far + _near) / (_far - _near);
+    entries[14] = _far / (_far - _near);
     entries[15] = 1.0f;
 }
 

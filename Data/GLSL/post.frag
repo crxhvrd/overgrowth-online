@@ -39,8 +39,8 @@ out vec4 color;
 // 0 1.39 3.26 5.16 7.09
 // 0.218818 0.308159 0.076223 0.006057 0.000151
 
-uniform float offset[5] = float[]( 0, 1.39, 3.26, 5.16, 7.09 );
-uniform float weight[5] = float[]( 0.218818, 0.308159, 0.076223, 0.006057, 0.000151);
+const float offset[5] = float[]( 0, 1.39, 3.26, 5.16, 7.09 );  // (never set: a uniform's initial value is lost in a uniform block)
+const float weight[5] = float[]( 0.218818, 0.308159, 0.076223, 0.006057, 0.000151);
 
 uniform int screen_height;
 uniform int screen_width;
@@ -72,16 +72,19 @@ uniform float brightness;
 const float near = 0.1;
 const float far = 1000.0;
 
-float DistFromDepth(float depth) {   
-    return (near) / (far - depth * (far - near)) * far;
+// Overgrowth Online (GL 4.6 stage 4a): reversed-Z, depth = near / distance; the old
+// mapping of the distance is kept (depth of field and motion blur are tuned to it)
+float DistFromDepth(float depth) {
+    float d = near / max(depth, 0.0000001);
+    return far * d / (d + far - near);
 }
 
 vec4 ScreenCoordFromDepth(vec2 tex_uv, vec2 offset, out float distance) {
     float depth = textureLod( tex1, tex_uv + offset, 0.0 ).r;
     distance = DistFromDepth( depth );
-    return vec4((tex_uv[0] + offset[0]) * 2.0 - 1.0, 
-                (tex_uv[1] + offset[1]) * 2.0 - 1.0, 
-                depth * 2.0- 1.0, 
+    return vec4((tex_uv[0] + offset[0]) * 2.0 - 1.0,
+                (tex_uv[1] + offset[1]) * 2.0 - 1.0,
+                depth,  // (clip z is [0, 1]: reversed-Z)
                 1.0);
 }
 
@@ -191,7 +194,7 @@ void main(void)
                 textureLod( tex0, tex-vec2(0.0, offset[i]*pixel_height), src_lod )
                     * weight[i];
         }
-        color = FragmentColor;        
+        color = FragmentColor;
     }
 #elif defined(COPY)
     color = textureLod( tex0, tex, 0.0 );
@@ -258,15 +261,20 @@ void main(void)
            textureLod( tex0, tex + vec2(-pixel_width, -pixel_height), src_lod);
    color *= 0.25;
     #if defined(OVERBRIGHT)
-        color = max(vec4(0.0), color - vec4(1.0)) * bloom_mult;
+        // Overgrowth Online: the glow keeps the pixel's own colour, scaled by how far its
+        // brightest channel is over 1.0 (taken per channel, a sunset sky or a backlit ear is
+        // over in red only, and glowed pure red)
+        float peak = max(color.r, max(color.g, color.b));
+        color = vec4(color.rgb * (max(0.0, peak - 1.0) / max(peak, 0.0001)) * bloom_mult, 0.0);
     #endif
 #elif defined(DOWNSAMPLE_DEPTH)
     vec2 temp = gl_FragCoord.xy*2.0+vec2(0.5,0.5);
     vec2 dim = vec2(screen_width, screen_height)*2;
-    gl_FragDepth = min(              textureLod( tex0, (temp+vec2( 0.0, 0.0))/dim, src_lod).r, 
+    // (the nearest of the four: the greatest, reversed-Z)
+    gl_FragDepth = max(              textureLod( tex0, (temp+vec2( 0.0, 0.0))/dim, src_lod).r,
                                      textureLod( tex0, (temp+vec2(-1.0, 0.0))/dim, src_lod).r);
-    gl_FragDepth = min(gl_FragDepth, textureLod( tex0, (temp+vec2(-1.0,-1.0))/dim, src_lod).r);
-    gl_FragDepth = min(gl_FragDepth, textureLod( tex0, (temp+vec2( 0.0,-1.0))/dim, src_lod).r);
+    gl_FragDepth = max(gl_FragDepth, textureLod( tex0, (temp+vec2(-1.0,-1.0))/dim, src_lod).r);
+    gl_FragDepth = max(gl_FragDepth, textureLod( tex0, (temp+vec2( 0.0,-1.0))/dim, src_lod).r);
 #elif defined(TONE_MAP)
     //float temp_wp = 0.3;
     //float temp_bp = 0.002;
@@ -280,13 +288,13 @@ void main(void)
     for(int i=0; i<3; ++i){
         src_color[i] = pow(src_color[i], 1.0/2.2);
     }
-    
+
     // Luminosity grayscale method
     float avg = 0.21*src_color[0] + 0.72*src_color[1] + 0.07*src_color[2];
     src_color.xyz = mix(vec3(avg), src_color.xyz, saturation);
 
     color.w = 1.0;
-    color.xyz = max(vec3(0.0), (src_color.xyz - vec3(temp_bp)) * contrast);  
+    color.xyz = max(vec3(0.0), (src_color.xyz - vec3(temp_bp)) * contrast);
     for(int i=0; i<3; ++i){
         color[i] = pow(color[i], 2.2);
     }
@@ -301,7 +309,7 @@ void main(void)
         color.xyz *= mix(vec3(1.0), vignette_tint, vignette_opac);
     }
 
-    color.a = src_color.a;   
+    color.a = src_color.a;
 #elif defined(ADD)
     vec4 bloom = mix(textureLod(tex3, tex, 2.0) , textureLod(tex3, tex, 4.0), 0.5);
     color = textureLod(tex2, tex, 0.0) + bloom;
@@ -404,7 +412,7 @@ void main(void)
         float weight = 1.0;
         if(coord[0] >= 0.0 && coord[0] <= 1.0 && coord[1] >= 0.0 && coord[1] <= 1.0){
         } else {
-            weight *= 0.0001;   
+            weight *= 0.0001;
         }
         float sample_depth = DistFromDepth(textureLod( tex1, coord, 0.0).r);
         if(depth > 1.0){
@@ -429,7 +437,7 @@ void main(void)
         float weight = 1.0;
         if(coord[0] >= 0.0 && coord[0] <= 1.0 && coord[1] >= 0.0 && coord[1] <= 1.0){
         } else {
-            weight *= 0.0001;   
+            weight *= 0.0001;
         }
         float sample_depth = DistFromDepth(textureLod( tex1, coord, 0.0).r);
         if(abs(i) < temp){
@@ -470,7 +478,7 @@ void main(void)
         color[i] = pow(color[i], 1/2.2);
 #endif
     }
-    
+
 #endif
     // 0.2 to 1.8
     //vec2 buf = vec2(screen_width, screen_height);

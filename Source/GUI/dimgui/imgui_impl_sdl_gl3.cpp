@@ -107,6 +107,10 @@ void ImGui_ImplSdlGL3_RenderDrawLists(ImDrawData* draw_data) {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_SCISSOR_TEST);
     glActiveTexture(GL_TEXTURE0);
+    // Overgrowth Online: the textures' own parameters, not the engine's last sampler
+    GLint last_sampler;
+    glGetIntegerv(GL_SAMPLER_BINDING, &last_sampler);
+    glBindSampler(0, 0);
 
     // Setup orthographic projection matrix
     glViewport(0, 0, (GLsizei)fb_width, (GLsizei)fb_height);
@@ -147,6 +151,7 @@ void ImGui_ImplSdlGL3_RenderDrawLists(ImDrawData* draw_data) {
 
     // Restore modified GL state
     glUseProgram(last_program);
+    glBindSampler(0, last_sampler);
     glActiveTexture(last_active_texture);
     glBindTexture(GL_TEXTURE_2D, last_texture);
     glBindVertexArray(last_vertex_array);

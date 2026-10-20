@@ -79,19 +79,21 @@ void BoxSelector::Draw() {
     }
     shaders->setProgram(shader_id_);
     shaders->SetUniformMat4("mvp_mat", proj_matrix.entries);
-    int vert_attrib_id = shaders->returnShaderAttrib("vert_coord", shader_id_);
+    // Overgrowth Online (GL 4.6 stage 2.4): 2D corners
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 2);
+    }
     // Draw fill
     shaders->SetUniformVec4("color", fill_color);
-    fill_vbo_.Bind();
-    fill_index_vbo_.Bind();
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+    VBOContainer* fill_vbos[1] = {&fill_vbo_};
+    graphics->BeginVertexLayout(layout, shader_id_, fill_vbos, fill_index_vbo_.id());
     graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     // Draw edge
     shaders->SetUniformVec4("color", edge_color);
-    edge_vbo_.Bind();
-    edge_index_vbo_.Bind();
-    glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+    VBOContainer* edge_vbos[1] = {&edge_vbo_};
+    graphics->BeginVertexLayout(layout, shader_id_, edge_vbos, edge_index_vbo_.id());
     graphics->DrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0);
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
 }

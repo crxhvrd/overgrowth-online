@@ -29,6 +29,7 @@
 #include <Internal/crashreport.h>
 #include <UserInput/input.h>
 #include <Graphics/graphics.h>
+#include <Graphics/shaders.h>
 #include <Graphics/camera.h>
 #include <Graphics/frame_timers.h>
 #include <Internal/timer.h>
@@ -566,6 +567,35 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
             game_timer.render_time_frozen = true;
         }
         out["view"] = engine->view_override_;
+    } else if (cmd == "shader_check") {
+        // Overgrowth Online (GL 4.6 stage 3.1): compile and link these programs
+        // ({"programs": [[optional_shaders, name], ...]}), every failure back
+        Shaders* shaders = Shaders::Instance();
+        shaders->compile_failures.clear();
+        const Json::Value& list = req["programs"];
+        auto start = std::chrono::steady_clock::now();
+        Json::Value stages(Json::arrayValue);  // (each program's dumped stage files, with shader_debug)
+        static const char* kStageNames[] = {"vert", "frag", "geom", "tesc", "tese"};
+        for (const Json::Value& p : list) {
+            int id = shaders->returnProgram(p[1].asString(), (Shaders::OptionalShaders)p[0].asInt());
+            shaders->createProgram(id);
+            Json::Value files(Json::objectValue);
+            for (int t = 0; t < kMaxShaderTypes && t < 5; ++t) {
+                std::string dump = shaders->StageDumpName(id, t);
+                if (!dump.empty()) {
+                    files[kStageNames[t]] = dump;
+                }
+            }
+            stages.append(files);
+        }
+        out["stages"] = stages;
+        out["checked"] = (int)list.size();
+        out["ms"] = (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+        Json::Value fails(Json::arrayValue);
+        for (const std::string& f : shaders->compile_failures) {
+            fails.append(f);
+        }
+        out["failures"] = fails;
     } else if (cmd == "gl_problems") {
         // Overgrowth Online: the GL debug output's problems, each message with its count
         if (req.get("provoke", false).asBool()) {
@@ -629,15 +659,40 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         // (kind: thread, main, abort, stack); there is no reply
         LOGI << "test bridge: crashing (" << req.get("kind", "main").asString() << ")" << std::endl;
         CrashReportTestCrash(req.get("kind", "main").asString());
+    } else if (cmd == "camera_rays") {
+        // The camera's screen <-> world conventions (reversed-Z, stage 4a): the ray
+        // through the screen's centre should be the facing; a point ahead projects to
+        // the centre with depth in (0, 1]
+        if (!loaded) {
+            throw std::runtime_error("no level loaded");
+        }
+        Camera* cam = ActiveCameras::Get();
+        Graphics* g = Graphics::Instance();
+        auto v3 = [](const vec3& v) {
+            Json::Value a(Json::arrayValue);
+            a.append(v.x());
+            a.append(v.y());
+            a.append(v.z());
+            return a;
+        };
+        vec3 eye = invert(cam->GetViewMatrix()).GetTranslationPart();
+        out["facing"] = v3(cam->GetFacing());
+        out["center_ray"] = v3(cam->GetRayThroughPixel(g->window_dims[0] / 2, g->window_dims[1] / 2));
+        out["mouse_ray"] = v3(cam->GetMouseRay());
+        out["ahead_10m"] = v3(cam->worldToScreen(eye + cam->GetFacing() * 10.0f));
+        out["behind_10m"] = v3(cam->worldToScreen(eye - cam->GetFacing() * 10.0f));
+        out["window"] = v3(vec3((float)g->window_dims[0], (float)g->window_dims[1], 0.0f));
     } else if (cmd == "flares") {
-        // The lens flares this machine would draw now: [visible_mult, distant] each
-        // (the sun is one; an item's glint is "distant" only between glints, at 0)
+        // The lens flares this machine would draw now: [visible_mult, distant, visible] each
+        // (the sun is one; an item's glint is "distant" only between glints, at 0;
+        // visible = the occlusion query's share of the flare's quad seen)
         out["flares"] = Json::Value(Json::arrayValue);
         if (loaded) {
             for (Flare* f : sg->flares.flares) {
                 Json::Value e(Json::arrayValue);
                 e.append(f->visible_mult);
                 e.append(f->distant);
+                e.append(f->visible);
                 out["flares"].append(e);
             }
         }

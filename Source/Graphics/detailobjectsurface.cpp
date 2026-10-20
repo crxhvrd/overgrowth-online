@@ -521,6 +521,11 @@ void DetailObjectSurface::Draw(const mat4& transform, DetailObjectShaderType sha
 
     Textures::Instance()->bindTexture(graphics->screen_depth_tex, 18);
 
+    // Overgrowth Online: the decal atlas is never bound for detail objects; their
+    // decal sampler always read unit 0 (their own colour map), which is how grass
+    // over path and blood decals has always looked. Samplers get their own unit at
+    // link now (an empty one here: grass went dark), so it's pointed back at 0
+    shaders->SetUniformInt(shaders->GetTexUniform(TEX_DECAL_COLOR), 0);
     if (light_probe_collection->light_probe_buffer_object_id != -1) {
         shaders->SetUniformInt("num_tetrahedra", light_probe_collection->ShaderNumTetrahedra());
         shaders->SetUniformInt("num_light_probes", light_probe_collection->ShaderNumLightProbes());
@@ -552,22 +557,24 @@ void DetailObjectSurface::Draw(const mat4& transform, DetailObjectShaderType sha
 
     CHECK_GL_ERROR();
 
-    bm.vboc.Bind();
-    bm.vboc_el.Bind();
-    CHECK_GL_ERROR();
-    int shader_id = shaders->bound_program;
-    int attrib_ids[kNumAttribs];
-    for (int i = 0; i < kNumAttribs; ++i) {
-        CHECK_GL_ERROR();
-        attrib_ids[i] = shaders->returnShaderAttrib(attrib_labels[i], shader_id);
-        CHECK_GL_ERROR();
-        if (attrib_ids[i] != -1) {
-            graphics->EnableVertexAttribArray(attrib_ids[i]);
-            CHECK_GL_ERROR();
-            glVertexAttribPointer(attrib_ids[i], attrib_size[i], GL_FLOAT, false,
-                                  sizeof(BatchVertex), (void*)(sizeof(GLfloat) * attrib_offset[i]));
-            CHECK_GL_ERROR();
+    // Overgrowth Online (GL 4.6 stage 2.4): the batch's interleaved vertices
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        for (int i = 0; i < kNumAttribs; ++i) {
+            layout.Add(attrib_labels[i], 0, attrib_size[i], GL_FLOAT, GL_FALSE, sizeof(GLfloat) * attrib_offset[i]);
         }
+    }
+    int shader_id = shaders->bound_program;
+    {
+        GLuint buffers[kNumAttribs];
+        GLintptr offsets[kNumAttribs];
+        GLsizei strides[kNumAttribs];
+        for (int i = 0; i < kNumAttribs; ++i) {
+            buffers[i] = bm.vboc.id();
+            offsets[i] = 0;
+            strides[i] = sizeof(BatchVertex);
+        }
+        graphics->BeginVertexLayout(layout, shader_id, bm.vboc.valid() ? (1u << kNumAttribs) - 1 : 0, buffers, offsets, strides, bm.vboc_el.id());
     }
     CHECK_GL_ERROR();
     shaders->SetUniformMat4("model_mat", transform);
@@ -655,6 +662,7 @@ void DetailObjectSurface::Draw(const mat4& transform, DetailObjectShaderType sha
         }
     }
 
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
 
     CHECK_GL_ERROR();

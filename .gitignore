@@ -44,3 +44,5 @@ Build_steam/
 Proprietary/steamworks/
 test/release/
 test/references/
+test/builds/
+test/spirv/

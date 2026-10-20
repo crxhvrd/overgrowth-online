@@ -74,7 +74,6 @@ background_process_pool: false
 main_menu:              true
 debug_load_level:       Project60/16_red_desert.xml
 mouse_sensitivity:      0.5
-gpu_skinning:           false
 detail_objects:         1
 detail_objects_reduced: 0
 seamless_cubemaps:      true

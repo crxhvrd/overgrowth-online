@@ -440,30 +440,20 @@ out vec4 out_color;
     }
 #endif
 
+// Overgrowth Online (GL 4.6 stage 4a): reversed-Z, depth = near / distance (the
+// infinite projection: 1 at the near plane, 0 at infinity)
 float LinearizeDepth(float z) {
     float n = 0.1; // camera z near
-    float epsilon = 0.000001;
-    float z_scaled = z * 2.0 - 1.0; // Scale from 0 - 1 to -1 - 1
-    float B = (epsilon-2.0)*n;
-    float A = (epsilon - 1.0);
-    float result = B / (z_scaled + A);
-
-    if(result < 0.0){
-        result = 99999999.0;
+    if(z <= 0.0){
+        return 99999999.0;
     }
-
-    return result;
+    return n / z;
 }
 
 
 float UnLinearizeDepth(float result) {
     float n = 0.1; // camera z near
-    float epsilon = 0.000001;
-    float B = (epsilon-2.0)*n;
-    float A = (epsilon - 1.0);
-    float z_scaled = B / result - A;
-    float z = (z_scaled + 1.0) * 0.5;
-    return z;
+    return n / result;
 }
 //#endif
 //#endif
@@ -1164,7 +1154,7 @@ void main() {
                 #if !defined(NO_DECALS)
                     vec4 ndcPos;
                     ndcPos.xy = ((2.0 * gl_FragCoord.xy) - (2.0 * viewport.xy)) / (viewport.zw) - 1;
-                    ndcPos.z = 2.0 * gl_FragCoord.z - 1; // this assumes gl_DepthRange is not changed
+                    ndcPos.z = gl_FragCoord.z; // (clip z is [0, 1]: reversed-Z, stage 4a)
                     ndcPos.w = 1.0;
 
                     vec4 clipPos = ndcPos / gl_FragCoord.w;
@@ -1557,7 +1547,7 @@ void main() {
 
         #if defined(WIREFRAME)
             out_color = vec4(0.0,0.0,0.0,1.0);
-            gl_FragDepth = gl_FragCoord.z - 0.001 * gl_FragCoord.w;
+            gl_FragDepth = gl_FragCoord.z + 0.001 * gl_FragCoord.w;  // (nearer: reversed-Z)
 
             return;
         #endif
@@ -1572,7 +1562,7 @@ void main() {
 
         vec4 ndcPos;
         ndcPos.xy = ((2.0 * gl_FragCoord.xy) - (2.0 * viewport.xy)) / (viewport.zw) - 1;
-        ndcPos.z = 2.0 * gl_FragCoord.z - 1; // this assumes gl_DepthRange is not changed
+        ndcPos.z = gl_FragCoord.z; // (clip z is [0, 1]: reversed-Z, stage 4a)
         ndcPos.w = 1.0;
 
         vec4 clipPos = ndcPos / gl_FragCoord.w;
@@ -2958,8 +2948,7 @@ void main() {
                                 proj_test_point /= proj_test_point.w;
                                 proj_test_point.xy += vec2(1.0);
                                 proj_test_point.xy *= 0.5;
-                                proj_test_point.z = (proj_test_point.z + 1.0) * 0.5;
-                                proj_test_point.z = LinearizeDepth(proj_test_point.z);
+                                proj_test_point.z = LinearizeDepth(proj_test_point.z);  // (z is [0, 1] already: reversed-Z)
                                 float depth = LinearizeDepth(textureLod(tex18, proj_test_point.xy, 0.0).r);
                                 ++count;
 
@@ -2989,8 +2978,7 @@ void main() {
                                     proj_test_point /= proj_test_point.w;
                                     proj_test_point.xy += vec2(1.0);
                                     proj_test_point.xy *= 0.5;
-                                    proj_test_point.z = (proj_test_point.z + 1.0) * 0.5;
-                                    proj_test_point.z = LinearizeDepth(proj_test_point.z);
+                                    proj_test_point.z = LinearizeDepth(proj_test_point.z);  // (z is [0, 1] already: reversed-Z)
                                     float depth = LinearizeDepth(textureLod(tex18, proj_test_point.xy, 0.0).r);
                                     ++count;
 

@@ -127,12 +127,15 @@ void CubemapMipChain(TextureRef cube_map_tex_ref, Cubemap::HemisphereEnabled hem
                 data_vbo.Fill(kVBOFloat | kVBOStatic, sizeof(data), (void*)data);
                 index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(indices), (void*)indices);
             }
-            data_vbo.Bind();
-            index_vbo.Bind();
-            int vert_attrib_id = shaders->returnShaderAttrib("vertex", shader_id);
-            graphics->EnableVertexAttribArray(vert_attrib_id);
-            glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+            // Overgrowth Online (GL 4.6 stage 2.4): the screen quad (vec2 positions)
+            static VertexLayout layout;
+            if (layout.Count() == 0) {
+                layout.Add("vertex", 0, 2);
+            }
+            VBOContainer* vbos[1] = {&data_vbo};
+            graphics->BeginVertexLayout(layout, shader_id, vbos, index_vbo.id());
             graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            graphics->EndVertexLayout();
             graphics->ResetVertexAttribArrays();
             CHECK_GL_ERROR();
         }

@@ -66,6 +66,8 @@
 #define TEX_AMBIENT_GRID_DATA 11
 #define TEX_AMBIENT_COLOR_BUFFER 12
 
+#define TEX_BONES 20  // Overgrowth Online: GPU skinning's bones (a buffer texture over the frame ring)
+
 //-----------------------------------------------------------------------------
 // Class Definition
 //-----------------------------------------------------------------------------
@@ -78,6 +80,27 @@ const int _default_wrap = GL_REPEAT;
 const int _default_min = GL_LINEAR_MIPMAP_LINEAR;
 const int _default_max = GL_LINEAR;
 }  // namespace PhoenixTextures
+
+// Overgrowth Online (GL 4.6 stage 2.2): how a texture is sampled. Each distinct
+// state is one sampler object, bound with the texture. The texture's own
+// parameters are kept the same, for code that draws it with raw GL (ImGui)
+struct SamplerState {
+    GLint min_filter = GL_NEAREST_MIPMAP_LINEAR;  // (GL's defaults)
+    GLint mag_filter = GL_LINEAR;
+    GLint wrap_s = GL_REPEAT;
+    GLint wrap_t = GL_REPEAT;
+    GLint wrap_r = GL_REPEAT;
+    GLint compare_mode = GL_NONE;
+    GLint compare_func = GL_LEQUAL;
+    float lod_bias = 0.0f;
+    float max_anisotropy = 1.0f;
+
+    bool operator==(const SamplerState& o) const {
+        return min_filter == o.min_filter && mag_filter == o.mag_filter && wrap_s == o.wrap_s && wrap_t == o.wrap_t &&
+               wrap_r == o.wrap_r && compare_mode == o.compare_mode && compare_func == o.compare_func &&
+               lod_bias == o.lod_bias && max_anisotropy == o.max_anisotropy;
+    }
+};
 
 class TextureData;
 
@@ -102,6 +125,8 @@ struct Texture {
     GLuint gl_buffer_id;  // for texture buffers
     std::vector<SubTexture> sub_textures;
     GLuint wrap_t, wrap_s, min_filter, mag_filter;
+    SamplerState sampler;  // Overgrowth Online: what its parameters are (the sampler bound with it)
+    GLuint gl_sampler;     // that state's sampler object (0: looked up on the next bind)
     int ref_count;
     bool no_mipmap;
     bool no_reduce;
@@ -179,6 +204,20 @@ class Textures {
     void ReloadInternal();
     void TextureToVRAM(unsigned int which);
     void RebindTexture(int which_unit);
+    // Overgrowth Online (GL 4.6 stage 2.2): a sampling parameter, on the texture and in
+    // its sampler state; units it is bound to get the new sampler at once
+    void SetSamplingi(Texture& tex, GLenum pname, GLint value);
+    void SetSamplingf(Texture& tex, GLenum pname, float value);
+    void SamplingChanged(Texture& tex);
+    GLuint SamplerFor(Texture& tex);
+    std::vector<std::pair<SamplerState, GLuint> > sampler_cache;
+    struct MipView {
+        unsigned int parent;
+        GLuint parent_gl;  // the parent's GL texture the view was made of
+        int level;
+        TextureRef view;
+    };
+    std::vector<MipView> mip_views;
     int loadTexture(const std::string& name, unsigned int which, unsigned char flags);
     unsigned int makeCubemapArrayTextureInternal(int num_slices, int width, int height, GLint internal_format, GLint format, unsigned char flags);
     unsigned int makeFlatCubemapArrayTextureInternal(int num_slices, int width, int height, GLint internal_format, GLint format, unsigned char flags);
@@ -211,6 +250,17 @@ class Textures {
     // Overgrowth Online: empty these units (a program switch: a sampler its draw
     // doesn't bind reads zero, as when every unit was emptied on each switch)
     void ClearUnits(const std::vector<int>& units);
+    // Overgrowth Online (GL 4.6 stage 2.2): sampler objects. A draw that samples a
+    // texture differently binds its own sampler after the texture (the next bind of
+    // that unit brings the texture's back)
+    void SetSamplingParameter(const TextureRef& tex_ref, GLenum pname, GLint value);
+    SamplerState GetSamplerState(const TextureRef& tex_ref);
+    GLuint GetSampler(const SamplerState& state);
+    void BindSampler(int which_unit, const SamplerState& state);
+    // Overgrowth Online (GL 4.6 stage 2.5): one mip level of a texture as a texture of
+    // its own (a view of the same storage, sampled as the parent is), for a pass that
+    // reads one level of a texture while it renders into another level of it
+    TextureRef GetMipView(const TextureRef& tex_ref, int level);
     void Dispose();
     void Reload();
     void EnsureInVRAM(const TextureAssetRef& id);

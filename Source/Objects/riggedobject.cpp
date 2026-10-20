@@ -25,6 +25,7 @@
 
 #include <map>
 
+#include <Graphics/vboringcontainer.h>
 #include <Graphics/graphics.h>
 #include <Graphics/particles.h>
 #include <Graphics/camera.h>
@@ -106,7 +107,6 @@
 #include <malloc.h>
 #endif
 const bool _draw_char_collision_world = false;
-bool GPU_skinning = false;
 
 extern AnimationConfig animation_config;
 extern bool g_simple_shadows;
@@ -814,11 +814,9 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
     const int kShaderStrSize = 1024;
     char buf[2][kShaderStrSize];
     char* shader_str[2] = {buf[0], buf[1]};
-    FormatString(shader_str[0], kShaderStrSize, "%s %s", ofc->shader_name.c_str(), global_shader_suffix);
-    if (GPU_skinning) {
-        FormatString(shader_str[1], kShaderStrSize, "%s #GPU_SKINNING", shader_str[0]);
-        std::swap(shader_str[0], shader_str[1]);
-    }
+    // Overgrowth Online (GL 4.6 stage 4a): skinned on the GPU, the only way now (named
+    // as GetShaderNames preloads it: the define before the pass's suffix)
+    FormatString(shader_str[0], kShaderStrSize, "%s #GPU_SKINNING %s", ofc->shader_name.c_str(), global_shader_suffix);
 
     int the_shader = shaders->returnProgram(shader_str[0]);
 
@@ -829,8 +827,21 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
 
         shaders->SetUniformMat4("mvp", proj_view_matrix);
         shaders->SetUniformMat4("projection_view_mat", proj_view_matrix);
-        if (GPU_skinning) {
-            shaders->SetUniformMat4Array("bone_mats", display_bone_matrices);
+        // A character shown from another machine's stream: its pose in every pass (the
+        // depth and shadow passes come before Draw's ClientBeforeDraw, and skinning per
+        // pass, they'd show PreDrawFrame's own pose: black patches where they disagree)
+        const std::vector<mat4>& bones = network_proxy && network_display_bone_matrices.size() == display_bone_matrices.size()
+                                             ? network_display_bone_matrices
+                                             : display_bone_matrices;
+        if (!bones.empty()) {
+            // Overgrowth Online (GL 4.6 stage 4a): the bones in the frame ring, read by
+            // the vertex shader as texels of a buffer texture (a uniform array indexed
+            // per vertex is served from constant memory, which serializes)
+            size_t bytes = bones.size() * sizeof(mat4);
+            FrameRing::Allocation a = FrameRing::Allocate(bytes, 16);
+            memcpy(a.ptr, &bones[0].entries[0], bytes);
+            glBindTextureUnit(TEX_BONES, FrameRing::BufferTexture());
+            shaders->SetUniformInt("bone_base", (int)(a.offset / 16));
         }
 
         CHECK_GL_ERROR();
@@ -960,37 +971,22 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
             PROFILER_GPU_ZONE(g_profiler_ctx, "Fill dynamic vbos");
             int model_num_verts = model->vertices.size() / 3;
             int fur_model_num_verts = fur_model.vertices.size() / 3;
-            if (GPU_skinning) {
-                PROFILER_ZONE(g_profiler_ctx, "GPU_skinning");
-                if (!transform_vec_vbo0[lod_level]->valid()) {
-                    transform_vec_vbo0[lod_level]->SetHint(model_num_verts * 4 * sizeof(GLfloat), kVBOStatic);
-                    transform_vec_vbo0[lod_level]->Fill(model_num_verts * 4 * sizeof(GLfloat), &model->bone_ids[0]);
+            if (!transform_vec_vbo0[lod_level]->valid()) {
+                transform_vec_vbo0[lod_level]->SetHint(model_num_verts * 4 * sizeof(GLfloat), kVBOStatic);
+                transform_vec_vbo0[lod_level]->Fill(model_num_verts * 4 * sizeof(GLfloat), &model->bone_ids[0]);
 
-                    transform_vec_vbo1[lod_level]->SetHint(model_num_verts * 4 * sizeof(GLfloat), kVBOStatic);
-                    transform_vec_vbo1[lod_level]->Fill(model_num_verts * 4 * sizeof(GLfloat), &model->bone_weights[0]);
-                }
-                if (fur_model.faces.size() > 0 && !fur_transform_vec_vbo0.valid()) {
-                    fur_transform_vec_vbo0.SetHint(fur_model_num_verts * 4 * sizeof(GLfloat), kVBOStatic);
-                    fur_transform_vec_vbo0.Fill(fur_model_num_verts * 4 * sizeof(GLfloat), &fur_model.bone_ids[0]);
-
-                    fur_transform_vec_vbo1.SetHint(fur_model_num_verts * 4 * sizeof(GLfloat), kVBOStatic);
-                    fur_transform_vec_vbo1.Fill(fur_model_num_verts * 4 * sizeof(GLfloat), &fur_model.bone_weights[0]);
-                }
-                transform_vec_vbo2[lod_level]->SetHint(model_num_verts * 3 * sizeof(GLfloat), kVBODynamic);
-                transform_vec_vbo2[lod_level]->Fill(model_num_verts * 3 * sizeof(GLfloat), &model->morph_transform_vec[0]);
-            } else {
-                {
-                    PROFILER_ZONE(g_profiler_ctx, "transform_vec_vbos");
-                    transform_vec_vbo0[lod_level]->SetHint(model_num_verts * 4 * sizeof(GLfloat), kVBODynamic);
-                    transform_vec_vbo0[lod_level]->Fill(model_num_verts * 4 * sizeof(GLfloat), &model->transform_vec[0][0]);
-
-                    transform_vec_vbo1[lod_level]->SetHint(model_num_verts * 4 * sizeof(GLfloat), kVBODynamic);
-                    transform_vec_vbo1[lod_level]->Fill(model_num_verts * 4 * sizeof(GLfloat), &model->transform_vec[1][0]);
-
-                    transform_vec_vbo2[lod_level]->SetHint(model_num_verts * 4 * sizeof(GLfloat), kVBODynamic);
-                    transform_vec_vbo2[lod_level]->Fill(model_num_verts * 4 * sizeof(GLfloat), &model->transform_vec[2][0]);
-                }
+                transform_vec_vbo1[lod_level]->SetHint(model_num_verts * 4 * sizeof(GLfloat), kVBOStatic);
+                transform_vec_vbo1[lod_level]->Fill(model_num_verts * 4 * sizeof(GLfloat), &model->bone_weights[0]);
             }
+            if (fur_model.faces.size() > 0 && !fur_transform_vec_vbo0.valid()) {
+                fur_transform_vec_vbo0.SetHint(fur_model_num_verts * 4 * sizeof(GLfloat), kVBOStatic);
+                fur_transform_vec_vbo0.Fill(fur_model_num_verts * 4 * sizeof(GLfloat), &fur_model.bone_ids[0]);
+
+                fur_transform_vec_vbo1.SetHint(fur_model_num_verts * 4 * sizeof(GLfloat), kVBOStatic);
+                fur_transform_vec_vbo1.Fill(fur_model_num_verts * 4 * sizeof(GLfloat), &fur_model.bone_weights[0]);
+            }
+            transform_vec_vbo2[lod_level]->SetHint(model_num_verts * 3 * sizeof(GLfloat), kVBODynamic);
+            transform_vec_vbo2[lod_level]->Fill(model_num_verts * 3 * sizeof(GLfloat), &model->morph_transform_vec[0]);
 
             static std::vector<float> vel;
             vel.resize(model_num_verts * 3);
@@ -1044,19 +1040,9 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
             }
             if (lod_level == 0 && fur_model.faces.size() != 0) {
                 PROFILER_ZONE(g_profiler_ctx, "fur_transform_vec_vbo");
-                if (GPU_skinning) {
-                    fur_transform_vec_vbo2.SetHint(fur_model_num_verts * 3 * sizeof(GLfloat), kVBODynamic);
-                    fur_transform_vec_vbo2.Fill(fur_model_num_verts * 3 * sizeof(GLfloat), &fur_model.morph_transform_vec[0]);
-                } else {
-                    fur_transform_vec_vbo0.SetHint(fur_model_num_verts * 4 * sizeof(GLfloat), kVBODynamic);
-                    fur_transform_vec_vbo0.Fill(fur_model_num_verts * 4 * sizeof(GLfloat), &fur_model.transform_vec[0][0]);
+                fur_transform_vec_vbo2.SetHint(fur_model_num_verts * 3 * sizeof(GLfloat), kVBODynamic);
+                fur_transform_vec_vbo2.Fill(fur_model_num_verts * 3 * sizeof(GLfloat), &fur_model.morph_transform_vec[0]);
 
-                    fur_transform_vec_vbo1.SetHint(fur_model_num_verts * 4 * sizeof(GLfloat), kVBODynamic);
-                    fur_transform_vec_vbo1.Fill(fur_model_num_verts * 4 * sizeof(GLfloat), &fur_model.transform_vec[1][0]);
-
-                    fur_transform_vec_vbo2.SetHint(fur_model_num_verts * 4 * sizeof(GLfloat), kVBODynamic);
-                    fur_transform_vec_vbo2.Fill(fur_model_num_verts * 4 * sizeof(GLfloat), &fur_model.transform_vec[2][0]);
-                }
                 if (!fur_tex_transform_vbo.valid()) {
                     fur_tex_transform_vbo.SetHint(fur_model_num_verts * 2 * sizeof(GLfloat), kVBOStatic);
                     fur_tex_transform_vbo.Fill(fur_model_num_verts * 2 * sizeof(GLfloat), &fur_model.tex_transform_vec[0]);
@@ -1065,12 +1051,6 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
         }
 
         DrawModel(model, lod_level);
-        /*ApplyBoneMatricesToModel(true);
-        transform_vec_vbo0.FillDynamic(model->num_vertices*4*sizeof(GLfloat), &model->transform_vec[0][0]);
-        transform_vec_vbo1.FillDynamic(model->num_vertices*4*sizeof(GLfloat), &model->transform_vec[1][0]);
-        transform_vec_vbo2.FillDynamic(model->num_vertices*4*sizeof(GLfloat), &model->transform_vec[2][0]);
-        tex_transform_vbo.FillDynamic(model->num_vertices*2*sizeof(GLfloat), &model->tex_transform_vec[0]);
-        DrawModel(model);*/
     }
 
     if (_draw_animation_bones_xray) {
@@ -1693,7 +1673,6 @@ void RiggedObject::Load(const std::string& character_path, vec3 pos, SceneGraph*
     Model* model = &Models::Instance()->GetModel(model_id[0]);
     floor_height = model->min_coords[1];
 
-    UpdateGPUSkinning();
     SetTranslation(pos);
 
     skeleton_.SetBulletWorld(scenegraph_->bullet_world_);
@@ -1719,11 +1698,6 @@ void RiggedObject::Load(const std::string& character_path, vec3 pos, SceneGraph*
     skeleton_.Read(skeleton_path, model_char_scale, char_scale, fzx_ref);
 
     int num_verts = model->vertices.size() / 3;
-    model->transform_vec.resize(4);
-    model->transform_vec[0].resize(num_verts);
-    model->transform_vec[1].resize(num_verts);
-    model->transform_vec[2].resize(num_verts);
-    model->transform_vec[3].resize(num_verts);
     model->tex_transform_vec.resize(num_verts);
     model->morph_transform_vec.resize(num_verts);
 
@@ -1928,10 +1902,6 @@ void RiggedObject::Load(const std::string& character_path, vec3 pos, SceneGraph*
                 model.OptimizeVertexOrder();
 
                 int model_num_verts = model.vertices.size() / 3;
-                model.transform_vec.resize(4);
-                for (int j = 0; j < 4; ++j) {
-                    model.transform_vec[j].resize(model_num_verts);
-                }
                 model.tex_transform_vec.resize(model_num_verts);
                 model.morph_transform_vec.resize(model_num_verts);
 
@@ -2319,64 +2289,7 @@ void RiggedObject::ApplyBoneMatricesToModel(bool old, int lod_level) {
             fur_model.morph_transform_vec[j] = model->morph_transform_vec[fur_base_vertex_ids[j]];
         }
     }
-    if (GPU_skinning) {
-        return;
-    }
-
-#ifndef USE_SSE
-#pragma omp parallel for
-    for (int j = 0; j < model->num_vertices; j++) {
-        mat4 transform = display_bone_matrices[(unsigned int)model->bone_ids[j][0]] * model->bone_weights[j][0];
-        for (int k = 1; k < 4; k++) {
-            if (model->bone_weights[j][k] > 0.0f) {
-                transform += display_bone_matrices[(unsigned int)model->bone_ids[j][k]] * model->bone_weights[j][k];
-            }
-        }
-        transform.SetTranslationPart(transform.GetTranslationPart() +
-                                     transform.GetRotatedvec3(model->morph_transform_vec[j]));
-        transform.ToVec4(&model->transform_vec[0][j],
-                         &model->transform_vec[1][j],
-                         &model->transform_vec[2][j],
-                         &model->transform_vec[3][j]);
-    }
-#else
-#pragma omp parallel for
-    for (int j = 0; j < (int)display_bone_matrices.size(); j++) {
-        simd_bone_mats[j].assign(display_bone_matrices[j].entries);
-    }
-
-#pragma omp parallel for
-    for (int j = 0, len = model->vertices.size() / 3; j < len; j++) {
-        simd_mat4 transform = simd_bone_mats[(unsigned int)model->bone_ids[j][0]] * model->bone_weights[j][0];
-        for (int k = 1; k < 4; k++) {
-            if (model->bone_weights[j][k] > 0.0f) {
-                transform += simd_bone_mats[(unsigned int)model->bone_ids[j][k]] * model->bone_weights[j][k];
-            }
-        }
-        transform.AddRotatedVec3AndSave(model->morph_transform_vec[j].entries,
-                                        model->transform_vec[0][j].entries,
-                                        model->transform_vec[1][j].entries,
-                                        model->transform_vec[2][j].entries,
-                                        model->transform_vec[3][j].entries);
-    }
-
-    if (lod_level == 0 && !fur_model.faces.empty()) {
-#pragma omp parallel for
-        for (int j = 0, len = fur_model.vertices.size() / 3; j < len; j++) {
-            simd_mat4 transform = simd_bone_mats[(unsigned int)fur_model.bone_ids[j][0]] * fur_model.bone_weights[j][0];
-            for (int k = 1; k < 4; k++) {
-                if (fur_model.bone_weights[j][k] > 0.0f) {
-                    transform += simd_bone_mats[(unsigned int)fur_model.bone_ids[j][k]] * fur_model.bone_weights[j][k];
-                }
-            }
-            transform.AddRotatedVec3AndSave(fur_model.morph_transform_vec[j].entries,
-                                            fur_model.transform_vec[0][j].entries,
-                                            fur_model.transform_vec[1][j].entries,
-                                            fur_model.transform_vec[2][j].entries,
-                                            fur_model.transform_vec[3][j].entries);
-        }
-    }
-#endif
+    // (skinned on the GPU: the CPU skinning that followed is gone, stage 4a)
 }
 
 void MorphTarget::SetScriptWeight(float weight, float weight_weight) {
@@ -2405,6 +2318,40 @@ float RiggedObject::FetchRotation() {
     return rot;
 }
 
+// Overgrowth Online (GL 4.6 stage 2.4): the character vertex format, one binding
+// per attribute (each in its own buffer)
+enum {
+    kRAVertex,
+    kRATangent,
+    kRABitangent,
+    kRANormal,
+    kRATexCoord,
+    kRABoneIds,
+    kRABoneWeights,
+    kRAMorphOffsets,
+    kRAMatA,
+    kRAMatB,
+    kRAMatC,
+    kRAMorphTexOffset,
+    kRAFurTexCoord,
+    kRAVel,
+    kRACount
+};
+static const int kRASizes[kRACount] = {3, 3, 3, 3, 2, 4, 4, 3, 4, 4, 4, 2, 2, 3};
+
+static VertexLayout& RiggedLayout() {
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        const char* names[kRACount] = {"vertex_attrib", "tangent_attrib", "bitangent_attrib", "normal_attrib", "tex_coord_attrib",
+                                       "bone_ids", "bone_weights", "morph_offsets", "transform_mat_column_a", "transform_mat_column_b",
+                                       "transform_mat_column_c", "morph_tex_offset_attrib", "fur_tex_coord_attrib", "vel_attrib"};
+        for (int i = 0; i < kRACount; ++i) {
+            layout.Add(names[i], i, kRASizes[i]);
+        }
+    }
+    return layout;
+}
+
 void RiggedObject::DrawModel(Model* model, int lod_level) {
     PROFILER_ZONE(g_profiler_ctx, "RiggedObject::DrawModel()");
     Graphics* graphics = Graphics::Instance();
@@ -2416,111 +2363,54 @@ void RiggedObject::DrawModel(Model* model, int lod_level) {
         PROFILER_LEAVE(g_profiler_ctx);
     }
 
-    PROFILER_ENTER(g_profiler_ctx, "Get shader attributes");
-    CHECK_GL_ERROR();
+    // Overgrowth Online (GL 4.6 stage 2.4): the character layout (RiggedLayout):
+    // what the shader takes of it reads these buffers
     int shader = shaders->bound_program;
-    int vertex_attrib_id = shaders->returnShaderAttrib("vertex_attrib", shader);
-    int tangent_attrib_id = shaders->returnShaderAttrib("tangent_attrib", shader);
-    int bitangent_attrib_id = shaders->returnShaderAttrib("bitangent_attrib", shader);
-    int normal_attrib_id = shaders->returnShaderAttrib("normal_attrib", shader);
-    int tex_coord_attrib_id = shaders->returnShaderAttrib("tex_coord_attrib", shader);
-    int morph_tex_offset_attrib_id = shaders->returnShaderAttrib("morph_tex_offset_attrib", shader);
-    int fur_tex_coord_attrib_id = shaders->returnShaderAttrib("fur_tex_coord_attrib", shader);
-    int bone_ids_id = shaders->returnShaderAttrib("bone_ids", shader);
-    int bone_weights_id = shaders->returnShaderAttrib("bone_weights", shader);
-    int morph_offsets_id = shaders->returnShaderAttrib("morph_offsets", shader);
-    int transform_mat_column_a_id = shaders->returnShaderAttrib("transform_mat_column_a", shader);
-    int transform_mat_column_b_id = shaders->returnShaderAttrib("transform_mat_column_b", shader);
-    int transform_mat_column_c_id = shaders->returnShaderAttrib("transform_mat_column_c", shader);
-    int vel_id = shaders->returnShaderAttrib("vel_attrib", shader);
-    PROFILER_LEAVE(g_profiler_ctx);
+    GLuint buffers[kRACount] = {0};
+    GLintptr offsets[kRACount] = {0};
+    GLsizei strides[kRACount];
+    for (int i = 0; i < kRACount; ++i) {
+        strides[i] = kRASizes[i] * sizeof(GLfloat);
+    }
+    uint32_t enabled = 0;
+    auto use_vbo = [&](int i, const VBOContainer& vbo) {
+        if (vbo.valid()) {
+            buffers[i] = vbo.id();
+            offsets[i] = 0;
+            enabled |= 1u << i;
+        } else {
+            enabled &= ~(1u << i);  // (none: off)
+        }
+    };
+    auto use_ring = [&](int i, const VBORingContainer& vbo) {
+        if (vbo.valid()) {
+            buffers[i] = vbo.id();
+            offsets[i] = (GLintptr)vbo.offset();
+            enabled |= 1u << i;
+        } else {
+            enabled &= ~(1u << i);  // (none: off)
+        }
+    };
+    use_vbo(kRAVertex, model->VBO_vertices);
+    use_vbo(kRATangent, model->VBO_tangents);
+    use_vbo(kRABitangent, model->VBO_bitangents);
+    use_vbo(kRANormal, model->VBO_normals);
+    use_vbo(kRATexCoord, model->VBO_tex_coords);
+    use_ring(kRABoneIds, *transform_vec_vbo0[lod_level]);
+    use_ring(kRABoneWeights, *transform_vec_vbo1[lod_level]);
+    use_ring(kRAMorphOffsets, *transform_vec_vbo2[lod_level]);
 
-    PROFILER_ENTER(g_profiler_ctx, "Enable shader attributes");
-    CHECK_GL_ERROR();
-    if (vertex_attrib_id != -1) {
-        graphics->EnableVertexAttribArray(vertex_attrib_id);
-        model->VBO_vertices.Bind();
-        glVertexAttribPointer(vertex_attrib_id, 3, GL_FLOAT, false, 0, 0);
-    }
-    if (tangent_attrib_id != -1) {
-        graphics->EnableVertexAttribArray(tangent_attrib_id);
-        model->VBO_tangents.Bind();
-        glVertexAttribPointer(tangent_attrib_id, 3, GL_FLOAT, false, 0, 0);
-    }
-    if (bitangent_attrib_id != -1) {
-        graphics->EnableVertexAttribArray(bitangent_attrib_id);
-        model->VBO_bitangents.Bind();
-        glVertexAttribPointer(bitangent_attrib_id, 3, GL_FLOAT, false, 0, 0);
-    }
-    if (normal_attrib_id != -1) {
-        graphics->EnableVertexAttribArray(normal_attrib_id);
-        model->VBO_normals.Bind();
-        glVertexAttribPointer(normal_attrib_id, 3, GL_FLOAT, false, 0, 0);
-    }
-    if (tex_coord_attrib_id != -1) {
-        graphics->EnableVertexAttribArray(tex_coord_attrib_id);
-        model->VBO_tex_coords.Bind();
-        glVertexAttribPointer(tex_coord_attrib_id, 2, GL_FLOAT, false, 0, 0);
-    }
+    use_ring(kRAMorphTexOffset, *tex_transform_vbo[lod_level]);
+    use_vbo(kRAFurTexCoord, model->VBO_tex_coords);
+    use_ring(kRAVel, vel_vbo);
 
-    if (GPU_skinning) {
-        if (bone_ids_id != -1) {
-            graphics->EnableVertexAttribArray(bone_ids_id);
-            transform_vec_vbo0[lod_level]->Bind();
-            glVertexAttribPointer(bone_ids_id, 4, GL_FLOAT, false, 0, (const void*)transform_vec_vbo0[lod_level]->offset());
-        }
-        if (bone_weights_id != -1) {
-            graphics->EnableVertexAttribArray(bone_weights_id);
-            transform_vec_vbo1[lod_level]->Bind();
-            glVertexAttribPointer(bone_weights_id, 4, GL_FLOAT, false, 0, (const void*)transform_vec_vbo1[lod_level]->offset());
-        }
-        if (morph_offsets_id != -1) {
-            graphics->EnableVertexAttribArray(morph_offsets_id);
-            transform_vec_vbo2[lod_level]->Bind();
-            glVertexAttribPointer(morph_offsets_id, 3, GL_FLOAT, false, 0, (const void*)transform_vec_vbo2[lod_level]->offset());
-        }
-    } else {
-        if (transform_mat_column_a_id != -1) {
-            graphics->EnableVertexAttribArray(transform_mat_column_a_id);
-            transform_vec_vbo0[lod_level]->Bind();
-            glVertexAttribPointer(transform_mat_column_a_id, 4, GL_FLOAT, false, 0, (const void*)transform_vec_vbo0[lod_level]->offset());
-        }
-        if (transform_mat_column_b_id != -1) {
-            graphics->EnableVertexAttribArray(transform_mat_column_b_id);
-            transform_vec_vbo1[lod_level]->Bind();
-            glVertexAttribPointer(transform_mat_column_b_id, 4, GL_FLOAT, false, 0, (const void*)transform_vec_vbo1[lod_level]->offset());
-        }
-        if (transform_mat_column_c_id != -1) {
-            graphics->EnableVertexAttribArray(transform_mat_column_c_id);
-            transform_vec_vbo2[lod_level]->Bind();
-            glVertexAttribPointer(transform_mat_column_c_id, 4, GL_FLOAT, false, 0, (const void*)transform_vec_vbo2[lod_level]->offset());
-        }
-    }
-    if (morph_tex_offset_attrib_id != -1) {
-        graphics->EnableVertexAttribArray(morph_tex_offset_attrib_id);
-        tex_transform_vbo[lod_level]->Bind();
-        glVertexAttribPointer(morph_tex_offset_attrib_id, 2, GL_FLOAT, false, 0, (const void*)tex_transform_vbo[lod_level]->offset());
-    }
-    if (fur_tex_coord_attrib_id != -1) {
-        graphics->EnableVertexAttribArray(fur_tex_coord_attrib_id);
-        model->VBO_tex_coords.Bind();
-        glVertexAttribPointer(fur_tex_coord_attrib_id, 2, GL_FLOAT, false, 0, 0);
-    }
-    if (vel_id != -1) {
-        graphics->EnableVertexAttribArray(vel_id);
-        vel_vbo.Bind();
-        glVertexAttribPointer(vel_id, 3, GL_FLOAT, false, 0, (const void*)vel_vbo.offset());
-    }
-    PROFILER_LEAVE(g_profiler_ctx);
-
-    PROFILER_ENTER(g_profiler_ctx, "Bind faces VBO");
-    model->VBO_faces.Bind();
-    PROFILER_LEAVE(g_profiler_ctx);
+    graphics->BeginVertexLayout(RiggedLayout(), shader, enabled, buffers, offsets, strides, model->VBO_faces.id());
     GL_PERF_START();
     PROFILER_ENTER(g_profiler_ctx, "glDrawElements");
     graphics->DrawElements(GL_TRIANGLES, model->faces.size(), GL_UNSIGNED_INT, 0);
     PROFILER_LEAVE(g_profiler_ctx);
     GL_PERF_END();
+    graphics->EndVertexLayout();
     CHECK_GL_ERROR();
 
     if (lod_level == 0 && !fur_model.faces.empty() && !graphics->drawing_shadow) {
@@ -2532,77 +2422,31 @@ void RiggedObject::DrawModel(Model* model, int lod_level) {
         graphics->setBlend(true);
 
         if (graphics->use_sample_alpha_to_coverage) {
-            glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+            graphics->setAlphaToCoverage(true);
         }
         if (!fur_model.vbo_loaded) {
             fur_model.createVBO();
         }
 
-        if (vertex_attrib_id != -1) {
-            fur_model.VBO_vertices.Bind();
-            glVertexAttribPointer(vertex_attrib_id, 3, GL_FLOAT, false, 0, 0);
-        }
-        if (tangent_attrib_id != -1) {
-            fur_model.VBO_tangents.Bind();
-            glVertexAttribPointer(tangent_attrib_id, 3, GL_FLOAT, false, 0, 0);
-        }
-        if (bitangent_attrib_id != -1) {
-            fur_model.VBO_bitangents.Bind();
-            glVertexAttribPointer(bitangent_attrib_id, 3, GL_FLOAT, false, 0, 0);
-        }
-        if (normal_attrib_id != -1) {
-            fur_model.VBO_normals.Bind();
-            glVertexAttribPointer(normal_attrib_id, 3, GL_FLOAT, false, 0, 0);
-        }
-        if (tex_coord_attrib_id != -1) {
-            fur_model.VBO_tex_coords.Bind();
-            glVertexAttribPointer(tex_coord_attrib_id, 2, GL_FLOAT, false, 0, 0);
-        }
-        if (GPU_skinning) {
-            if (bone_ids_id != -1) {
-                graphics->EnableVertexAttribArray(bone_ids_id);
-                fur_transform_vec_vbo0.Bind();
-                glVertexAttribPointer(bone_ids_id, 4, GL_FLOAT, false, 0, (const void*)fur_transform_vec_vbo0.offset());
-            }
-            if (bone_weights_id != -1) {
-                graphics->EnableVertexAttribArray(bone_weights_id);
-                fur_transform_vec_vbo1.Bind();
-                glVertexAttribPointer(bone_weights_id, 4, GL_FLOAT, false, 0, (const void*)fur_transform_vec_vbo1.offset());
-            }
-            if (morph_offsets_id != -1) {
-                graphics->EnableVertexAttribArray(morph_offsets_id);
-                fur_transform_vec_vbo2.Bind();
-                glVertexAttribPointer(morph_offsets_id, 3, GL_FLOAT, false, 0, (const void*)fur_transform_vec_vbo2.offset());
-            }
-        } else {
-            if (transform_mat_column_a_id != -1) {
-                fur_transform_vec_vbo0.Bind();
-                glVertexAttribPointer(transform_mat_column_a_id, 4, GL_FLOAT, false, 0, (const void*)fur_transform_vec_vbo0.offset());
-            }
-            if (transform_mat_column_b_id != -1) {
-                fur_transform_vec_vbo1.Bind();
-                glVertexAttribPointer(transform_mat_column_b_id, 4, GL_FLOAT, false, 0, (const void*)fur_transform_vec_vbo1.offset());
-            }
-            if (transform_mat_column_c_id != -1) {
-                fur_transform_vec_vbo2.Bind();
-                glVertexAttribPointer(transform_mat_column_c_id, 4, GL_FLOAT, false, 0, (const void*)fur_transform_vec_vbo2.offset());
-            }
-        }
-        if (morph_tex_offset_attrib_id != -1) {
-            fur_tex_transform_vbo.Bind();
-            glVertexAttribPointer(morph_tex_offset_attrib_id, 2, GL_FLOAT, false, 0, (const void*)fur_tex_transform_vbo.offset());
-        }
-        if (fur_tex_coord_attrib_id != -1) {
-            graphics->EnableVertexAttribArray(fur_tex_coord_attrib_id);
-            fur_model.VBO_tex_coords2.Bind();
-            glVertexAttribPointer(fur_tex_coord_attrib_id, 2, GL_FLOAT, false, 0, 0);
-        }
-        fur_model.VBO_faces.Bind();
+        // The fur's own buffers; the velocity stays the body's, as it always read
+        use_vbo(kRAVertex, fur_model.VBO_vertices);
+        use_vbo(kRATangent, fur_model.VBO_tangents);
+        use_vbo(kRABitangent, fur_model.VBO_bitangents);
+        use_vbo(kRANormal, fur_model.VBO_normals);
+        use_vbo(kRATexCoord, fur_model.VBO_tex_coords);
+        use_ring(kRABoneIds, fur_transform_vec_vbo0);
+        use_ring(kRABoneWeights, fur_transform_vec_vbo1);
+        use_ring(kRAMorphOffsets, fur_transform_vec_vbo2);
+
+        use_ring(kRAMorphTexOffset, fur_tex_transform_vbo);
+        use_vbo(kRAFurTexCoord, fur_model.VBO_tex_coords2);
+        graphics->BeginVertexLayout(RiggedLayout(), shader, enabled, buffers, offsets, strides, fur_model.VBO_faces.id());
         graphics->DrawElements(GL_TRIANGLES, fur_model.faces.size(), GL_UNSIGNED_INT, 0);
+        graphics->EndVertexLayout();
         graphics->setCullFace(true);
 
         if (graphics->use_sample_alpha_to_coverage) {
-            glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+            graphics->setAlphaToCoverage(false);
         }
     }
 
@@ -4218,11 +4062,6 @@ bool RiggedObject::LoadSimplificationCache(const std::string& path) {
         model.bone_weights.resize(model_num_verts);
         model.bone_ids.resize(model_num_verts);
         model.tex_coords.resize(model_num_verts * 2);
-        model.transform_vec.resize(4);
-        model.transform_vec[0].resize(model_num_verts);
-        model.transform_vec[1].resize(model_num_verts);
-        model.transform_vec[2].resize(model_num_verts);
-        model.transform_vec[3].resize(model_num_verts);
         model.tex_transform_vec.resize(model_num_verts);
         model.morph_transform_vec.resize(model_num_verts);
         fread(&model.vertices[0], sizeof(GLfloat), model_num_verts * 3, file);
@@ -4726,11 +4565,6 @@ void RiggedObject::CreateFurModel(int model_id, int fur_model_id) {
         fur_model.bone_ids[i] = base_model.bone_ids[base_id];
     }
 
-    fur_model.transform_vec.resize(4);
-    fur_model.transform_vec[0].resize(fur_model_num_vertices);
-    fur_model.transform_vec[1].resize(fur_model_num_vertices);
-    fur_model.transform_vec[2].resize(fur_model_num_vertices);
-    fur_model.transform_vec[3].resize(fur_model_num_vertices);
     fur_model.tex_transform_vec.resize(fur_model_num_vertices, vec2(0.0f));
     fur_model.morph_transform_vec.resize(fur_model_num_vertices, vec3(0.0f));
 }
@@ -4978,25 +4812,11 @@ float RiggedObject::GetRelativeCharScale() {
     return char_scale / character_script_getter->GetDefaultScale();
 }
 
-void RiggedObject::UpdateGPUSkinning() {
-    GPU_skinning = Graphics::Instance()->config_.gpu_skinning();
-    for (int i = 0; i < kLodLevels; ++i) {
-        transform_vec_vbo0[i]->Dispose();
-        transform_vec_vbo1[i]->Dispose();
-    }
-    fur_transform_vec_vbo0.Dispose();
-    fur_transform_vec_vbo1.Dispose();
-}
-
 void RiggedObject::GetShaderNames(std::map<std::string, int>& shaders) {
     const int kShaderStrSize = 1024;
     char buf[2][kShaderStrSize];
     char* shader_str[2] = {buf[0], buf[1]};
-    strcpy(shader_str[0], ofc->shader_name.c_str());
-    if (GPU_skinning) {
-        FormatString(shader_str[1], kShaderStrSize, "%s #GPU_SKINNING", shader_str[0]);
-        std::swap(shader_str[0], shader_str[1]);
-    }
+    FormatString(shader_str[0], kShaderStrSize, "%s #GPU_SKINNING", ofc->shader_name.c_str());
     shaders[shader_str[0]] = SceneGraph::kPreloadTypeAll;
     shaders[water_cube] = 0;
     shaders[water_cube_expand] = 0;

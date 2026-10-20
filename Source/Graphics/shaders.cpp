@@ -21,6 +21,10 @@
 //   limitations under the License.
 //
 //-----------------------------------------------------------------------------
+#include <map>
+#include <fstream>
+#include <Graphics/vboringcontainer.h>
+#include <JSON/json.h>
 #include "shaders.h"
 
 #include <Graphics/textures.h>
@@ -523,6 +527,7 @@ bool Shaders::createShader(int which, ShaderType type) {
         }
         char buf[kPathSize];
         FormatString(buf, kPathSize, "%sData/CompiledShaders/%s", GetWritePath(CoreGameModID).c_str(), shader_name.c_str());
+        shader.dump_name = shader_name;
         FILE *file = my_fopen(buf, "w");
         if (file) {
             fwrite(shader.text.c_str(), sizeof(char), shader.text.length(), file);
@@ -561,6 +566,7 @@ bool Shaders::createShader(int which, ShaderType type) {
                 LOGE << errorbuffer << " " << buffer << std::endl;
             }
         }
+        compile_failures.push_back(shader.full_name + ": " + buffer);
 
         if (type == _geom || type == _tess_eval || type == _tess_ctrl) {
             glDeleteShader(shader.gl_shader);
@@ -579,6 +585,13 @@ GLint Shaders::returnShaderVariable(const std::string &name, int which) {
         programs[which].uniform_address_cache.find(name);
     if (iter == programs[which].uniform_address_cache.end()) {
         GLint addr = glGetUniformLocation(programs[which].gl_program, name.c_str());
+        if (addr == -1 && !programs[which].shadow_data.empty()) {
+            // Overgrowth Online (GL 4.6 stage 3.4): a member of the default block
+            auto member = programs[which].shadow_member_ids.find(name);
+            if (member != programs[which].shadow_member_ids.end()) {
+                addr = kShadowUniformBase + member->second;
+            }
+        }
         programs[which].uniform_address_cache[name] = addr;
         return addr;
     } else {
@@ -662,6 +675,16 @@ int Shaders::returnProgram(std::string name, OptionalShaders optional_shaders) {
 
     program.name = name;
     program.gl_program = UNLOADED_SHADER_ID;
+    program.optional_shaders = optional_shaders;
+    if (config["shader_manifest"].toNumber<bool>()) {
+        char path[kPathSize];
+        FormatString(path, kPathSize, "%sData/shader_manifest.txt", GetWritePath(CoreGameModID).c_str());
+        FILE* file = my_fopen(path, "a");
+        if (file) {
+            fprintf(file, "%d\t%s\n", (int)optional_shaders, name.c_str());
+            fclose(file);
+        }
+    }
 
     std::vector<std::string> definitions;
     size_t name_len = name.length() + 1;
@@ -747,6 +770,9 @@ void Shaders::GetProgramOvergrowthVersion(int which_program, int &vertex_version
     fragment_version_minor = fragment_shader.og_version_minor;
 }
 
+static void ReflectShadowBlock(Program &program);
+static std::string VulkanGlslDir(const Program &program);
+
 void Shaders::createProgram(int which_program) {
     PROFILER_ZONE(g_profiler_ctx, "Shaders::createProgram");
     CHECK_GL_ERROR();
@@ -755,6 +781,32 @@ void Shaders::createProgram(int which_program) {
         return;
     }
     program.gl_program = glCreateProgram();
+    std::string vulkan_dir = VulkanGlslDir(program);
+    if (!vulkan_dir.empty()) {
+        static const char *kStageFiles[kMaxShaderTypes] = {"vert.gl", "frag.gl", "geom.gl", "tesc.gl", "tese.gl"};
+        static const GLenum kStageTypes[kMaxShaderTypes] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER};
+        for (int t = 0; t < kMaxShaderTypes; ++t) {
+            std::ifstream file((vulkan_dir + "/" + kStageFiles[t]).c_str(), std::ios::binary);
+            if (!file) {
+                continue;
+            }
+            std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+            GLuint shader = glCreateShader(kStageTypes[t]);
+            const char *source = text.c_str();
+            glShaderSource(shader, 1, &source, NULL);
+            glCompileShader(shader);
+            GLint ok = 0;
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+            if (!ok) {
+                char log[1025] = {0};
+                glGetShaderInfoLog(shader, 1024, NULL, log);
+                LOGE << "Vulkan-built " << kStageFiles[t] << " of " << program.name << ": " << log << std::endl;
+                compile_failures.push_back(vulkan_dir + "/" + kStageFiles[t] + ": " + log);
+            }
+            glAttachShader(program.gl_program, shader);
+            program.own_shaders.push_back(shader);
+        }
+    } else {
     createShader(program.shader_ids[_vertex], _vertex);
     for (int i = _geom; i < kMaxShaderTypes; ++i) {
         if (program.shader_ids[i] >= 0) {
@@ -797,7 +849,12 @@ void Shaders::createProgram(int which_program) {
         }
     }
     glAttachShader(program.gl_program, shaders[program.shader_ids[_fragment]].gl_shader);
+    }  // (made from its source)
     glLinkProgram(program.gl_program);
+    for (GLuint own : program.own_shaders) {
+        glDeleteShader(own);  // (freed with the program)
+    }
+    program.own_shaders.clear();
 
     int status = 0;
     glGetProgramiv(program.gl_program, GL_LINK_STATUS, &status);
@@ -829,6 +886,9 @@ void Shaders::createProgram(int which_program) {
                 // only log it
                 LOGE << errorbuffer << " " << buffer << std::endl;
             }
+        }
+        if (!status) {
+            compile_failures.push_back("link " + program.name + ": " + buffer);
         }
 #ifndef SHADER_WARNINGS
     }
@@ -927,6 +987,7 @@ void Shaders::createProgram(int which_program) {
     if (shadow_cascade_idx != GL_INVALID_INDEX) {
         glUniformBlockBinding(program.gl_program, shadow_cascade_idx, UBO_SHADOW_CASCADES);
     }
+    ReflectShadowBlock(program);
 }
 
 Program *Shaders::GetCurrentProgram() {
@@ -953,9 +1014,10 @@ void Shaders::setProgram(int which) {
     }
     glUseProgram(programs[which].gl_program);
     // Overgrowth Online (GL 4.6 stage 2.1): not every unit emptied any more, only
-    // the ones this program samples. Some draws leave a sampler unbound and rely
-    // on it reading zero (grass without a translucency map: tex5); other units keep
-    // their textures. Samplers have their units since link, nothing to re-set
+    // the ones this program samples: a sampler a draw leaves unbound still reads
+    // zero, not the last program's texture; other units keep theirs. Samplers have
+    // their units since link, nothing to re-set (a draw that relied on the old
+    // per-bind units sets its sampler itself: detail objects' decal atlas)
     Textures::Instance()->ClearUnits(programs[which].sampler_units);
     bound_program = which;
     CHECK_GL_ERROR();
@@ -968,6 +1030,186 @@ void Shaders::noProgram() {
     bound_program = -1;
 }
 
+// Overgrowth Online (GL 4.6 stage 3.4): `elements` values of `columns` x `rows`
+// components into a default-block member, as glUniform* would set a loose uniform
+// (a type that doesn't match is ignored, as GL would refuse it)
+void Shaders::ShadowWrite(GLint var_id, const void *src, int elements, int columns, int rows, bool is_int) {
+    if (bound_program == -1 || src == NULL) {
+        return;
+    }
+    Program &program = programs[bound_program];
+    int index = var_id - kShadowUniformBase;
+    if (index < 0 || index >= (int)program.shadow_members.size()) {
+        return;
+    }
+    Program::ShadowMember &m = program.shadow_members[index];
+    // The setter has to fit the member's type exactly, as glUniform* must (GL refuses a
+    // glUniform3fv on a vec4, and leaves the value as it was); bools take ints or floats
+    GLenum want;
+    if (columns == 4 && rows == 4) {
+        want = GL_FLOAT_MAT4;
+    } else if (columns == 3 && rows == 3) {
+        want = GL_FLOAT_MAT3;
+    } else if (is_int) {
+        const GLenum kInts[] = {GL_INT, GL_INT_VEC2, GL_INT_VEC3, GL_INT_VEC4};
+        want = kInts[rows - 1];
+    } else {
+        const GLenum kFloats[] = {GL_FLOAT, GL_FLOAT_VEC2, GL_FLOAT_VEC3, GL_FLOAT_VEC4};
+        want = kFloats[rows - 1];
+    }
+    const GLenum kBools[] = {GL_BOOL, GL_BOOL_VEC2, GL_BOOL_VEC3, GL_BOOL_VEC4};
+    bool to_bool = m.is_bool && columns == 1 && m.type == kBools[rows - 1];
+    if (m.type != want && !to_bool) {
+        if (!m.refused_logged) {
+            m.refused_logged = true;
+            LOGW << "Uniform write refused (type " << m.type << ", given " << want << ") in " << program.name << std::endl;
+        }
+        return;
+    }
+    const unsigned char *in = (const unsigned char *)src;
+    int count = std::min(elements, m.size);
+    for (int e = 0; e < count; ++e) {
+        for (int c = 0; c < columns; ++c) {
+            size_t at = m.offset + e * m.array_stride + c * (columns > 1 ? m.matrix_stride : 0);
+            size_t bytes = rows * 4;
+            const unsigned char *from = in + ((size_t)e * columns + c) * bytes;
+            if (at + bytes > program.shadow_data.size()) {
+                return;
+            }
+            unsigned char converted[16];
+            if (to_bool) {  // (GL stores a bool as 0 or 1, from an int or a float)
+                for (int k = 0; k < rows; ++k) {
+                    uint32_t v = is_int ? (((const int32_t *)from)[k] != 0) : (((const float *)from)[k] != 0.0f);
+                    memcpy(converted + k * 4, &v, 4);
+                }
+                from = converted;
+            }
+            if (memcmp(&program.shadow_data[at], from, bytes) != 0) {
+                memcpy(&program.shadow_data[at], from, bytes);
+                program.shadow_dirty = true;
+            }
+        }
+    }
+}
+
+void Shaders::FlushShadowBlock() {
+    if (bound_program == -1) {
+        return;
+    }
+    Program &program = programs[bound_program];
+    if (program.shadow_data.empty()) {
+        return;
+    }
+    if (program.shadow_dirty || program.shadow_sent_frame != FrameRing::Frame()) {
+        static GLint alignment = 0;
+        if (alignment == 0) {
+            glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment);
+        }
+        FrameRing::Allocation a = FrameRing::Allocate(program.shadow_data.size(), alignment);
+        memcpy(a.ptr, &program.shadow_data[0], program.shadow_data.size());
+        program.shadow_sent_buffer = a.buffer;
+        program.shadow_sent_offset = a.offset;
+        program.shadow_sent_frame = FrameRing::Frame();
+        program.shadow_dirty = false;
+    }
+    // (always bound: other code binds uniform buffers by index too)
+    glBindBufferRange(GL_UNIFORM_BUFFER, kDefaultBlockBinding, program.shadow_sent_buffer, program.shadow_sent_offset, program.shadow_data.size());
+}
+
+// The default block's layout, by reflection
+static void ReflectShadowBlock(Program &program) {
+    program.shadow_data.clear();
+    program.shadow_members.clear();
+    program.shadow_member_ids.clear();
+    program.shadow_dirty = true;
+    program.shadow_sent_frame = ~0ull;
+    GLint num_blocks = 0;
+    glGetProgramiv(program.gl_program, GL_ACTIVE_UNIFORM_BLOCKS, &num_blocks);
+    for (GLint b = 0; b < num_blocks; ++b) {
+        char block_name[256] = {0};
+        glGetActiveUniformBlockName(program.gl_program, b, sizeof(block_name), NULL, block_name);
+        if (strstr(block_name, "gl_DefaultUniformBlock") == NULL) {
+            continue;
+        }
+        GLint size = 0, count = 0;
+        glGetActiveUniformBlockiv(program.gl_program, b, GL_UNIFORM_BLOCK_DATA_SIZE, &size);
+        glGetActiveUniformBlockiv(program.gl_program, b, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, &count);
+        std::vector<GLint> indices(count);
+        glGetActiveUniformBlockiv(program.gl_program, b, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, &indices[0]);
+        std::vector<GLuint> uindices(indices.begin(), indices.end());
+        std::vector<GLint> offsets(count), array_strides(count), matrix_strides(count), types(count), sizes(count);
+        glGetActiveUniformsiv(program.gl_program, count, &uindices[0], GL_UNIFORM_OFFSET, &offsets[0]);
+        glGetActiveUniformsiv(program.gl_program, count, &uindices[0], GL_UNIFORM_ARRAY_STRIDE, &array_strides[0]);
+        glGetActiveUniformsiv(program.gl_program, count, &uindices[0], GL_UNIFORM_MATRIX_STRIDE, &matrix_strides[0]);
+        glGetActiveUniformsiv(program.gl_program, count, &uindices[0], GL_UNIFORM_TYPE, &types[0]);
+        glGetActiveUniformsiv(program.gl_program, count, &uindices[0], GL_UNIFORM_SIZE, &sizes[0]);
+        program.shadow_data.assign(size, 0);
+        for (GLint i = 0; i < count; ++i) {
+            char name[256] = {0};
+            glGetActiveUniformName(program.gl_program, uindices[i], sizeof(name), NULL, name);
+            std::string member = name;
+            size_t dot = member.rfind('.');  // ("Block.member")
+            if (dot != std::string::npos) {
+                member = member.substr(dot + 1);
+            }
+            Program::ShadowMember m;
+            m.offset = offsets[i];
+            m.array_stride = array_strides[i];
+            m.matrix_stride = matrix_strides[i];
+            m.size = std::max(1, sizes[i]);
+            GLint t = types[i];
+            m.type = (GLenum)t;
+            m.is_bool = t == GL_BOOL || t == GL_BOOL_VEC2 || t == GL_BOOL_VEC3 || t == GL_BOOL_VEC4;
+            m.refused_logged = false;
+            int id = (int)program.shadow_members.size();
+            program.shadow_members.push_back(m);
+            program.shadow_member_ids[member] = id;
+            if (member.size() > 3 && member.compare(member.size() - 3, 3, "[0]") == 0) {
+                program.shadow_member_ids[member.substr(0, member.size() - 3)] = id;  // (arrays by their name)
+            }
+        }
+        glUniformBlockBinding(program.gl_program, b, Shaders::kDefaultBlockBinding);
+        break;
+    }
+}
+
+// Overgrowth Online (GL 4.6 stage 3.4): config shader_vulkan_glsl names a Vulkan
+// build (spirv_build.py) with each program's stages as GLSL 4.60 from SPIRV-Cross;
+// a program in it is made from those instead of its source
+static std::string VulkanGlslDir(const Program &program) {
+    static bool loaded = false;
+    static std::map<std::string, std::string> dirs;
+    if (!loaded) {
+        loaded = true;
+        std::string root = config["shader_vulkan_glsl"].str();
+        if (!root.empty()) {
+            std::ifstream file((root + "/index.json").c_str());
+            Json::Value index;
+            Json::Reader reader;
+            if (file && reader.parse(file, index)) {
+                for (const Json::Value &entry : index) {
+                    char sub[16];
+                    FormatString(sub, sizeof(sub), "%04d", entry["index"].asInt());
+                    dirs[entry["name"].asString() + "|" + std::to_string(entry["flags"].asInt())] = root + "/" + sub;
+                }
+                LOGI << "Vulkan-built shaders: " << dirs.size() << " programs from " << root << std::endl;
+            } else {
+                LOGE << "No Vulkan-built shader index in " << root << std::endl;
+            }
+        }
+    }
+    if (dirs.empty()) {
+        return std::string();
+    }
+    // (shader_vulkan_glsl_filter: only programs whose name has it, for bisecting)
+    static std::string filter = config["shader_vulkan_glsl_filter"].str();
+    if (!filter.empty() && program.name.find(filter) == std::string::npos) {
+        return std::string();
+    }
+    auto it = dirs.find(program.name + "|" + std::to_string(program.optional_shaders));
+    return it == dirs.end() ? std::string() : it->second;
+}
+
 void Shaders::SetUniformMat4(const std::string &var_name, const GLfloat *data) {
     GLint var_id = returnShaderVariable(var_name, bound_program);
     SetUniformMat4(var_id, data);
@@ -975,6 +1217,10 @@ void Shaders::SetUniformMat4(const std::string &var_name, const GLfloat *data) {
 
 void Shaders::SetUniformMat4(GLint var_id, const GLfloat *data) {
     if (var_id == -1) {
+        return;
+    }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, data, 1, 4, 4, false);
         return;
     }
 
@@ -1005,6 +1251,10 @@ void Shaders::SetUniformMat3(const std::string &var_name, const GLfloat *data) {
 
 void Shaders::SetUniformMat3(GLint var_id, const GLfloat *data) {
     if (var_id == -1) {
+        return;
+    }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, data, 1, 3, 3, false);
         return;
     }
 
@@ -1048,6 +1298,10 @@ void Shaders::SetUniformVec3(GLint var_id, const vec3 &data_vec) {
 
 void Shaders::SetUniformVec3(GLint var_id, const GLfloat *data) {
     if (var_id == -1) {
+        return;
+    }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, data, 1, 1, 3, false);
         return;
     }
 
@@ -1095,6 +1349,10 @@ void Shaders::SetUniformVec2(GLint var_id, const GLfloat *data) {
     if (var_id == -1) {
         return;
     }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, data, 1, 1, 2, false);
+        return;
+    }
 
     CHECK_GL_ERROR();
     std::vector<GLfloat> &value = programs[bound_program].uniform_value_cache[var_id];
@@ -1129,6 +1387,10 @@ void Shaders::SetUniformFloat(GLint var_id, const float &data) {
     if (var_id == -1) {
         return;
     }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, &data, 1, 1, 1, false);
+        return;
+    }
 
     std::vector<GLfloat> &value = programs[bound_program].uniform_value_cache[var_id];
 
@@ -1155,6 +1417,10 @@ void Shaders::SetUniformInt(const std::string &var_name, const int &data, ForceF
 
 void Shaders::SetUniformInt(GLint var_id, const int &data, ForceFlag force_flag) {
     if (var_id == -1) {
+        return;
+    }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, &data, 1, 1, 1, true);
         return;
     }
 
@@ -1193,6 +1459,10 @@ void Shaders::SetUniformMat4Array(GLint var_id, const std::vector<mat4> &transfo
     if (var_id == -1) {
         return;
     }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, transforms.empty() ? NULL : &transforms[0].entries[0], (int)transforms.size(), 4, 4, false);
+        return;
+    }
 
     glUniformMatrix4fv(var_id, transforms.size(), GL_FALSE, &transforms[0].entries[0]);
 }
@@ -1204,6 +1474,10 @@ void Shaders::SetUniformVec4Array(const std::string &var_name, const std::vector
 
 void Shaders::SetUniformVec4Array(GLint var_id, const std::vector<vec4> &val) {
     if (var_id == -1) {
+        return;
+    }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, val.empty() ? NULL : &val[0].entries[0], (int)val.size(), 1, 4, false);
         return;
     }
 
@@ -1219,12 +1493,20 @@ void Shaders::SetUniformVec3Array(GLint var_id, const std::vector<vec3> &val) {
     if (var_id == -1) {
         return;
     }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, val.empty() ? NULL : &val[0].entries[0], (int)val.size(), 1, 3, false);
+        return;
+    }
 
     glUniform3fv(var_id, val.size(), &val[0].entries[0]);
 }
 
 void Shaders::SetUniformVec3Array(GLint var_id, const vec3 *val, int size) {
     if (var_id == -1) {
+        return;
+    }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, val, size, 1, 3, false);
         return;
     }
 
@@ -1281,6 +1563,10 @@ void Shaders::SetUniformVec4(GLint var_id, const vec4 &data_vec) {
 
 void Shaders::SetUniformVec4(GLint var_id, const GLfloat *data) {
     if (var_id == -1) {
+        return;
+    }
+    if (var_id >= kShadowUniformBase) {
+        ShadowWrite(var_id, data, 1, 1, 4, false);
         return;
     }
 

@@ -21,8 +21,8 @@ out vec3 face_vec;
 
 in vec3 vertex;
 
-void main() {    
+void main() {
 	face_vec = vertex;
     vec = vec3(vertex.x, vertex.y, -1.0);
-    gl_Position = vec4(vertex, 1.0);
-} 
+    gl_Position = vec4(vertex.xy, 0.5, 1.0);  // (mid depth, inside clip z [0, 1])
+}

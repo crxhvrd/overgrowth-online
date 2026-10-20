@@ -23,6 +23,7 @@
 //-----------------------------------------------------------------------------
 #include "hudimage.h"
 
+#include <Graphics/reversez.h>
 #include <Graphics/shaders.h>
 #include <Graphics/graphics.h>
 #include <Graphics/vboringcontainer.h>
@@ -77,16 +78,18 @@ void HUDImages::Draw() {
     PROFILER_ENTER(g_profiler_ctx, "HUDImages setup");
     int shader_id = shaders->returnProgram("simple_2d #TEXTURE #FLIPPED");
     shaders->setProgram(shader_id);
-    int vert_coord_id = shaders->returnShaderAttrib("vert_coord", shader_id);
-    int tex_coord_id = shaders->returnShaderAttrib("tex_coord", shader_id);
     int mvp_mat_id = shaders->returnShaderVariable("mvp_mat", shader_id);
     int color_id = shaders->returnShaderVariable("color", shader_id);
     graphics->setGLState(hud_gl_state.gl_state);
     glm::mat4 proj_mat;
-    proj_mat = glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]);
-    glUniformMatrix4fv(mvp_mat_id, 1, false, (GLfloat *)&proj_mat);
-    graphics->EnableVertexAttribArray(vert_coord_id);
-    graphics->EnableVertexAttribArray(tex_coord_id);
+    proj_mat = ReverseZ(glm::ortho(0.0f, (float)graphics->window_dims[0], 0.0f, (float)graphics->window_dims[1]));
+    Shaders::Instance()->SetUniformMat4(mvp_mat_id, (GLfloat *)&proj_mat);  // (Overgrowth Online 3.4: through Shaders, a default-block member on the Vulkan build)
+    // Overgrowth Online (GL 4.6 stage 2.4): tex coord then position, interleaved
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+        layout.Add("tex_coord", 0, 2);
+    }
 
     CHECK_GL_ERROR();
     PROFILER_LEAVE(g_profiler_ctx);
@@ -113,10 +116,12 @@ void HUDImages::Draw() {
             CHECK_GL_ERROR();
             if (hi.texture_ref.valid()) {
                 textures->bindTexture(hi.texture_ref);
-                GLuint hud_tex_id = textures->returnTexture(hi.texture_ref);  // (DSA: binding doesn't set the active unit)
-                glTextureParameteri(hud_tex_id, GL_TEXTURE_WRAP_S, hi.tex_scale[0] != 1.0f ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-                glTextureParameteri(hud_tex_id, GL_TEXTURE_WRAP_T, hi.tex_scale[1] != 1.0f ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-                glUniform4fv(color_id, 1, (GLfloat *)&hi.color);
+                // This draw's wrap, by a sampler (the texture keeps its own)
+                SamplerState hud_sampler = textures->GetSamplerState(hi.texture_ref);
+                hud_sampler.wrap_s = hi.tex_scale[0] != 1.0f ? GL_REPEAT : GL_CLAMP_TO_EDGE;
+                hud_sampler.wrap_t = hi.tex_scale[1] != 1.0f ? GL_REPEAT : GL_CLAMP_TO_EDGE;
+                textures->BindSampler(0, hud_sampler);
+                Shaders::Instance()->SetUniformVec4(color_id, (GLfloat *)&hi.color);
                 CHECK_GL_ERROR();
 
                 const vec2 &to = hi.tex_offset;
@@ -150,24 +155,26 @@ void HUDImages::Draw() {
                     data[13] = 1.0f - data[13];
                 }
                 static const GLuint indices[] = {0, 1, 2, 0, 2, 3};
-                static VBORingContainer data_vbo(sizeof(data), kVBOFloat | kVBODynamic);
+                static VBORingContainer data_vbo(sizeof(data), kVBOFloat | kVBODynamic | kVBOFrame);
                 static VBOContainer index_vbo;
                 if (!index_vbo.valid()) {
                     index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(indices), (void *)indices);
                 }
-                index_vbo.Bind();
                 data_vbo.Fill(sizeof(data), (void *)data);
-                data_vbo.Bind();
-                index_vbo.Bind();
                 CHECK_GL_ERROR();
-                glVertexAttribPointer(vert_coord_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void *)(data_vbo.offset() + (2 * sizeof(GLfloat))));
+                {
+                    const GLuint buffers[2] = {data_vbo.id(), data_vbo.id()};
+                    const GLintptr offsets[2] = {(GLintptr)data_vbo.offset(), (GLintptr)data_vbo.offset()};
+                    const GLsizei strides[2] = {4 * sizeof(GLfloat), 4 * sizeof(GLfloat)};
+                    graphics->BeginVertexLayout(layout, shader_id, data_vbo.valid() ? 3u : 0u, buffers, offsets, strides, index_vbo.id());
+                }
                 CHECK_GL_ERROR();
-                glVertexAttribPointer(tex_coord_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void *)(data_vbo.offset()));
                 graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
             CHECK_GL_ERROR();
         }
     }
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
 
     hud_images.clear();

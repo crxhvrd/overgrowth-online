@@ -101,17 +101,20 @@ void NavMeshRenderer::DrawCollision() {
 
             int shader_id = shaders->returnProgram("debug_fill #NAV_COLLISION_MESH", Shaders::kGeometry);
             shaders->setProgram(shader_id);
-            int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
 
             shaders->SetUniformMat4("mvp", cam->GetProjMatrix() * cam->GetViewMatrix());
             shaders->SetUniformVec3("camera_forward", cam->GetFacing());
 
-            graphics->EnableVertexAttribArray(vert_attrib_id);
-            collision_mesh_vertices_.Bind();
-            glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 0, 0);
+            // Overgrowth Online (GL 4.6 stage 2.4): positions only
+            static VertexLayout layout;
+            if (layout.Count() == 0) {
+                layout.Add("vert_attrib", 0, 3);
+            }
+            VBOContainer* vbos[1] = {&collision_mesh_vertices_};
+            graphics->BeginVertexLayout(layout, shader_id, vbos, collision_mesh_faces_.id());
 
-            collision_mesh_faces_.Bind();
             graphics->DrawElements(GL_TRIANGLES, collision_mesh_faces_.size() / sizeof(unsigned), GL_UNSIGNED_INT, 0);
+            graphics->EndVertexLayout();
 
             graphics->ResetVertexAttribArrays();
         } else {
@@ -228,7 +231,6 @@ void NavMeshRenderer::DrawNavMesh() {
 
             int shader_id = shaders->returnProgram("debug_fill #STIPPLING");
             shaders->setProgram(shader_id);
-            int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
 
             shaders->SetUniformMat4("mvp", cam->GetProjMatrix() * cam->GetViewMatrix());
             shaders->SetUniformVec3("close_stipple_color", vec3(0.1f, 0.8f, 1.0f));
@@ -236,11 +238,16 @@ void NavMeshRenderer::DrawNavMesh() {
             shaders->SetUniformVec3("camera_forward", cam->GetFacing());
             shaders->SetUniformVec3("camera_position", cam->GetPos());
 
-            graphics->EnableVertexAttribArray(vert_attrib_id);
-            navmesh_vertices_.Bind();
-            glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 0, 0);
+            // Overgrowth Online (GL 4.6 stage 2.4): positions only
+            static VertexLayout layout;
+            if (layout.Count() == 0) {
+                layout.Add("vert_attrib", 0, 3);
+            }
+            VBOContainer* vbos[1] = {&navmesh_vertices_};
+            graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
 
             graphics->DrawArrays(GL_TRIANGLES, 0, navmesh_vertices_.size() / (sizeof(float) * 3));
+            graphics->EndVertexLayout();
 
             graphics->ResetVertexAttribArrays();
         } else {
@@ -254,25 +261,29 @@ void NavMeshRenderer::DrawNavMesh() {
 
             int shader_id = shaders->returnProgram("3d_color #COLOR_UNIFORM #NO_VELOCITY_BUF");
             shaders->setProgram(shader_id);
-            int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
 
             shaders->SetUniformMat4("mvp", cam->GetProjMatrix() * cam->GetViewMatrix());
 
-            graphics->EnableVertexAttribArray(vert_attrib_id);
+            // Overgrowth Online (GL 4.6 stage 2.4): positions only, an edge buffer per draw
+            static VertexLayout layout;
+            if (layout.Count() == 0) {
+                layout.Add("vert_attrib", 0, 3);
+            }
             if (navmesh_edges_.valid()) {
                 shaders->SetUniformVec4("color_uniform", vec4(0.1f, 0.1f, 0.1f, 1.0f));
-                navmesh_edges_.Bind();
-                glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 0, 0);
+                VBOContainer* vbos[1] = {&navmesh_edges_};
+                graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
                 graphics->DrawArrays(GL_LINES, 0, navmesh_edges_.size() / (sizeof(float) * 3));
             }
 
             if (navmesh_thick_edges_.valid()) {
                 graphics->SetLineWidth(3);
                 shaders->SetUniformVec4("color_uniform", vec4(0.0, 0.0, 0.0, 1.0));
-                navmesh_thick_edges_.Bind();
-                glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 0, 0);
+                VBOContainer* vbos[1] = {&navmesh_thick_edges_};
+                graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
                 graphics->DrawArrays(GL_LINES, 0, navmesh_thick_edges_.size() / (sizeof(float) * 3));
             }
+            graphics->EndVertexLayout();
 
             graphics->ResetVertexAttribArrays();
         }

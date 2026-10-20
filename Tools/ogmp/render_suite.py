@@ -6,6 +6,8 @@ renderer change:
                   with the references (render_capture writes them)
   gl_errors       the same levels and a Large Battle with a GL debug context
                   ("gl_debug"): any error, undefined or deprecated behaviour fails
+  render_check    the two above in one pass (each level loaded once, two at
+                  a time); render_quick: one level, for iterating
   perf_baseline   GPU and CPU time per frame-timer zone in the reference scenes
                   (perf_capture writes the baseline); slower than it by 5% fails
 
@@ -20,7 +22,7 @@ import time
 from .instance import TEST_DIR
 from .scenarios import join, wait_loaded
 
-REFS = TEST_DIR + "/references/" + os.environ.get("OGMP_REFS", "stage0")
+REFS = TEST_DIR + "/references/" + os.environ.get("OGMP_REFS", "stage4a")  # (stage0: before the hue-keeping bloom)
 OVERHAUL = "D:/OvergrowthAI/mod/overhaul"
 
 # The levels the renderer is judged on: water and grass, a story camp, desert
@@ -122,13 +124,20 @@ def render_compare(ctx, capture=False):
         m["noise"] = noise
         return {"passed": not fails, "metrics": m, "notes": fails}
 
+    _judge(shots, ctx.out_dir, m, fails)
+    return {"passed": not fails, "metrics": m, "notes": fails}
+
+
+def _judge(shots, out_dir, m, fails):
+    """Each shot against its reference, allowed three times the view's noise."""
+    noise_path = REFS + "/noise.json"
     noise = json.load(open(noise_path, encoding="utf-8")) if os.path.exists(noise_path) else {}
     for name, shot in shots.items():
         ref = f"{REFS}/{name}.png"
         if not os.path.exists(ref):
             fails.append(f"{name}: no reference (run render_capture)")
             continue
-        r = _compare(shot, ref, f"{ctx.out_dir}/{name}_diff.png")
+        r = _compare(shot, ref, f"{out_dir}/{name}_diff.png")
         n = noise.get(name, {"mean_diff": 0.0, "changed": 0.0})
         mean_max = max(0.05, n["mean_diff"] * 3.0 + 0.05)
         changed_max = max(0.0005, n["changed"] * 3.0 + 0.0005)
@@ -136,6 +145,78 @@ def render_compare(ctx, capture=False):
         m[name] = r
         if r["mean_diff"] > mean_max or r["changed"] > changed_max:
             fails.append(f"{name}: differs (mean {r['mean_diff']} > {round(mean_max, 3)} or changed {r['changed']} > {round(changed_max, 5)}, psnr {r['psnr']})")
+
+
+def render_check(ctx, scenes=None, battle=True, parallel=2):
+    """render_compare and gl_errors in one pass: each level loaded once, with the
+    GL debug context, shot from the fixed views and asked for GL problems; levels
+    two at a time (the shots are of a paused game, so sharing the GPU changes
+    nothing in them). The battle is checked for GL problems only.
+    render_quick: one level."""
+    import concurrent.futures
+    import threading
+    m, fails, shots = {}, [], {}
+    lock = threading.Lock()
+    if scenes is None and os.environ.get("OGMP_RENDER_SCENES"):  # (e.g. "slaver_landing,raider_camp")
+        scenes = os.environ["OGMP_RENDER_SCENES"].split(",")
+        battle = False
+    jobs = [(scene, level) for scene, level in RENDER_SCENES if scenes is None or scene in scenes]
+    if battle:
+        jobs.append(("large_battle", "Data/Levels/" + BATTLE_MAP))
+
+    def run(job):
+        scene, level = job
+        keys = {"gl_debug": "1"}
+        mods = []
+        if scene == "large_battle":
+            keys.update(_battle_keys(teams=4, per_team=4))
+            mods = [OVERHAUL]
+        else:
+            keys["test_start_paused"] = "1"
+        all_keys = {"limit_fps_in_game": "false", "vsync": "0"}
+        all_keys.update(keys)
+        with lock:  # (instance numbers and ports are handed out in order)
+            inst = ctx.instance(scene, width=SHOT_SIZE[0], height=SHOT_SIZE[1], keys=all_keys, mods=mods, level=level)
+        out = {"shots": {}, "fails": [], "gl": None}
+        try:
+            wait_loaded(inst)
+            time.sleep(8.0 if scene == "large_battle" else 6.0)  # (the battle runs; textures stream in)
+            if scene != "large_battle":
+                me = inst.bridge.me()
+                if me is None:
+                    out["fails"].append(f"{scene}: no player character")
+                    return out
+                x, y, z = me["pos"]
+                for view, cam, target in VIEWS:
+                    inst.bridge.call("view", pos=[x + cam[0], y + cam[1], z + cam[2]],
+                                     target=[x + target[0], y + target[1], z + target[2]], fov=70.0)
+                    time.sleep(1.5)
+                    shot = f"{ctx.out_dir}/{scene}_{view}.png"
+                    _shot(inst, shot)
+                    out["shots"][f"{scene}_{view}"] = shot
+            res = inst.bridge.call("gl_problems")
+            out["gl"] = {"alive": res["alive"], "count": res["count"],
+                         "problems": [f"{p['count']}x {p['message']}" for p in res["problems"]]}
+            if not res["alive"]:
+                out["fails"].append(f"{scene}: the GL debug output never reached the callback")
+            if res["count"]:
+                out["fails"].append(f"{scene}: {res['count']} GL problems ({len(res['problems'])} kinds)")
+            if job == jobs[0]:
+                # An error on purpose: the output reports errors, not only our marker
+                provoked = inst.bridge.call("gl_problems", provoke=True)
+                if provoked["count"] <= res["count"]:
+                    out["fails"].append("a deliberate GL error went unreported")
+        finally:
+            inst.stop()
+        return out
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=parallel) as pool:
+        for job, out in zip(jobs, pool.map(run, jobs)):
+            shots.update(out["shots"])
+            fails += out["fails"]
+            if out["gl"] is not None:
+                m["gl_" + job[0]] = out["gl"]
+    _judge(shots, ctx.out_dir, m, fails)
     return {"passed": not fails, "metrics": m, "notes": fails}
 
 
@@ -269,6 +350,10 @@ def perf_baseline(ctx, capture=False):
             bz = b["zones"].get(path)
             if not bz:
                 continue
+            # The swap is the wait for the display (frames are capped at its rate):
+            # it grows when drawing gets faster
+            if path.startswith("Graphics::SwapToScreen()"):
+                continue
             nz = n["zones"].get(path, {"gpu_ms": 0.0, "cpu_ms": 0.0})
             # A zone called a different number of times (characters, objects on
             # screen): its time per call
@@ -283,3 +368,21 @@ def perf_baseline(ctx, capture=False):
                 elif z[k] > bz[k] * margin + 3.0 * nz[k] + 0.05:
                     fails.append(f"{scene} {path}: {k} {z[k]} (baseline {bz[k]})")
     return {"passed": not fails, "metrics": m, "notes": fails}
+
+
+def render_check_vk(ctx):
+    """render_check with every manifest program made from the latest Vulkan build
+    (shader_spirv writes test/spirv): GLSL 4.60 back from the SPIR-V, loose uniforms
+    in the default block (stage 3.4)."""
+    from .instance import TEST_DIR
+    if not os.path.exists(TEST_DIR + "/spirv/index.json"):
+        return {"passed": False, "metrics": {}, "notes": ["no Vulkan build (run shader_spirv)"]}
+    old = os.environ.get("OGMP_KEYS")
+    os.environ["OGMP_KEYS"] = (old + ";" if old else "") + "shader_vulkan_glsl=" + TEST_DIR + "/spirv"
+    try:
+        return render_check(ctx)
+    finally:
+        if old is None:
+            os.environ.pop("OGMP_KEYS", None)
+        else:
+            os.environ["OGMP_KEYS"] = old

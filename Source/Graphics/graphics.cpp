@@ -35,7 +35,9 @@
 #include <Internal/common.h>
 #include <Internal/detect_settings.h>
 
+#include <Graphics/vboringcontainer.h>
 #include <Graphics/textures.h>
+#include <Graphics/vbocontainer.h>
 #include <Graphics/shaders.h>
 #include <Graphics/camera.h>
 #include <Graphics/frame_timers.h>
@@ -181,6 +183,25 @@ void Graphics::setPolygonOffset(bool new_polygon_offset) {
     if (new_polygon_offset == shadow_state_.polygon_offset_enable_) return;
     shadow_state_.polygon_offset_enable_ = new_polygon_offset;
     shadow_state_.polygon_offset_enable_ ? glEnable(GL_POLYGON_OFFSET_FILL) : glDisable(GL_POLYGON_OFFSET_FILL);
+}
+
+void Graphics::setAlphaToCoverage(const bool alpha_to_coverage) {
+    if (alpha_to_coverage == shadow_state_.alpha_to_coverage_) return;
+    shadow_state_.alpha_to_coverage_ = alpha_to_coverage;
+    alpha_to_coverage ? glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE) : glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+}
+
+void Graphics::setScissorTest(const bool scissor_test) {
+    if (scissor_test == shadow_state_.scissor_test_) return;
+    shadow_state_.scissor_test_ = scissor_test;
+    scissor_test ? glEnable(GL_SCISSOR_TEST) : glDisable(GL_SCISSOR_TEST);
+}
+
+void Graphics::setColorMask(const bool red, const bool green, const bool blue, const bool alpha) {
+    unsigned char mask = (red ? 1 : 0) | (green ? 2 : 0) | (blue ? 4 : 0) | (alpha ? 8 : 0);
+    if (mask == shadow_state_.color_mask_) return;
+    shadow_state_.color_mask_ = mask;
+    glColorMask(red, green, blue, alpha);
 }
 
 void Graphics::setSimpleShadows(const bool val) {
@@ -330,6 +351,56 @@ void Graphics::framebufferColorTexture2D(TextureRef t, int mipmap_level) {
 }
 // #pragma optimize("",on)
 
+void Graphics::BindRenderTarget(TextureRef color, int color_level, TextureRef depth, int depth_level) {
+    Textures* textures = Textures::Instance();
+    RenderTargetKey key;
+    key.color = 0;
+    key.depth = 0;
+    if (color.valid()) {
+        textures->EnsureInVRAM(color);
+        key.color = textures->returnTexture(color);
+    }
+    if (depth.valid()) {
+        textures->EnsureInVRAM(depth);
+        key.depth = textures->returnTexture(depth);
+    }
+    key.color_level = key.color ? color_level : 0;
+    key.depth_level = key.depth ? depth_level : 0;
+    GLuint fb = 0;
+    for (const std::pair<RenderTargetKey, GLuint>& rt : render_targets_) {
+        if (rt.first == key) {
+            fb = rt.second;
+            break;
+        }
+    }
+    if (fb == 0) {
+        glCreateFramebuffers(1, &fb);
+        if (key.color) {
+            glNamedFramebufferTexture(fb, GL_COLOR_ATTACHMENT0, key.color, key.color_level);
+        }
+        if (key.depth) {
+            glNamedFramebufferTexture(fb, GL_DEPTH_ATTACHMENT, key.depth, key.depth_level);
+        }
+        render_targets_.push_back(std::make_pair(key, fb));
+    }
+    bindFramebuffer(fb);
+}
+
+void Graphics::ForgetRenderTargets(GLuint texture_name) {
+    for (size_t i = 0; i < render_targets_.size();) {
+        if (render_targets_[i].first.color == texture_name || render_targets_[i].first.depth == texture_name) {
+            if (curr_framebuffer == render_targets_[i].second) {
+                bindFramebuffer(0);
+            }
+            glDeleteFramebuffers(1, &render_targets_[i].second);
+            render_targets_[i] = render_targets_.back();
+            render_targets_.pop_back();
+        } else {
+            ++i;
+        }
+    }
+}
+
 void Graphics::genRenderbuffers(GLuint* rb) {
     CHECK_GL_ERROR();
     glGenRenderbuffers(1, rb);
@@ -358,7 +429,7 @@ void Graphics::deleteFramebuffer(GLuint* fb) {
 
 void Graphics::renderbufferStorage(GLuint res) {
     CHECK_GL_ERROR();
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, res, res);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, res, res);  // (float: reversed-Z)
     CHECK_GL_ERROR();
 }
 
@@ -403,7 +474,22 @@ void Graphics::UnbindVBO(int target, int val) {
     }
 }
 
+// Overgrowth Online (GL 4.6 stage 2.4): code that sets up the engine's VAO while a
+// layout's is still bound (a missing EndVertexLayout) would change the layout's
+static const char* g_layout_label = "";  // the layout begun last (its last input, for the message)
+static void LayoutLeftBound(Graphics* graphics, const char* where) {
+    static int warned = 0;
+    if (warned < 8) {
+        LOGE << "A vertex layout was still bound when the engine's VAO was used (missing EndVertexLayout): " << g_layout_label << " at " << where << std::endl;
+        ++warned;
+    }
+    graphics->EndVertexLayout();
+}
+
 void Graphics::BindArrayVBO(int val) {
+    if (vertex_layout_bound_) {
+        LayoutLeftBound(this, "BindArrayVBO");
+    }
     LOGS << "Current vbo_array_bound " << vbo_array_bound << std::endl;
     LOGS << "Value " << val << std::endl;
     if (vbo_array_bound != val) {
@@ -415,6 +501,9 @@ void Graphics::BindArrayVBO(int val) {
 }
 
 void Graphics::BindElementVBO(int val) {
+    if (vertex_layout_bound_) {
+        LayoutLeftBound(this, "BindElementVBO");
+    }
     if (vbo_element_bound != val) {
         vbo_element_bound = val;
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, val);
@@ -504,6 +593,7 @@ void Graphics::SwapToScreen() {
         SDL_GL_SwapWindow(sdl_window_);
     }
     GL_SWAP();
+    FrameRing::EndFrame();  // Overgrowth Online (GL 4.6 stage 2.3)
 
     if (queued_screenshot) {
         ++queued_screenshot;
@@ -543,7 +633,16 @@ void Graphics::SetBlendFunc(const int src, const int dst, const int alpha_src, c
 
 void Graphics::setDepthFunc(const int type) {
     if (shadow_state_.depth_func_unset_ || type != shadow_state_.depth_func_type_) {
-        glDepthFunc(type);
+        // Overgrowth Online (GL 4.6 stage 4a): reversed-Z, nearer is greater. The engine
+        // asks in the usual terms (LESS = nearer passes) and gets the reversed test
+        GLenum reversed = type;
+        switch (type) {
+            case GL_LESS: reversed = GL_GREATER; break;
+            case GL_LEQUAL: reversed = GL_GEQUAL; break;
+            case GL_GREATER: reversed = GL_LESS; break;
+            case GL_GEQUAL: reversed = GL_LEQUAL; break;
+        }
+        glDepthFunc(reversed);
         shadow_state_.depth_func_type_ = type;
         shadow_state_.depth_func_unset_ = false;
     }
@@ -1194,6 +1293,11 @@ void Graphics::InitScreen() {
             g_attrib_envobj_instancing_support = false;
         }
         ApplyVsync(config_.vSync());
+        // Overgrowth Online (GL 4.6 stage 4a): reversed-Z in Vulkan's [0, 1] clip range,
+        // depth 1 at the near plane, cleared to 0 (far), tested GREATER (see reversez.h)
+        glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+        glClearDepth(0.0);
+        glDepthFunc(GL_GREATER);
         // Clear screen
         glClearColor(0.5f, 0.5f, 0.5f, 0);
         setViewport(0, 0, window_dims[0], window_dims[1]);
@@ -1308,7 +1412,7 @@ void Graphics::InitScreen() {
 
             glGenRenderbuffers(1, &multisample_depth);
             glBindRenderbuffer(GL_RENDERBUFFER, multisample_depth);
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH_COMPONENT24, render_dims[0], render_dims[1]);
+            glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH_COMPONENT32F, render_dims[0], render_dims[1]);  // (float: reversed-Z)
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, multisample_depth);
             CHECK_GL_ERROR();
             multisample_framebuffer_exists = true;
@@ -1330,7 +1434,7 @@ void Graphics::InitScreen() {
         textures->SetTextureName(screen_color_tex, "Post::Screen Color");
         screen_vel_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], features_.HDR_enable() ? GL_RGBA16F : GL_RGBA, GL_RGBA);
         textures->SetTextureName(screen_vel_tex, "Post::Screen Velocity");
-        screen_depth_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT);
+        screen_depth_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT);  // (float: reversed-Z)
         textures->SetTextureName(screen_depth_tex, "Post::Screen Depth");
 
         genFramebuffers(&post_effects.post_framebuffer, "post_effects");
@@ -1492,7 +1596,6 @@ void Graphics::SetFromConfig(const Config& config, bool dynamic) {
         config_.SetVSync(config["vsync"].toNumber<bool>());
         config_.SetLimitFpsInGame(config["limit_fps_in_game"].toNumber<bool>());
         config_.SetMaxFrameRate(config["max_frame_rate"].toNumber<int>());
-        config_.SetGPUSkinning(config["gpu_skinning"].toNumber<bool>());
         config_.motion_blur_amount_ = config["motion_blur_amount"].toNumber<float>();
         config_.SetSimpleFog(config["simple_fog"].toNumber<bool>());
         config_.SetDetailObjects(config["detail_objects"].toNumber<bool>());
@@ -1792,6 +1895,7 @@ void Graphics::SetSeamlessCubemaps(bool val) {
 }
 
 void Graphics::DrawArrays(GLenum mode, int first, unsigned int count) {
+    Shaders::Instance()->FlushShadowBlock();  // Overgrowth Online (GL 4.6 stage 3.4)
     SetVertexAttribArrays();
     GL_PERF_START();
     glDrawArrays(mode, first, count);
@@ -1799,6 +1903,7 @@ void Graphics::DrawArrays(GLenum mode, int first, unsigned int count) {
 }
 
 void Graphics::DrawElements(GLenum mode, unsigned int count, GLenum type, const void* indices) {
+    Shaders::Instance()->FlushShadowBlock();  // Overgrowth Online (GL 4.6 stage 3.4)
     SetVertexAttribArrays();
     GL_PERF_START();
     glDrawElements(mode, count, type, indices);
@@ -1806,6 +1911,7 @@ void Graphics::DrawElements(GLenum mode, unsigned int count, GLenum type, const 
 }
 
 void Graphics::DrawElementsInstanced(GLenum mode, unsigned int count, GLenum type, const void* indices, unsigned int primcount) {
+    Shaders::Instance()->FlushShadowBlock();  // Overgrowth Online (GL 4.6 stage 3.4)
     SetVertexAttribArrays();
     GL_PERF_START();
     glDrawElementsInstanced(mode, count, type, indices, primcount);
@@ -1813,13 +1919,133 @@ void Graphics::DrawElementsInstanced(GLenum mode, unsigned int count, GLenum typ
 }
 
 void Graphics::DrawRangeElements(GLenum mode, unsigned int start, unsigned int end, unsigned int count, GLenum type, const void* indices) {
+    Shaders::Instance()->FlushShadowBlock();  // Overgrowth Online (GL 4.6 stage 3.4)
     SetVertexAttribArrays();
     GL_PERF_START();
     glDrawRangeElements(mode, start, end, count, type, indices);
     GL_PERF_END();
 }
 
+void VertexLayout::Add(const char* name, GLuint binding, GLint size, GLenum type, GLboolean normalized, GLuint offset) {
+    Attrib a;
+    a.name = name;
+    a.binding = binding;
+    a.size = size;
+    a.type = type;
+    a.normalized = normalized;
+    a.offset = offset;
+    attribs.push_back(a);
+    if (divisors.size() <= binding) {
+        divisors.resize(binding + 1, 0);
+    }
+}
+
+void VertexLayout::SetDivisor(GLuint binding, GLuint divisor) {
+    if (divisors.size() <= binding) {
+        divisors.resize(binding + 1, 0);
+    }
+    divisors[binding] = divisor;
+}
+
+void Graphics::BeginVertexLayout(VertexLayout& layout, int program, uint32_t enabled, const GLuint* buffers, const GLintptr* offsets, const GLsizei* strides, GLuint element_buffer) {
+    // The VAO for this program's input locations (one per distinct set)
+    int index = -1;
+    for (const std::pair<int, int>& pv : layout.program_vao) {
+        if (pv.first == program) {
+            index = pv.second;
+            break;
+        }
+    }
+    if (index == -1) {
+        Shaders* shaders = Shaders::Instance();
+        std::vector<GLint> locations(layout.attribs.size());
+        for (size_t i = 0; i < layout.attribs.size(); ++i) {
+            locations[i] = shaders->returnShaderAttrib(layout.attribs[i].name, program);
+        }
+        for (size_t v = 0; v < layout.vaos.size(); ++v) {
+            if (layout.vaos[v].locations == locations) {
+                index = (int)v;
+                break;
+            }
+        }
+        if (index == -1) {
+            VertexLayout::Vao v;
+            glCreateVertexArrays(1, &v.vao);
+            for (size_t i = 0; i < layout.attribs.size(); ++i) {
+                if (locations[i] == -1) {
+                    continue;
+                }
+                const VertexLayout::Attrib& a = layout.attribs[i];
+                glVertexArrayAttribFormat(v.vao, locations[i], a.size, a.type, a.normalized, a.offset);
+                glVertexArrayAttribBinding(v.vao, locations[i], a.binding);
+            }
+            for (size_t b = 0; b < layout.divisors.size(); ++b) {
+                glVertexArrayBindingDivisor(v.vao, (GLuint)b, layout.divisors[b]);
+            }
+            v.locations = locations;
+            v.enabled = 0;
+            layout.vaos.push_back(v);
+            index = (int)layout.vaos.size() - 1;
+        }
+        layout.program_vao.push_back(std::make_pair(program, index));
+    }
+    VertexLayout::Vao& v = layout.vaos[index];
+    g_layout_label = layout.attribs.empty() ? "" : layout.attribs.back().name.c_str();
+    if (!vertex_layout_bound_ || layout_vao_bound_ != v.vao) {
+        glBindVertexArray(v.vao);
+        layout_vao_bound_ = v.vao;
+    }
+    vertex_layout_bound_ = true;
+
+    uint32_t on = 0;
+    for (size_t i = 0; i < layout.attribs.size(); ++i) {
+        if ((enabled & (1u << i)) && v.locations[i] != -1) {
+            on |= 1u << i;
+            glVertexArrayVertexBuffer(v.vao, layout.attribs[i].binding, buffers[i], offsets[i], strides[i]);
+        }
+    }
+    uint32_t changed = on ^ v.enabled;
+    for (size_t i = 0; changed != 0; ++i, changed >>= 1) {
+        if (changed & 1u) {
+            if (on & (1u << i)) {
+                glEnableVertexArrayAttrib(v.vao, v.locations[i]);
+            } else {
+                glDisableVertexArrayAttrib(v.vao, v.locations[i]);
+            }
+        }
+    }
+    v.enabled = on;
+    glVertexArrayElementBuffer(v.vao, element_buffer);
+}
+
+void Graphics::BeginVertexLayout(VertexLayout& layout, int program, VBOContainer* const* vbos, GLuint element_buffer) {
+    GLuint buffers[32] = {0};
+    GLintptr offsets[32] = {0};
+    GLsizei strides[32] = {0};
+    uint32_t enabled = 0;
+    LOG_ASSERT(layout.Count() <= 32);
+    for (int i = 0; i < layout.Count(); ++i) {
+        strides[i] = layout.attribs[i].size * sizeof(GLfloat);
+        if (vbos[i] && vbos[i]->valid()) {
+            buffers[i] = vbos[i]->id();
+            enabled |= 1u << i;
+        }
+    }
+    BeginVertexLayout(layout, program, enabled, buffers, offsets, strides, element_buffer);
+}
+
+void Graphics::EndVertexLayout() {
+    if (vertex_layout_bound_) {
+        glBindVertexArray(vao_);
+        vertex_layout_bound_ = false;
+        layout_vao_bound_ = 0;
+    }
+}
+
 void Graphics::EnableVertexAttribArray(unsigned int index) {
+    if (vertex_layout_bound_) {
+        LayoutLeftBound(this, "EnableVertexAttribArray");
+    }
     assert(index < sizeof(wanted_vertex_attrib_arrays) * 8);
     wanted_vertex_attrib_arrays |= (1 << index);
 }
@@ -1858,6 +2084,9 @@ unsigned char BitScanForward(unsigned long* index, unsigned long mask) {
 #endif  // __GNUC__
 
 void Graphics::SetVertexAttribArrays() {
+    if (vertex_layout_bound_) {
+        return;  // (a layout's VAO has its own)
+    }
     uint32_t changed_vertex_attrib_arrays = active_vertex_attrib_arrays ^ wanted_vertex_attrib_arrays;
 
     while (changed_vertex_attrib_arrays != 0) {
@@ -1912,9 +2141,8 @@ void Graphics::SetUpShadowTextures() {
         bindFramebuffer(static_shadow_fb);
         framebufferDepthTexture2D(static_shadow_depth_ref);
 
-        GLuint static_shadow_id = textures->returnTexture(static_shadow_depth_ref);
-        glTextureParameteri(static_shadow_id, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        glTextureParameteri(static_shadow_id, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+        textures->SetSamplingParameter(static_shadow_depth_ref, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        textures->SetSamplingParameter(static_shadow_depth_ref, GL_TEXTURE_COMPARE_FUNC, GL_GEQUAL);  // (reversed-Z: lit when nearer or level)
         CHECK_FBO_ERROR();
     }
 
@@ -1942,9 +2170,8 @@ void Graphics::SetUpShadowTextures() {
         framebufferColorTexture2D(cascade_shadow_color_ref);
         framebufferDepthTexture2D(cascade_shadow_depth_ref);
 
-        GLuint cascade_shadow_id = textures->returnTexture(cascade_shadow_depth_ref);
-        glTextureParameteri(cascade_shadow_id, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        glTextureParameteri(cascade_shadow_id, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+        textures->SetSamplingParameter(cascade_shadow_depth_ref, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        textures->SetSamplingParameter(cascade_shadow_depth_ref, GL_TEXTURE_COMPARE_FUNC, GL_GEQUAL);  // (reversed-Z: lit when nearer or level)
     }
 
     PopFramebuffer();

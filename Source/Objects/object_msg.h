@@ -34,7 +34,7 @@ enum Type {
     DRAW,
     SCRIPT,
     QUEUE_SCRIPT,
-    UPDATE_GPU_SKINNING,
+    UPDATE_GPU_SKINNING,  // (unused: GPU skinning is the only way, stage 4a)
     UPDATE,
     INFREQUENT_UPDATE
 };

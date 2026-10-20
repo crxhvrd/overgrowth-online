@@ -147,14 +147,21 @@ void SkyEditor::Draw() {
         }
         static VBOContainer data_vbo;
         data_vbo.Fill(kVBODynamic | kVBOFloat, sizeof(data), data);
-        data_vbo.Bind();
-        int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
-        int color_attrib_id = shaders->returnShaderAttrib("color_attrib", shader_id);
-        graphics->EnableVertexAttribArray(vert_attrib_id);
-        graphics->EnableVertexAttribArray(color_attrib_id);
-        glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 7 * sizeof(GLfloat), (const void*)(sizeof(GLfloat) * 4));
-        glVertexAttribPointer(color_attrib_id, 4, GL_FLOAT, false, 7 * sizeof(GLfloat), 0);
-        glDrawArrays(GL_LINE_STRIP, 0, 37);
+        // Overgrowth Online (GL 4.6 stage 2.4): position and colour, a binding each
+        // (the circle interleaves colour, then position; the handle: positions only)
+        static VertexLayout layout;
+        if (layout.Count() == 0) {
+            layout.Add("vert_attrib", 0, 3);
+            layout.Add("color_attrib", 1, 4);
+        }
+        {
+            GLuint buffers[2] = {data_vbo.id(), data_vbo.id()};
+            GLintptr offsets[2] = {sizeof(GLfloat) * 4, 0};
+            GLsizei strides[2] = {7 * sizeof(GLfloat), 7 * sizeof(GLfloat)};
+            graphics->BeginVertexLayout(layout, shader_id, data_vbo.valid() ? 3u : 0u, buffers, offsets, strides, 0);
+        }
+        Graphics::Instance()->DrawArrays(GL_LINE_STRIP, 0, 37);
+        graphics->EndVertexLayout();
         graphics->ResetVertexAttribArrays();
 
         // Draw handle
@@ -180,13 +187,14 @@ void SkyEditor::Draw() {
                 index += 3;
             }
             data_vbo.Fill(kVBODynamic | kVBOFloat, sizeof(data), data);
-            data_vbo.Bind();
-            int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
-            graphics->EnableVertexAttribArray(vert_attrib_id);
-            glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 3 * sizeof(GLfloat), 0);
-            glDrawArrays(GL_TRIANGLE_FAN, 0, 10);
+            GLuint buffers[2] = {data_vbo.id(), 0};
+            GLintptr offsets[2] = {0, 0};
+            GLsizei strides[2] = {3 * sizeof(GLfloat), 0};
+            graphics->BeginVertexLayout(layout, shader_id, data_vbo.valid() ? 1u : 0u, buffers, offsets, strides, 0);
+            Graphics::Instance()->DrawArrays(GL_TRIANGLE_FAN, 0, 10);
             shaders->SetUniformVec4("color_uniform", vec4(vec3(0.4f), 0.3f));
-            glDrawArrays(GL_LINE_STRIP, 1, 9);
+            Graphics::Instance()->DrawArrays(GL_LINE_STRIP, 1, 9);
+            graphics->EndVertexLayout();
             graphics->ResetVertexAttribArrays();
         }
     }

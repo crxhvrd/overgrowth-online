@@ -40,6 +40,7 @@
 #include <opengl.h>
 
 #include <queue>
+#include <vector>
 #include <stack>
 #include <climits>
 #include <stdint.h>  // cstdint would be more c++ but os x doesn't understand it
@@ -103,7 +104,6 @@ enum Mode {
 class GraphicsConfig {
    public:
     bool dynamic_character_cubemap_;
-    bool gpu_skinning() const { return gpu_skinning_; }
     float anisotropy() const { return anisotropy_; }
     int FSAA_samples() const { return FSAA_samples_; }
     FullscreenMode::Mode full_screen() const { return full_screen_; }
@@ -127,7 +127,6 @@ class GraphicsConfig {
     const vec3& blood_color() const { return blood_color_; }
     static vec3 BloodColorFromString(const std::string& str);
 
-    void SetGPUSkinning(bool val) { gpu_skinning_ = val; }
     void SetAnisotropy(float val) { anisotropy_ = val; }
     void SetFSAASamples(int val) { FSAA_samples_ = val; }
     void SetFullscreen(FullscreenMode::Mode val) { full_screen_ = val; }
@@ -163,7 +162,6 @@ class GraphicsConfig {
     bool detail_object_decals_;
     bool detail_object_lowres_;
     bool detail_object_shadows_;
-    bool gpu_skinning_;
     float anisotropy_;
     int FSAA_samples_;
     FullscreenMode::Mode full_screen_;
@@ -202,6 +200,11 @@ struct GraphicsShadowState {
     bool client_states_[CS_MAX_SHADOWED_CLIENT_STATES];
     int client_active_textures_;
     bool polygon_offset_enable_;
+    // Overgrowth Online (GL 4.6 stage 2.6): the rest of the fixed-function state,
+    // set only through Graphics (GL's defaults)
+    bool alpha_to_coverage_ = false;
+    bool scissor_test_ = false;
+    unsigned char color_mask_ = 0xF;  // red, green, blue, alpha: bits 0-3
 };
 
 struct SDL_Window;
@@ -214,6 +217,40 @@ struct PostEffects {
     GLuint post_framebuffer;
     TextureRef temp_screen_tex;
     TextureRef tone_mapped_tex;
+};
+
+// Overgrowth Online (GL 4.6 stage 2.4): a vertex format. Each attribute names the
+// shader input it feeds, its format and the buffer binding it reads. A VAO is made
+// per set of input locations (programs that place the inputs alike share one), so
+// the format is set once, not per draw. Graphics::BeginVertexLayout binds it with
+// this draw's buffers; EndVertexLayout goes back to the engine's VAO
+class VBOContainer;
+
+class VertexLayout {
+   public:
+    struct Attrib {
+        std::string name;
+        GLuint binding;
+        GLint size;
+        GLenum type;
+        GLboolean normalized;
+        GLuint offset;  // within the binding's element
+    };
+    void Add(const char* name, GLuint binding, GLint size, GLenum type = GL_FLOAT, GLboolean normalized = GL_FALSE, GLuint offset = 0);
+    void SetDivisor(GLuint binding, GLuint divisor);
+    int Count() const { return (int)attribs.size(); }
+
+   private:
+    friend class Graphics;
+    struct Vao {
+        GLuint vao;
+        std::vector<GLint> locations;  // each attribute's input location (-1: not in the program)
+        uint32_t enabled;              // attributes on
+    };
+    std::vector<Attrib> attribs;
+    std::vector<GLuint> divisors;                 // per binding
+    std::vector<Vao> vaos;
+    std::vector<std::pair<int, int> > program_vao;  // program -> index in vaos
 };
 
 class Graphics {
@@ -339,6 +376,9 @@ class Graphics {
     void setCullFace(const bool what);
     void setDepthWrite(const bool what);
     void setPolygonOffset(const bool polygon_offset);
+    void setAlphaToCoverage(const bool alpha_to_coverage);  // Overgrowth Online (GL 4.6 stage 2.6)
+    void setScissorTest(const bool scissor_test);
+    void setColorMask(const bool red, const bool green, const bool blue, const bool alpha);
     void setSimpleShadows(const bool val);
     void setSimpleWater(const bool val);
     void SetParticleFieldSimple(bool val);
@@ -361,6 +401,18 @@ class Graphics {
     void bindFramebuffer(GLuint fb);
     void framebufferDepthTexture2D(TextureRef t, int mipmap_level = 0);
     void framebufferColorTexture2D(TextureRef t, int mipmap_level = 0);
+    // Overgrowth Online (GL 4.6 stage 2.5): render targets. A framebuffer per set of
+    // attachments, made once (DSA) and kept, bound in place of one framebuffer whose
+    // attachments are swapped for every pass. A texture's are dropped when it is
+    // deleted (GL hands its name out again)
+    void BindRenderTarget(TextureRef color, int color_level = 0, TextureRef depth = TextureRef(), int depth_level = 0);
+    void ForgetRenderTargets(GLuint texture_name);
+    struct RenderTargetKey {
+        GLuint color, depth;
+        int color_level, depth_level;
+        bool operator==(const RenderTargetKey& o) const { return color == o.color && depth == o.depth && color_level == o.color_level && depth_level == o.depth_level; }
+    };
+    std::vector<std::pair<RenderTargetKey, GLuint> > render_targets_;
     void genRenderbuffers(GLuint* rb);
 
     std::map<GLuint, std::string> framebuffernames;
@@ -426,6 +478,17 @@ class Graphics {
     void EnableVertexAttribArray(unsigned int index);
     void DisableVertexAttribArray(unsigned int index);
     void ResetVertexAttribArrays();
+    // Overgrowth Online (GL 4.6 stage 2.4): the layout's VAO for this program,
+    // bound, attributes in `enabled` (bit i: the layout's attribute i) on, each
+    // reading buffers[i] from offsets[i] with strides[i]; this element buffer.
+    // Draw with the usual calls, then EndVertexLayout
+    void BeginVertexLayout(VertexLayout& layout, int program, uint32_t enabled, const GLuint* buffers, const GLintptr* offsets, const GLsizei* strides, GLuint element_buffer);
+    // The common case: attribute i reads all of vbos[i], tightly packed (floats),
+    // where it's valid
+    void BeginVertexLayout(VertexLayout& layout, int program, VBOContainer* const* vbos, GLuint element_buffer);
+    void EndVertexLayout();
+    bool vertex_layout_bound_ = false;
+    GLuint layout_vao_bound_ = 0;
     void ClearGLState();
 
     void SetUpShadowTextures();

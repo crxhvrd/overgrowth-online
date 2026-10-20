@@ -108,23 +108,29 @@ void DrawBillboard(const TextureRef& texture_ref, const vec3& pos, float scale, 
 
     {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Attrib");
-        int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
-        graphics->EnableVertexAttribArray(vert_attrib_id);
-        vbo->Bind();
-        glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, sizeof(float) * 3, (const void*)0);
+        // Overgrowth Online (GL 4.6 stage 2.4): the billboard's point (position only)
+        static VertexLayout layout;
+        if (layout.Count() == 0) {
+            layout.Add("vert_attrib", 0, 3);
+        }
+        GLuint buffers[1] = {vbo->id()};
+        GLintptr offsets[1] = {0};
+        GLsizei strides[1] = {sizeof(float) * 3};
+        graphics->BeginVertexLayout(layout, shader_id, 0x1, buffers, offsets, strides, 0);
     }
 
     if (graphics->use_sample_alpha_to_coverage) {
-        glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+        Graphics::Instance()->setAlphaToCoverage(true);
     }
 
     {
         PROFILER_GPU_ZONE(g_profiler_ctx, "DrawArrays");
         graphics->DrawArrays(GL_POINTS, 0, vbo->size() / sizeof(float) / 3);
     }
+    graphics->EndVertexLayout();
 
     if (graphics->use_sample_alpha_to_coverage) {
-        glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+        Graphics::Instance()->setAlphaToCoverage(false);
     }
 
     graphics->ResetVertexAttribArrays();

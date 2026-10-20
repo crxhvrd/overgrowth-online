@@ -31,7 +31,8 @@
 #include <SDL_assert.h>
 
 VBOContainer::VBOContainer() : is_valid(false),
-                               storage(0) {}
+                               storage(0),
+                               immutable(false) {}
 
 void VBOContainer::Fill(char flags, GLuint size, void* data) {
     if (size > 0) {
@@ -60,20 +61,25 @@ void VBOContainer::Fill(char flags, GLuint size, void* data) {
             // No hint flag set
             SDL_assert(false);
         }
-        if (flags & kVBOStatic || !is_valid) {
+        // Overgrowth Online (GL 4.6 stage 2.3): through the buffer's name (DSA), no
+        // binding; static contents in immutable storage
+        if (flags & kVBOStatic || !is_valid || immutable) {
             element = flags & kVBOElement;
             if (is_valid) {
                 LOGS << "Disposing " << gl_VBO << std::endl;
                 Dispose();
             }
-            glGenBuffers(1, &gl_VBO);
+            glCreateBuffers(1, &gl_VBO);
             // LOGI << "Generated vbo: " << gl_VBO << std::endl;
-            graphics->BindVBO(target, gl_VBO);
-            glBufferData(target, size, data, hint);
+            immutable = (flags & kVBOStatic) != 0;
+            if (immutable) {
+                glNamedBufferStorage(gl_VBO, size, data, 0);
+            } else {
+                glNamedBufferData(gl_VBO, size, data, hint);
+            }
             is_valid = true;
             storage = size;
         } else {
-            graphics->BindVBO(target, gl_VBO);
 
             /*
              * Some early tests indicate that no BufferData orphaning and memory mapped transfers are
@@ -112,14 +118,14 @@ void VBOContainer::Fill(char flags, GLuint size, void* data) {
                 LOGW << "Reallocating buffer because of resize" << std::endl;
                 PROFILER_ZONE(g_profiler_ctx, "glBufferData");
                 storage = size;
-                glBufferData(target, storage, NULL, hint);
+                glNamedBufferData(gl_VBO, storage, NULL, hint);
                 orphaned = true;
             }
 
             // if( !(flags & kVBOForceReBufferData) ){
             if (orphaned == false && kAlwaysOrphan) {
                 PROFILER_ZONE(g_profiler_ctx, "glBufferData orphan");
-                glBufferData(target, storage, NULL, hint);
+                glNamedBufferData(gl_VBO, storage, NULL, hint);
             }
 
             const bool kUseMapRange = true;
@@ -131,15 +137,14 @@ void VBOContainer::Fill(char flags, GLuint size, void* data) {
                 // For this we have to do a ring buffer implementation instead.
                 // Which we might do anyways..
                 // void* mapped = glMapBufferRange(target, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_INVALIDATE_RANGE_BIT );
-                void* mapped = glMapBufferRange(target, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT);
+                void* mapped = glMapNamedBufferRange(gl_VBO, 0, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT);
                 memcpy(mapped, data, size);
-                glUnmapBuffer(target);
+                glUnmapNamedBuffer(gl_VBO);
             } else {
                 PROFILER_ZONE(g_profiler_ctx, "glBufferSubData");
-                glBufferSubData(target, 0, size, data);
+                glNamedBufferSubData(gl_VBO, 0, size, data);
             }
         }
-        graphics->BindVBO(target, 0);
     }
     size_ = size;
 }

@@ -242,13 +242,13 @@ void DrawBatch::SetStartState() const {
     }
 
     if (transparent && graphics->use_sample_alpha_to_coverage) {
-        glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+        graphics->setAlphaToCoverage(true);
     }
 }
 
 void DrawBatch::SetEndState() const {
     if (transparent && Graphics::Instance()->use_sample_alpha_to_coverage) {
-        glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+        Graphics::Instance()->setAlphaToCoverage(false);
     }
 }
 

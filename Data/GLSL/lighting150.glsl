@@ -104,12 +104,12 @@ float GetCascadeShadowIndex(sampler2DShadow tex5, vec4 shadow_coord, int index, 
     //vec3 normal=normalize(cross(X,Y));
 
     #if !defined(SIMPLE_SHADOW)
-        shadow_coord.z -= 0.00003 * pow(2.0, float(index)*1.7);
+        shadow_coord.z += 0.00003 * pow(2.0, float(index)*1.7);  // (toward the light: reversed-Z, stage 4a)
     #else
         #if defined(CHARACTER)
-            shadow_coord.z -= 0.001;
+            shadow_coord.z += 0.001;
         #else
-            shadow_coord.z -= (1.0-abs(slope_dot))*0.0009 + 0.0001;
+            shadow_coord.z += (1.0-abs(slope_dot))*0.0009 + 0.0001;
         #endif
     #endif
 

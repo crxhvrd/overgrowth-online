@@ -23,6 +23,7 @@
 //-----------------------------------------------------------------------------
 #include "sky.h"
 
+#include <Graphics/reversez.h>
 #include <Graphics/camera.h>
 #include <Graphics/graphics.h>
 #include <Graphics/shaders.h>
@@ -147,7 +148,7 @@ void ProcessCubeMap(TextureRef src_ref, TextureRef ref, GLuint framebuffer, GLui
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Intel actually cares about the scissor test flag in the blit, so we have to disable it.
-        glDisable(GL_SCISSOR_TEST);
+        Graphics::Instance()->setScissorTest(false);
         // We set these incase someone in the future decides blit should care about these too.
         glViewport(0, 0, kDiffuseBoxRes, kDiffuseBoxRes);
         Graphics::Instance()->setDepthTest(false);  // (through the cache: a direct call left it wrong)
@@ -219,7 +220,7 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
     CHECK_GL_ERROR();
     graphics->setViewport(0, 0, size, size);
     // Set 90 degree projection matrix
-    glm::mat4 proj_mat = glm::perspective(90.0f, 1.0f, 0.01f, 100.0f);
+    glm::mat4 proj_mat = ReverseZ(glm::perspective(90.0f, 1.0f, 0.01f, 100.0f));
     CHECK_GL_ERROR();
     graphics->PushFramebuffer();
     CHECK_GL_ERROR();
@@ -227,6 +228,13 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
     CHECK_GL_ERROR();
     GLuint cube_map_texture = textures->returnTexture(cube_map_texture_ref);
     CHECK_GL_ERROR();
+    // Overgrowth Online (GL 4.6 stage 2.4): the sky models' layout (dome, land,
+    // horizon: position 3, tex coord 2, each in its own buffer)
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 3);
+        layout.Add("tex_coord", 1, 2);
+    }
     for (int i = 0; i < 6; i++) {
         // Rotate view to correct orientation for cube map face
         CHECK_GL_ERROR();
@@ -241,8 +249,6 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
         shaders->setProgram(shader_id);
         CHECK_GL_ERROR();
         shaders->SetUniformVec4("color", vec4(1.0f));
-        int vert_coord_id = shaders->returnShaderAttrib("vert_coord", shader_id);
-        int tex_coord_id = shaders->returnShaderAttrib("tex_coord", shader_id);
         graphics->BindArrayVBO(0);
         CHECK_GL_ERROR();
 
@@ -270,14 +276,10 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
             Textures::Instance()->bindTexture(sky_texture_ref);
             CHECK_GL_ERROR();
 
-            graphics->EnableVertexAttribArray(vert_coord_id);
-            graphics->EnableVertexAttribArray(tex_coord_id);
-            sky_dome_model.VBO_vertices.Bind();
-            glVertexAttribPointer(vert_coord_id, 3, GL_FLOAT, false, 3 * sizeof(GLfloat), 0);
-            sky_dome_model.VBO_tex_coords.Bind();
-            glVertexAttribPointer(tex_coord_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
-            sky_dome_model.VBO_faces.Bind();
+            VBOContainer* vbos[2] = {&sky_dome_model.VBO_vertices, &sky_dome_model.VBO_tex_coords};
+            graphics->BeginVertexLayout(layout, shader_id, vbos, sky_dome_model.VBO_faces.id());
             graphics->DrawElements(GL_TRIANGLES, sky_dome_model.faces.size(), GL_UNSIGNED_INT, 0);
+            graphics->EndVertexLayout();
             graphics->ResetVertexAttribArrays();
             CHECK_GL_ERROR();
         } else {
@@ -300,14 +302,10 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
                     shaders->SetUniformVec4("color", vec4(vec3(0.5f), 1.0f));
                     Textures::Instance()->bindBlankTexture();
                 }
-                graphics->EnableVertexAttribArray(vert_coord_id);
-                graphics->EnableVertexAttribArray(tex_coord_id);
-                sky_land_model.VBO_vertices.Bind();
-                glVertexAttribPointer(vert_coord_id, 3, GL_FLOAT, false, 3 * sizeof(GLfloat), 0);
-                sky_land_model.VBO_tex_coords.Bind();
-                glVertexAttribPointer(tex_coord_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
-                sky_land_model.VBO_faces.Bind();
+                VBOContainer* vbos[2] = {&sky_land_model.VBO_vertices, &sky_land_model.VBO_tex_coords};
+                graphics->BeginVertexLayout(layout, shader_id, vbos, sky_land_model.VBO_faces.id());
                 graphics->DrawElements(GL_TRIANGLES, sky_land_model.faces.size(), GL_UNSIGNED_INT, 0);
+                graphics->EndVertexLayout();
                 graphics->ResetVertexAttribArrays();
             }
             CHECK_GL_ERROR();
@@ -323,8 +321,6 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
                 int shader_id = shaders->returnProgram(fog);
                 shaders->setProgram(shader_id);
                 shaders->SetUniformVec4("color", vec4(1.0f));
-                int vert_coord_id = shaders->returnShaderAttrib("vert_coord", shader_id);
-                int tex_coord_id = shaders->returnShaderAttrib("tex_coord", shader_id);
 
                 glm::mat4 mvp_mat = proj_mat * view_mat * model_mat;
                 shaders->SetUniformMat4("mvp_mat", (const GLfloat*)&mvp_mat);
@@ -332,14 +328,10 @@ void Sky::RenderCubeMap(int flags, const TextureRef* land_texture_ref) {
                 Textures::Instance()->bindTexture(horizon_texture_ref);
                 Textures::Instance()->bindTexture(spec_cube_map_texture_ref, 3);
 
-                graphics->EnableVertexAttribArray(vert_coord_id);
-                graphics->EnableVertexAttribArray(tex_coord_id);
-                horizon_model.VBO_vertices.Bind();
-                glVertexAttribPointer(vert_coord_id, 3, GL_FLOAT, false, 3 * sizeof(GLfloat), 0);
-                horizon_model.VBO_tex_coords.Bind();
-                glVertexAttribPointer(tex_coord_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
-                horizon_model.VBO_faces.Bind();
+                VBOContainer* vbos[2] = {&horizon_model.VBO_vertices, &horizon_model.VBO_tex_coords};
+                graphics->BeginVertexLayout(layout, shader_id, vbos, horizon_model.VBO_faces.id());
                 graphics->DrawElements(GL_TRIANGLES, horizon_model.faces.size(), GL_UNSIGNED_INT, 0);
+                graphics->EndVertexLayout();
                 graphics->ResetVertexAttribArrays();
                 CHECK_GL_ERROR();
             }

@@ -610,7 +610,7 @@ bool DebugDrawText::SetPosition(const vec3 &position) {
 void DebugDrawText::Draw() {
     PROFILER_GPU_ZONE(g_profiler_ctx, "DebugDrawText::Draw()");
     vec3 screen_point = ActiveCameras::Get()->worldToScreen(transform.GetTranslationPart());
-    if (screen_point[2] < 1.0) {
+    if (screen_point[2] > 0.0) {  // (in front of the camera: reversed-Z depth)
         int pos[] = {(int)screen_point[0], (int)(Graphics::Instance()->window_dims[1] - screen_point[1])};
         g_text_atlas_renderer.num_characters = 0;
         CHECK_GL_ERROR();
@@ -729,17 +729,20 @@ void DebugDrawPoint::Draw() {
 
     int shader_id = shaders->returnProgram("3d_color #COLOR_UNIFORM #NO_VELOCITY_BUF");
     shaders->setProgram(shader_id);
-    int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
     shaders->SetUniformMat4("mvp", cam->GetProjMatrix() * cam->GetViewMatrix() * transform);
     shaders->SetUniformVec4("color_uniform", color);
     shaders->SetUniformFloat("opacity", (1.0f - fade_amount));
 
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-
-    vbo->Bind();
-    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, sizeof(float) * 3, (const void *)0);
+    // Overgrowth Online (GL 4.6 stage 2.4): positions only
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_attrib", 0, 3);
+    }
+    VBOContainer *vbos[1] = {vbo.GetPtr()};
+    graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
 
     graphics->DrawArrays(GL_POINTS, 0, vbo->size() / sizeof(float) / 3);
+    graphics->EndVertexLayout();
 
     graphics->ResetVertexAttribArrays();
 }
@@ -835,17 +838,20 @@ void DebugDrawWire::DrawVert() {
 
     int shader_id = shaders->returnProgram("3d_color #COLOR_UNIFORM #NO_VELOCITY_BUF");
     shaders->setProgram(shader_id);
-    int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
     shaders->SetUniformMat4("mvp", cam->GetProjMatrix() * cam->GetViewMatrix() * transform);
     shaders->SetUniformVec4("color_uniform", color);
     shaders->SetUniformFloat("opacity", opacity * (1.0f - fade_amount));
 
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-
-    vbo->Bind();
-    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, sizeof(float) * 3, (const void *)0);
+    // Overgrowth Online (GL 4.6 stage 2.4): positions only
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_attrib", 0, 3);
+    }
+    VBOContainer *vbos[1] = {vbo.GetPtr()};
+    graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
 
     graphics->DrawArrays(GL_LINES, 0, vbo->size() / sizeof(float) / 3);
+    graphics->EndVertexLayout();
 
     graphics->ResetVertexAttribArrays();
 }
@@ -859,19 +865,24 @@ void DebugDrawWire::DrawVertColor() {
 
     int shader_id = shaders->returnProgram("3d_color #COLOR_ATTRIB #NO_VELOCITY_BUF");
     shaders->setProgram(shader_id);
-    int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
-    int color_attrib_id = shaders->returnShaderAttrib("color_attrib", shader_id);
     shaders->SetUniformMat4("mvp", cam->GetProjMatrix() * cam->GetViewMatrix() * transform);
     shaders->SetUniformFloat("opacity", opacity * (1.0f - fade_amount));
 
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    graphics->EnableVertexAttribArray(color_attrib_id);
-
-    vbo->Bind();
-    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, sizeof(float) * 7, (const void *)0);
-    glVertexAttribPointer(color_attrib_id, 4, GL_FLOAT, false, sizeof(float) * 7, (const void *)(sizeof(float) * 3));
+    // Overgrowth Online (GL 4.6 stage 2.4): position then colour, interleaved
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_attrib", 0, 3);
+        layout.Add("color_attrib", 0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 3);
+    }
+    {
+        const GLuint buffers[2] = {vbo->id(), vbo->id()};
+        const GLintptr offsets[2] = {0, 0};
+        const GLsizei strides[2] = {sizeof(float) * 7, sizeof(float) * 7};
+        graphics->BeginVertexLayout(layout, shader_id, vbo->valid() ? 3u : 0u, buffers, offsets, strides, 0);
+    }
 
     graphics->DrawArrays(GL_LINES, 0, vbo->size() / sizeof(float) / 7);
+    graphics->EndVertexLayout();
 
     graphics->ResetVertexAttribArrays();
 }
@@ -893,7 +904,6 @@ void DebugDrawStippleMesh::Draw() {
 
     int shader_id = shaders->returnProgram("debug_fill #STIPPLING #NO_VELOCITY_BUF");
     shaders->setProgram(shader_id);
-    int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
 
     shaders->SetUniformMat4("mvp", cam->GetProjMatrix() * cam->GetViewMatrix() * transform);
     shaders->SetUniformVec3("close_stipple_color", vec3(0.1f, 0.8f, 1.0f));
@@ -901,11 +911,16 @@ void DebugDrawStippleMesh::Draw() {
     shaders->SetUniformVec3("camera_forward", cam->GetFacing());
     shaders->SetUniformVec3("camera_position", cam->GetPos());
 
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    vbo->Bind();
-    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 0, 0);
+    // Overgrowth Online (GL 4.6 stage 2.4): positions only
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_attrib", 0, 3);
+    }
+    VBOContainer *vbos[1] = {vbo.GetPtr()};
+    graphics->BeginVertexLayout(layout, shader_id, vbos, 0);
 
     graphics->DrawArrays(GL_TRIANGLES, 0, vbo->size() / (sizeof(float) * 3));
+    graphics->EndVertexLayout();
 
     graphics->ResetVertexAttribArrays();
 }
@@ -973,23 +988,29 @@ void DebugDrawRibbon::Draw() {
     shaders->SetUniformFloat("time", game_timer.GetRenderTime());
     Textures::Instance()->bindTexture(Graphics::Instance()->screen_depth_tex, 5);
 
-    static VBORingContainer data_vbo(V_MIBIBYTE, kVBODynamic | kVBOFloat);
+    static VBORingContainer data_vbo(V_MIBIBYTE, kVBODynamic | kVBOFloat | kVBOFrame);
     data_vbo.Fill(data.size() * sizeof(GLfloat), &data[0]);
-    data_vbo.Bind();
-    int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
-    int color_attrib_id = shaders->returnShaderAttrib("color_attrib", shader_id);
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    graphics->EnableVertexAttribArray(color_attrib_id);
-    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 7 * sizeof(GLfloat), (const void *)(data_vbo.offset() + sizeof(GLfloat) * 4));
-    glVertexAttribPointer(color_attrib_id, 4, GL_FLOAT, false, 7 * sizeof(GLfloat), (const void *)data_vbo.offset());
+    // Overgrowth Online (GL 4.6 stage 2.4): colour then position, interleaved
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_attrib", 0, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4);
+        layout.Add("color_attrib", 0, 4);
+    }
+    {
+        const GLuint buffers[2] = {data_vbo.id(), data_vbo.id()};
+        const GLintptr offsets[2] = {(GLintptr)data_vbo.offset(), (GLintptr)data_vbo.offset()};
+        const GLsizei strides[2] = {7 * sizeof(GLfloat), 7 * sizeof(GLfloat)};
+        graphics->BeginVertexLayout(layout, shader_id, data_vbo.valid() ? 3u : 0u, buffers, offsets, strides, 0);
+    }
     Graphics::Instance()->DrawArrays(GL_TRIANGLE_STRIP, 0, ribbon_points.size() * 2);
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
 
     /*glEnableVertexAttribArray(vert_attrib_id);
     vbo->Bind();
     glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 0, 0);
 
-    glDrawArrays(GL_TRIANGLES, 0, vbo->size() / (sizeof(float)*3));
+    Graphics::Instance()->DrawArrays(GL_TRIANGLES, 0, vbo->size() / (sizeof(float)*3));
 
     glDisableVertexAttribArray(vert_attrib_id);*/
 }
@@ -1032,19 +1053,24 @@ void TempLines::Draw() {
 
         int shader_id = shaders->returnProgram("3d_color #COLOR_ATTRIB #NO_VELOCITY_BUF");
         shaders->setProgram(shader_id);
-        int vert_attrib_id = shaders->returnShaderAttrib("vert_attrib", shader_id);
-        int color_attrib_id = shaders->returnShaderAttrib("color_attrib", shader_id);
         shaders->SetUniformMat4("mvp", cam->GetProjMatrix() * cam->GetViewMatrix());
         shaders->SetUniformFloat("opacity", 1.0f);
 
-        graphics->EnableVertexAttribArray(vert_attrib_id);
-        graphics->EnableVertexAttribArray(color_attrib_id);
-
-        vbo.Bind();
-        glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, sizeof(float) * 7, (const void *)(vbo.offset()));
-        glVertexAttribPointer(color_attrib_id, 4, GL_FLOAT, false, sizeof(float) * 7, (const void *)(vbo.offset() + sizeof(float) * 3));
+        // Overgrowth Online (GL 4.6 stage 2.4): position then colour, interleaved
+        static VertexLayout layout;
+        if (layout.Count() == 0) {
+            layout.Add("vert_attrib", 0, 3);
+            layout.Add("color_attrib", 0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 3);
+        }
+        {
+            const GLuint buffers[2] = {vbo.id(), vbo.id()};
+            const GLintptr offsets[2] = {(GLintptr)vbo.offset(), (GLintptr)vbo.offset()};
+            const GLsizei strides[2] = {sizeof(float) * 7, sizeof(float) * 7};
+            graphics->BeginVertexLayout(layout, shader_id, vbo.valid() ? 3u : 0u, buffers, offsets, strides, 0);
+        }
 
         graphics->DrawArrays(GL_LINES, 0, vbo.size() / sizeof(float) / 7);
+        graphics->EndVertexLayout();
 
         graphics->ResetVertexAttribArrays();
     }

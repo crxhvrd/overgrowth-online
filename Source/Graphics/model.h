@@ -71,7 +71,6 @@ class Model {
 
     std::vector<vec4> bone_weights;
     std::vector<vec4> bone_ids;
-    std::vector<std::vector<vec4> > transform_vec;
     std::vector<vec2> tex_transform_vec;
     std::vector<vec3> morph_transform_vec;
 

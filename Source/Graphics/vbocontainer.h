@@ -36,6 +36,7 @@ class VBOContainer {
     GLuint storage;
 
     GLuint size_;
+    bool immutable;  // Overgrowth Online: static: immutable storage (a later non-static fill makes a new buffer)
 
    public:
     bool is_valid;
@@ -45,6 +46,7 @@ class VBOContainer {
     bool valid() const;
     uintptr_t offset() const;
     unsigned size();  // returns size in bytes.
+    GLuint id() const { return gl_VBO; }  // Overgrowth Online: the buffer's name
 
     VBOContainer();
     ~VBOContainer();

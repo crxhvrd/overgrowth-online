@@ -1062,15 +1062,6 @@ void DrawSettingsImGui(SceneGraph* scenegraph, ImGuiSettingsType type) {
                 g_disable_fog = config["disable_fog"].toNumber<bool>();
             }
 
-            checkbox_val = graphics->config_.gpu_skinning();
-            if (ImGui::Checkbox("GPU Skinning", &checkbox_val)) {
-                config.GetRef("gpu_skinning") = checkbox_val;
-                graphics->config_.SetGPUSkinning(checkbox_val);
-                if (scenegraph) {
-                    scenegraph->map_editor->UpdateGPUSkinning();
-                }
-            }
-
             checkbox_val = config["opengl_callback_errors"].toNumber<bool>();
             if (ImGui::Checkbox("OpenGL Callbacks Errors", &checkbox_val)) {
                 config.GetRef("opengl_callback_errors") = checkbox_val;

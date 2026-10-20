@@ -109,7 +109,6 @@ extern bool g_debug_runtime_disable_env_object_pre_draw_camera;
 bool last_ofr_is_valid = false;
 std::string last_ofr_shader_name;
 int last_shader;
-bool last_enable_alpha_to_coverage = false;
 
 struct EnvObjectGLState {
     GLState gl_state;
@@ -258,196 +257,53 @@ static void UpdateNormalOverride(EnvObject* obj, Model* model) {
 const size_t kAttribIdCountVboInstancing = 11;
 const size_t kAttribIdCountUboInstancing = 7;
 const size_t kAttribIdCountLegacyShader = 6;
-static int attrib_ids[kAttribIdCountVboInstancing];
+// Overgrowth Online (GL 4.6 stage 2.4): the env object vertex format, one binding
+// per attribute (the model keeps each in its own buffer); 6-10 are per instance
+static VertexLayout& EnvObjectLayout() {
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        const char* names[kAttribIdCountVboInstancing] = {"vertex_attrib", "tangent_attrib", "bitangent_attrib", "normal_attrib", "tex_coord_attrib",
+                                                          "plant_stability_attrib", "model_translation_attrib", "model_scale_attrib",
+                                                          "model_rotation_quat_attrib", "color_tint_attrib", "detail_scale_attrib"};
+        const int sizes[kAttribIdCountVboInstancing] = {3, 3, 3, 3, 2, 3, 3, 3, 4, 4, 4};
+        for (int i = 0; i < (int)kAttribIdCountVboInstancing; ++i) {
+            layout.Add(names[i], i, sizes[i]);
+            layout.SetDivisor(i, i >= 6 ? 1 : 0);
+        }
+    }
+    return layout;
+}
 
-static void SetupAttribPointers(bool shader_changed, bool shader_is_v1_5_or_greater, Model* model, VBORingContainer& env_object_model_translation_instance_vbo, VBORingContainer& env_object_model_scale_instance_vbo, VBORingContainer& env_object_model_rotation_quat_instance_vbo, VBORingContainer& env_object_color_tint_instance_vbo, VBORingContainer& env_object_detail_scale_instance_vbo, Shaders* shaders, int the_shader, Graphics* graphics) {
+// The model's buffers and this batch's instance data, into the layout (what
+// SetupAttribPointers did with the engine's VAO)
+static void BeginEnvObjectLayout(bool shader_is_v1_5_or_greater, Model* model, VBORingContainer* instance_vbos[5], int the_shader, Graphics* graphics) {
     bool attrib_envobj_instancing = g_attrib_envobj_instancing_support && g_attrib_envobj_instancing_enabled;
     int attrib_count = shader_is_v1_5_or_greater
                            ? (attrib_envobj_instancing ? kAttribIdCountVboInstancing : kAttribIdCountUboInstancing)
                            : kAttribIdCountLegacyShader;
-    if (shader_changed) {
-        for (int i = 0; i < attrib_count; ++i) {
-            const char* attrib_str;
-            int num_el;
-            VBOContainer* vbo = NULL;
-            VBORingContainer* vboRing = NULL;
-            bool instanced;
-            switch (i) {
-                case 0:
-                    attrib_str = "vertex_attrib";
-                    num_el = 3;
-                    vbo = &model->VBO_vertices;
-                    instanced = false;
-                    break;
-                case 1:
-                    attrib_str = "tangent_attrib";
-                    num_el = 3;
-                    vbo = &model->VBO_tangents;
-                    instanced = false;
-                    break;
-                case 2:
-                    attrib_str = "bitangent_attrib";
-                    num_el = 3;
-                    vbo = &model->VBO_bitangents;
-                    instanced = false;
-                    break;
-                case 3:
-                    attrib_str = "normal_attrib";
-                    num_el = 3;
-                    vbo = &model->VBO_normals;
-                    instanced = false;
-                    break;
-                case 4:
-                    attrib_str = "tex_coord_attrib";
-                    num_el = 2;
-                    vbo = &model->VBO_tex_coords;
-                    instanced = false;
-                    break;
-                case 5:
-                    attrib_str = "plant_stability_attrib";
-                    num_el = 3;
-                    vbo = &model->VBO_aux;
-                    instanced = false;
-                    break;
-                case 6:
-                    attrib_str = "model_translation_attrib";
-                    num_el = 3;
-                    vboRing = &env_object_model_translation_instance_vbo;
-                    instanced = true;
-                    break;
-                case 7:
-                    attrib_str = "model_scale_attrib";
-                    num_el = 3;
-                    vboRing = &env_object_model_scale_instance_vbo;
-                    instanced = true;
-                    break;
-                case 8:
-                    attrib_str = "model_rotation_quat_attrib";
-                    num_el = 4;
-                    vboRing = &env_object_model_rotation_quat_instance_vbo;
-                    instanced = true;
-                    break;
-                case 9:
-                    attrib_str = "color_tint_attrib";
-                    num_el = 4;
-                    vboRing = &env_object_color_tint_instance_vbo;
-                    instanced = true;
-                    break;
-                case 10:
-                    attrib_str = "detail_scale_attrib";
-                    num_el = 4;
-                    vboRing = &env_object_detail_scale_instance_vbo;
-                    instanced = true;
-                    break;
-                default:
-                    __builtin_unreachable();
-                    break;
+    const VBOContainer* model_vbos[6] = {&model->VBO_vertices, &model->VBO_tangents, &model->VBO_bitangents, &model->VBO_normals, &model->VBO_tex_coords, &model->VBO_aux};
+    const int sizes[kAttribIdCountVboInstancing] = {3, 3, 3, 3, 2, 3, 3, 3, 4, 4, 4};
+    GLuint buffers[kAttribIdCountVboInstancing] = {0};
+    GLintptr offsets[kAttribIdCountVboInstancing] = {0};
+    GLsizei strides[kAttribIdCountVboInstancing] = {0};
+    uint32_t enabled = 0;
+    for (int i = 0; i < attrib_count; ++i) {
+        if (i < 6) {
+            if (model_vbos[i]->valid()) {
+                buffers[i] = model_vbos[i]->id();
+                enabled |= 1u << i;
             }
-            CHECK_GL_ERROR();
-            attrib_ids[i] = shaders->returnShaderAttrib(attrib_str, the_shader);
-            CHECK_GL_ERROR();
-            if (attrib_ids[i] != -1 && ((vbo && vbo->valid()) || (vboRing && vboRing->valid()))) {
-                uintptr_t buffer_offset = 0;
-                if (vbo) {
-                    vbo->Bind();
-                    buffer_offset = 0;
-                }
-                if (vboRing) {
-                    vboRing->Bind();
-                    buffer_offset = vboRing->offset();
-                }
-                graphics->EnableVertexAttribArray(attrib_ids[i]);
-                CHECK_GL_ERROR();
-                glVertexAttribPointer(attrib_ids[i], num_el, GL_FLOAT, false, num_el * sizeof(GLfloat), (void*)buffer_offset);
-                CHECK_GL_ERROR();
-                glVertexAttribDivisorARB(attrib_ids[i], instanced ? 1 : 0);
-                CHECK_GL_ERROR();
+        } else {
+            VBORingContainer* ring = instance_vbos[i - 6];
+            if (ring->valid()) {
+                buffers[i] = ring->id();
+                offsets[i] = (GLintptr)ring->offset();
+                enabled |= 1u << i;
             }
         }
-    } else {
-        for (int i = 0; i < attrib_count; ++i) {
-            if (attrib_ids[i] != -1) {
-                int num_el;
-                VBOContainer* vbo = NULL;
-                VBORingContainer* vboRing = NULL;
-                bool instanced;
-                switch (i) {
-                    case 0:
-                        num_el = 3;
-                        vbo = &model->VBO_vertices;
-                        instanced = false;
-                        break;
-                    case 1:
-                        num_el = 3;
-                        vbo = &model->VBO_tangents;
-                        instanced = false;
-                        break;
-                    case 2:
-                        num_el = 3;
-                        vbo = &model->VBO_bitangents;
-                        instanced = false;
-                        break;
-                    case 3:
-                        num_el = 3;
-                        vbo = &model->VBO_normals;
-                        instanced = false;
-                        break;
-                    case 4:
-                        num_el = 2;
-                        vbo = &model->VBO_tex_coords;
-                        instanced = false;
-                        break;
-                    case 5:
-                        num_el = 3;
-                        vbo = &model->VBO_aux;
-                        instanced = false;
-                        break;
-                    case 6:
-                        num_el = 3;
-                        vboRing = &env_object_model_translation_instance_vbo;
-                        instanced = true;
-                        break;
-                    case 7:
-                        num_el = 3;
-                        vboRing = &env_object_model_scale_instance_vbo;
-                        instanced = true;
-                        break;
-                    case 8:
-                        num_el = 4;
-                        vboRing = &env_object_model_rotation_quat_instance_vbo;
-                        instanced = true;
-                        break;
-                    case 9:
-                        num_el = 4;
-                        vboRing = &env_object_color_tint_instance_vbo;
-                        instanced = true;
-                        break;
-                    case 10:
-                        num_el = 4;
-                        vboRing = &env_object_detail_scale_instance_vbo;
-                        instanced = true;
-                        break;
-                    default:
-                        __builtin_unreachable();
-                        break;
-                }
-                if ((vbo && vbo->valid()) || (vboRing && vboRing->valid())) {
-                    uintptr_t buffer_offset = 0;
-                    if (vbo) {
-                        vbo->Bind();
-                        buffer_offset = 0;
-                    }
-                    if (vboRing) {
-                        vboRing->Bind();
-                        buffer_offset = vboRing->offset();
-                    }
-                    graphics->EnableVertexAttribArray(attrib_ids[i]);
-                    glVertexAttribPointer(attrib_ids[i], num_el, GL_FLOAT, false, num_el * sizeof(GLfloat), (void*)buffer_offset);
-                    glVertexAttribDivisorARB(attrib_ids[i], instanced ? 1 : 0);
-                }
-            }
-        }
+        strides[i] = sizes[i] * sizeof(GLfloat);
     }
+    graphics->BeginVertexLayout(EnvObjectLayout(), the_shader, enabled, buffers, offsets, strides, model->VBO_faces.id());
 }
 
 void AfterDrawInstancesImpl();
@@ -509,15 +365,7 @@ void EnvObject::DrawInstances(EnvObject** instance_array, int num_instances, con
     graphics->setGLState(gl_state);
 
     if (graphics->use_sample_alpha_to_coverage) {
-        bool enable_alpha_to_coverage = !transparent;
-        if (last_enable_alpha_to_coverage != enable_alpha_to_coverage) {
-            if (enable_alpha_to_coverage) {
-                glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-            } else {
-                glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-            }
-        }
-        last_enable_alpha_to_coverage = enable_alpha_to_coverage;
+        graphics->setAlphaToCoverage(!transparent);
     }
 
     PROFILER_LEAVE(g_profiler_ctx);  // GL State
@@ -725,7 +573,6 @@ void EnvObject::DrawInstances(EnvObject** instance_array, int num_instances, con
     if (!model->vbo_loaded) {
         model->createVBO();
     }
-    model->VBO_faces.Bind();
 
     int vertex_version_major, vertex_version_minor, fragment_version_major, fragment_version_minor;
     shaders->GetProgramOvergrowthVersion(the_shader, vertex_version_major, vertex_version_minor, fragment_version_major, fragment_version_minor);
@@ -735,11 +582,11 @@ void EnvObject::DrawInstances(EnvObject** instance_array, int num_instances, con
                          ? (256 * (!g_ubo_batch_multiplier_force_1x ? ubo_batch_size_multiplier : 1))
                          : 100;
     const bool ignore_multiplier = true;
-    static VBORingContainer env_object_model_translation_instance_vbo(sizeof(vec3) * kBatchSize * 16, kVBOFloat | kVBOStream, ignore_multiplier);
-    static VBORingContainer env_object_model_scale_instance_vbo(sizeof(vec3) * kBatchSize * 15, kVBOFloat | kVBOStream, ignore_multiplier);
-    static VBORingContainer env_object_model_rotation_quat_instance_vbo(sizeof(vec4) * kBatchSize * 17, kVBOFloat | kVBOStream, ignore_multiplier);
-    static VBORingContainer env_object_color_tint_instance_vbo(sizeof(vec4) * kBatchSize * 14, kVBOFloat | kVBOStream, ignore_multiplier);
-    static VBORingContainer env_object_detail_scale_instance_vbo(sizeof(vec4) * kBatchSize * 18, kVBOFloat | kVBOStream, ignore_multiplier);
+    static VBORingContainer env_object_model_translation_instance_vbo(sizeof(vec3) * kBatchSize * 16, kVBOFloat | kVBOStream | kVBOFrame, ignore_multiplier);
+    static VBORingContainer env_object_model_scale_instance_vbo(sizeof(vec3) * kBatchSize * 15, kVBOFloat | kVBOStream | kVBOFrame, ignore_multiplier);
+    static VBORingContainer env_object_model_rotation_quat_instance_vbo(sizeof(vec4) * kBatchSize * 17, kVBOFloat | kVBOStream | kVBOFrame, ignore_multiplier);
+    static VBORingContainer env_object_color_tint_instance_vbo(sizeof(vec4) * kBatchSize * 14, kVBOFloat | kVBOStream | kVBOFrame, ignore_multiplier);
+    static VBORingContainer env_object_detail_scale_instance_vbo(sizeof(vec4) * kBatchSize * 18, kVBOFloat | kVBOStream | kVBOFrame, ignore_multiplier);
 
     PROFILER_LEAVE(g_profiler_ctx);  // Attribs
     PROFILER_LEAVE(g_profiler_ctx);  // Setup
@@ -929,7 +776,9 @@ void EnvObject::DrawInstances(EnvObject** instance_array, int num_instances, con
                     env_object_detail_scale_instance_vbo.Fill(sizeof(vec4) * to_draw, &detail_scale_buffer[0]);
                 }
 
-                SetupAttribPointers(shader_changed, shader_is_v1_5_or_greater, model, env_object_model_translation_instance_vbo, env_object_model_scale_instance_vbo, env_object_model_rotation_quat_instance_vbo, env_object_color_tint_instance_vbo, env_object_detail_scale_instance_vbo, shaders, the_shader, graphics);
+                VBORingContainer* instance_vbos[5] = {&env_object_model_translation_instance_vbo, &env_object_model_scale_instance_vbo, &env_object_model_rotation_quat_instance_vbo,
+                                                      &env_object_color_tint_instance_vbo, &env_object_detail_scale_instance_vbo};
+                BeginEnvObjectLayout(shader_is_v1_5_or_greater, model, instance_vbos, the_shader, graphics);
                 shader_changed = false;
 
                 if (!attrib_envobj_instancing) {
@@ -941,6 +790,7 @@ void EnvObject::DrawInstances(EnvObject** instance_array, int num_instances, con
             {
                 PROFILER_ZONE(g_profiler_ctx, "glDrawElementsInstanced");
                 graphics->DrawElementsInstanced(use_tesselation ? GL_PATCHES : GL_TRIANGLES, model->faces.size(), GL_UNSIGNED_INT, 0, to_draw);
+                graphics->EndVertexLayout();
             }
             CHECK_GL_ERROR();
         }
@@ -970,16 +820,10 @@ void AfterDrawInstancesImpl() {
     graphics->BindArrayVBO(0);
     graphics->BindElementVBO(0);
 
-    int attrib_count = attrib_envobj_instancing ? kAttribIdCountVboInstancing : kAttribIdCountUboInstancing;
-    for (int i = 0; i < attrib_count; ++i) {
-        if (attrib_ids[i] != -1) {
-            glVertexAttribDivisorARB(attrib_ids[i], 0);
-        }
-    }
+    // (instance divisors live in the env object layout's VAOs, not the engine's)
 
-    if (graphics->use_sample_alpha_to_coverage && last_enable_alpha_to_coverage) {
-        glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-        last_enable_alpha_to_coverage = false;
+    if (graphics->use_sample_alpha_to_coverage) {
+        graphics->setAlphaToCoverage(false);
     }
 }
 

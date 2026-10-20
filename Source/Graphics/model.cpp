@@ -255,7 +255,6 @@ void Model::Dispose() {
 
     bone_weights.clear();
     bone_ids.clear();
-    transform_vec.clear();
     tex_transform_vec.clear();
     morph_transform_vec.clear();
 
@@ -1074,12 +1073,16 @@ void DrawModelVerts(Model &model, const char *vert_attrib_str, Shaders *shaders,
     if (!model.vbo_loaded) {
         model.createVBO();
     }
-    model.VBO_vertices.Bind();
-    model.VBO_faces.Bind();
-    int vert_attrib_id = shaders->returnShaderAttrib(vert_attrib_str, shader);
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 3 * sizeof(GLfloat), 0);
+    // Overgrowth Online (GL 4.6 stage 2.4): positions only, a layout per input name
+    static std::map<std::string, VertexLayout> layouts;
+    VertexLayout& layout = layouts[vert_attrib_str];
+    if (layout.Count() == 0) {
+        layout.Add(vert_attrib_str, 0, 3);
+    }
+    VBOContainer* vbos[1] = {&model.VBO_vertices};
+    graphics->BeginVertexLayout(layout, shader, vbos, model.VBO_faces.id());
     graphics->DrawElements(GL_TRIANGLES, model.faces.size(), GL_UNSIGNED_INT, 0);
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
     graphics->BindArrayVBO(0);
     graphics->BindElementVBO(0);

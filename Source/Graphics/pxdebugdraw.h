@@ -286,7 +286,7 @@ typedef std::map<int, DebugDrawElement *> DebugDrawElementMap;
 
 class TempLines {
    public:
-    TempLines() : vbo(1024 * 1024, kVBOStream | kVBOFloat) {}
+    TempLines() : vbo(1024 * 1024, kVBOStream | kVBOFloat | kVBOFrame) {}
     VBORingContainer vbo;
     std::vector<float> verts;
     void Draw();

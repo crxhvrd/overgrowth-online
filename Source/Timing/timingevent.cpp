@@ -25,6 +25,7 @@
 
 #ifdef SLIM_TIMING
 
+#include <Graphics/reversez.h>
 #include <Graphics/graphics.h>
 #include <Graphics/shaders.h>
 #include <Graphics/vbocontainer.h>
@@ -40,8 +41,8 @@ EventRecorder::EventRecorder() : frameCount(0),
                                  showVisualization(false),
                                  visData(NULL),
                                  visIndices(NULL),
-                                 data_vbo(V_KIBIBYTE, kVBOFloat | kVBODynamic),
-                                 index_vbo(V_KIBIBYTE / 4, kVBOElement | kVBODynamic) {
+                                 data_vbo(V_KIBIBYTE, kVBOFloat | kVBODynamic | kVBOFrame),
+                                 index_vbo(V_KIBIBYTE / 4, kVBOElement | kVBODynamic | kVBOFrame) {
     setVisualizationScale(16.0, 32.0);
 
     gl_state.blend = true;
@@ -337,8 +338,6 @@ void EventRecorder::drawVisualization(TextAtlasRenderer& text_atlas_renderer,
 
     int shader_id = shaders->returnProgram("simple_2d #COLOREDVERTICES");
     shaders->setProgram(shader_id);
-    int vert_coord_id = shaders->returnShaderAttrib("vert_coord", shader_id);
-    int color_id = shaders->returnShaderAttrib("vert_color", shader_id);
     int mvp_mat_id = shaders->returnShaderVariable("mvp_mat", shader_id);
 
     graphics->setGLState(gl_state);
@@ -416,24 +415,31 @@ void EventRecorder::drawVisualization(TextAtlasRenderer& text_atlas_renderer,
     }
 
     // Set up the model matrix
-    glm::mat4 mvp_mat = glm::ortho(0.0f, winWidth, 0.0f, winHeight);
+    glm::mat4 mvp_mat = ReverseZ(glm::ortho(0.0f, winWidth, 0.0f, winHeight));
 
-    glUniformMatrix4fv(mvp_mat_id, 1, false, (GLfloat*)&mvp_mat);
-    Graphics::Instance()->EnableVertexAttribArray(vert_coord_id);
-    Graphics::Instance()->EnableVertexAttribArray(color_id);
+    Shaders::Instance()->SetUniformMat4(mvp_mat_id, (GLfloat*)&mvp_mat);  // (Overgrowth Online 3.4: through Shaders, a default-block member on the Vulkan build)
 
     index_vbo.SetHint(boxCount * 6 * sizeof(GLuint), kVBODynamic);
     index_vbo.Fill(boxCount * 6 * sizeof(GLuint), (void*)visIndices);
 
     data_vbo.SetHint(boxCount * 4 * 6 * sizeof(GLfloat), kVBODynamic);
     data_vbo.Fill(boxCount * 4 * 6 * sizeof(GLfloat), (void*)visData);
-    index_vbo.Bind();
-    data_vbo.Bind();
 
-    glVertexAttribPointer(vert_coord_id, 2, GL_FLOAT, false, 6 * sizeof(GLfloat), (const void*)(data_vbo.offset()));
-    glVertexAttribPointer(color_id, 4, GL_FLOAT, false, 6 * sizeof(GLfloat), (const void*)(data_vbo.offset() + 2 * sizeof(GLfloat)));
+    // Overgrowth Online (GL 4.6 stage 2.4): position then colour, interleaved
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 2);
+        layout.Add("vert_color", 0, 4, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+    }
+    {
+        const GLuint buffers[2] = {data_vbo.id(), data_vbo.id()};
+        const GLintptr offsets[2] = {(GLintptr)data_vbo.offset(), (GLintptr)data_vbo.offset()};
+        const GLsizei strides[2] = {6 * sizeof(GLfloat), 6 * sizeof(GLfloat)};
+        Graphics::Instance()->BeginVertexLayout(layout, shader_id, data_vbo.valid() ? 3u : 0u, buffers, offsets, strides, index_vbo.id());
+    }
 
     Graphics::Instance()->DrawElements(GL_TRIANGLES, boxCount * 6, GL_UNSIGNED_INT, (const void*)index_vbo.offset());
+    Graphics::Instance()->EndVertexLayout();
 
     Graphics::Instance()->ResetVertexAttribArrays();
 

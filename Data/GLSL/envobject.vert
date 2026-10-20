@@ -150,8 +150,15 @@ in vec2 tex_coord_attrib;
     uniform mat4 mvp;
 
     #if defined(GPU_SKINNING)
-        const int kMaxBones = 200;
-        uniform mat4 bone_mats[kMaxBones];
+        // The bones, 4 texels each from bone_base (Overgrowth Online: the frame ring
+        // as a buffer texture; a uniform array indexed per vertex serializes)
+        uniform samplerBuffer tex20;
+        uniform int bone_base;
+
+        mat4 BoneMat(float id) {
+            int at = bone_base + int(id) * 4;
+            return mat4(texelFetch(tex20, at), texelFetch(tex20, at + 1), texelFetch(tex20, at + 2), texelFetch(tex20, at + 3));
+        }
     #endif  // GPU_SKINNING
 #elif defined(SKY)
     uniform mat4 projection_view_mat;
@@ -882,11 +889,11 @@ void main() {
 
         #if defined(GPU_SKINNING)
 
-            mat4 concat_bone = bone_mats[int(bone_ids[0])];
+            mat4 concat_bone = BoneMat(bone_ids[0]);
             concat_bone *= bone_weights[0];
 
             for (int i = 1; i < 4; i++) {
-                concat_bone += bone_weights[i] * bone_mats[int(bone_ids[i])];
+                concat_bone += bone_weights[i] * BoneMat(bone_ids[i]);
             }
 
             vec3 offset = (concat_bone * vec4(morph_offsets, 0.0)).xyz;

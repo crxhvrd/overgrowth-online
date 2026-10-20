@@ -94,16 +94,19 @@ void ReflectionCaptureObject::Draw() {
 
         Textures::Instance()->bindTexture(cube_map_ref);
 
-        int vert_attrib_id = shaders->returnShaderAttrib("vertex", shader_id);
         Model* probe_model = &Models::Instance()->GetModel(scenegraph_->light_probe_collection.probe_model_id);
         if (!probe_model->vbo_loaded) {
             probe_model->createVBO();
         }
-        probe_model->VBO_vertices.Bind();
-        probe_model->VBO_faces.Bind();
-        graphics->EnableVertexAttribArray(vert_attrib_id);
-        glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 3 * sizeof(GL_FLOAT), 0);
+        // Overgrowth Online (GL 4.6 stage 2.4): the probe sphere (positions only)
+        static VertexLayout layout;
+        if (layout.Count() == 0) {
+            layout.Add("vertex", 0, 3);
+        }
+        VBOContainer* vbos[1] = {&probe_model->VBO_vertices};
+        graphics->BeginVertexLayout(layout, shader_id, vbos, probe_model->VBO_faces.id());
         graphics->DrawElements(GL_TRIANGLES, (unsigned int)probe_model->faces.size(), GL_UNSIGNED_INT, 0);
+        graphics->EndVertexLayout();
         graphics->ResetVertexAttribArrays();
     }
 }

@@ -431,7 +431,6 @@ class RiggedObject : public Object {
     float GetRelativeCharScale();
     bool DrawBoneConnectUI(Object *objects[], int num_obj_ids, IMUIContext &imui_context, EditorTypes::Tool tool, int id);
     void AddToDesc(EntityDescription &desc);
-    void UpdateGPUSkinning();
     void GetShaderNames(std::map<std::string, int> &shaders) override;
 
     bool GetOnlineIncomingMorphTargetState(MorphTargetStateStorage &dest, const char *name);

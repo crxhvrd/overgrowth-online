@@ -961,15 +961,18 @@ void LightProbeCollection::Draw(BulletWorld& bw) {
             *view_mat = camera->GetViewMatrix();
             *proj_mat = camera->GetProjMatrix();
 
-            int vert_attrib_id = shaders->returnShaderAttrib("vertex", shader_id);
             Model* probe_model = &Models::Instance()->GetModel(probe_model_id);
             if (!probe_model->vbo_loaded) {
                 probe_model->createVBO();
             }
-            probe_model->VBO_vertices.Bind();
-            probe_model->VBO_faces.Bind();
-            graphics->EnableVertexAttribArray(vert_attrib_id);
-            glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 3 * sizeof(GL_FLOAT), 0);
+            // Overgrowth Online (GL 4.6 stage 2.4): the probe sphere (positions only),
+            // bound for all the batches
+            static VertexLayout layout;
+            if (layout.Count() == 0) {
+                layout.Add("vertex", 0, 3);
+            }
+            VBOContainer* vbos[1] = {&probe_model->VBO_vertices};
+            graphics->BeginVertexLayout(layout, shader_id, vbos, probe_model->VBO_faces.id());
             const int kBatchSize = 128;  // Max that fits into 16k UBO
             for (int i = 0, len = light_probes.size(); i < len; i += kBatchSize) {
                 int num_to_render = std::min(kBatchSize, (int)light_probes.size() - i);
@@ -994,6 +997,7 @@ void LightProbeCollection::Draw(BulletWorld& bw) {
 
                 graphics->DrawElementsInstanced(GL_TRIANGLES, probe_model->faces.size(), GL_UNSIGNED_INT, 0, num_to_render);
             }
+            graphics->EndVertexLayout();
 
             OG_FREE(blockBuffer);
             graphics->ResetVertexAttribArrays();

@@ -713,12 +713,15 @@ static void DrawControlledFace(const Box& box_, const Object* object_, int face_
         mat4 mvp_mat = cam->GetProjMatrix() * cam->GetViewMatrix() * new_model_mat;
         shaders->SetUniformMat4("mvp_mat", mvp_mat);
         shaders->SetUniformVec4("color", vec4(0.1f, 1.0f, 0.4f, 1.0f));
-        int vert_coord_id = shaders->returnShaderAttrib("vert_coord", shader_id);
-        vertices_vbo.Bind();
-        faces_vbo.Bind();
-        graphics->EnableVertexAttribArray(vert_coord_id);
-        glVertexAttribPointer(vert_coord_id, 3, GL_FLOAT, false, 3 * sizeof(GLfloat), 0);
+        // Overgrowth Online (GL 4.6 stage 2.4): the box's corners
+        static VertexLayout layout;
+        if (layout.Count() == 0) {
+            layout.Add("vert_coord", 0, 3);
+        }
+        VBOContainer* vbos[1] = {&vertices_vbo};
+        graphics->BeginVertexLayout(layout, shader_id, vbos, faces_vbo.id());
         graphics->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (const void*)(sizeof(GLuint) * (face_selected_ * 6)));
+        graphics->EndVertexLayout();
         graphics->ResetVertexAttribArrays();
         // Draw direction line for selected face
         if (face_display_.facing || face_display_.plane) {
@@ -2907,10 +2910,6 @@ Object* MapEditor::GetSelectedCameraObject() {
 void MapEditor::ClearUndoHistory() {
     state_history_.clear();
     QueueSaveHistoryState();  // Save state to provide a base state to undo to
-}
-
-void MapEditor::UpdateGPUSkinning() {
-    scenegraph_->SendMessageToAllObjects(OBJECT_MSG::UPDATE_GPU_SKINNING);
 }
 
 void MapEditor::CarveAgainstTerrain() {

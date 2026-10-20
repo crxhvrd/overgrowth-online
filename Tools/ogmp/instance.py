@@ -102,6 +102,12 @@ class Instance:
         self.keys = dict(DEFAULT_KEYS)
         self.keys.update({"screenwidth": str(width), "screenheight": str(height)})
         self.keys.update(keys or {})
+        # OGMP_KEYS: config keys for every instance ("key=value;key=value"), e.g. a feature
+        # switched on for any scenario
+        for kv in os.environ.get("OGMP_KEYS", "").split(";"):
+            if "=" in kv:
+                k, v = kv.split("=", 1)
+                self.keys[k.strip()] = v.strip()
         self.mods = mods or []
         self.extra_args = extra_args
         self.pid = None

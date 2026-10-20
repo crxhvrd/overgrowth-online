@@ -582,17 +582,15 @@ void Terrain::BakeTerrainTexture(GLuint framebuffer, const TextureRef &light_cub
         if (!terrain_simplified_model.vbo_loaded) {
             terrain_simplified_model.createVBO();
         }
-        terrain_simplified_model.VBO_tex_coords.Bind();
-        int vert_attrib_id = shaders->returnShaderAttrib("uv", prepare_shader_id);
-
-        CHECK_GL_ERROR();
-        graphics->EnableVertexAttribArray(vert_attrib_id);
-        CHECK_GL_ERROR();
-        glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
-        CHECK_GL_ERROR();
-        terrain_simplified_model.VBO_faces.Bind();
-        CHECK_GL_ERROR();
+        // Overgrowth Online (GL 4.6 stage 2.4): uv only
+        static VertexLayout layout;
+        if (layout.Count() == 0) {
+            layout.Add("uv", 0, 2);
+        }
+        VBOContainer* vbos[1] = {&terrain_simplified_model.VBO_tex_coords};
+        graphics->BeginVertexLayout(layout, prepare_shader_id, vbos, terrain_simplified_model.VBO_faces.id());
         graphics->DrawElements(GL_TRIANGLES, terrain_simplified_model.faces.size(), GL_UNSIGNED_INT, 0);
+        graphics->EndVertexLayout();
         CHECK_GL_ERROR();
         graphics->ResetVertexAttribArrays();
         CHECK_GL_ERROR();

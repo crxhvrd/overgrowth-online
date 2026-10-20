@@ -47,7 +47,7 @@
     #endif
 #endif
 
-void main() {    
+void main() {
     #if !defined(DRY) && !defined(EXPAND) && !defined(IGNITE) && !defined(EXTINGUISH)
         mat4 concat_bone;
         concat_bone[0] = vec4(transform_mat_column_a[0], transform_mat_column_b[0], transform_mat_column_c[0], 0.0);
@@ -66,11 +66,11 @@ void main() {
         morphed_tex_coord = tex_coord_attrib + morph_tex_offset_attrib;
         vel = vel_attrib;
 
-        gl_Position = vec4(morphed_tex_coord.x * 2.0 - 1.0, morphed_tex_coord.y * 2.0 - 1.0, -1.0, 1.0);
+        gl_Position = vec4(morphed_tex_coord.x * 2.0 - 1.0, morphed_tex_coord.y * 2.0 - 1.0, 1.0, 1.0);  // (the near plane: reversed-Z)
 
         fur_tex_coord = fur_tex_coord_attrib;
     #else
-        gl_Position = vec4(vert_coord* 2.0 - 1.0, -1.0, 1.0);
+        gl_Position = vec4(vert_coord* 2.0 - 1.0, 1.0, 1.0);  // (the near plane: reversed-Z)
         tex_coord = vert_coord.xy;
     #endif
-} 
+}

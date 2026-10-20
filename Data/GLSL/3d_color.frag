@@ -71,10 +71,12 @@ float fractal( in vec2 uv){
 }
 
 float LinearizeDepth(float z) {
+  // Overgrowth Online (GL 4.6 stage 4a): reversed-Z, depth = near / distance; the
+  // old mapping of the distance is kept (the soft edges are tuned to it)
   float n = 0.1; // camera z near
   float f = 100000.0; // camera z far
-  float depth = (2.0 * n) / (f + n - z * (f - n));
-  return (f-n)*depth + n;
+  float d = n / max(z, 0.0000001);
+  return 2.0 * d * (f - n) / (2.0 * d + f - n) + n;
 }
 
 void main() {    

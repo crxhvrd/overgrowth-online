@@ -234,7 +234,6 @@ class MapEditor {
     static void DeselectAll(SceneGraph* scenegraph);
     void ClearUndoHistory();
     void LoadDialogueFile(const std::string& path);
-    void UpdateGPUSkinning();
     void CarveAgainstTerrain();
     void ExecuteSaveLevelChanges();
     void AddLightProbes();

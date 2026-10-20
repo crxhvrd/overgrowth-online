@@ -23,6 +23,7 @@
 //-----------------------------------------------------------------------------
 #include "bloodsurface.h"
 
+#include <Graphics/reversez.h>
 #include <Graphics/graphics.h>
 #include <Graphics/textures.h>
 #include <Graphics/model.h>
@@ -49,6 +50,15 @@
 
 extern Timer game_timer;
 extern bool g_debug_runtime_disable_blood_surface_pre_draw;
+
+// Overgrowth Online (GL 4.6 stage 2.4): texture-space 2D points (vert_coord only)
+static VertexLayout &VertCoordLayout() {
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 2);
+    }
+    return layout;
+}
 
 BloodSurface::BloodSurface(TransformedVertexGetter *transformed_vertex_getter) : drip_update_delay(0),
                                                                                  dry_delay(0),
@@ -274,7 +284,7 @@ void BloodSurface::Update(SceneGraph *scenegraph, float timestep, bool force_upd
     }
     drip_update_delay--;
 
-    glm::mat4 proj = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f);
+    glm::mat4 proj = ReverseZ(glm::ortho(0.0f, 1.0f, 0.0f, 1.0f));
 
     bool needs_update = (!trace[0].empty() ||
                          !trace[1].empty() ||
@@ -352,16 +362,19 @@ void BloodSurface::Update(SceneGraph *scenegraph, float timestep, bool force_upd
             PROFILER_LEAVE(g_profiler_ctx);
 
             PROFILER_ENTER(g_profiler_ctx, "Fill VBO in Update texture");
-            static VBORingContainer blood_point_vbo(V_MIBIBYTE, kVBODynamic | kVBOFloat);
+            static VBORingContainer blood_point_vbo(V_MIBIBYTE, kVBODynamic | kVBOFloat | kVBOFrame);
             blood_point_vbo.Fill(sizeof(float) * blood_points.size(), (void *)&blood_points[0]);
-            blood_point_vbo.Bind();
             PROFILER_LEAVE(g_profiler_ctx);
 
             PROFILER_GPU_ZONE(g_profiler_ctx, "Draw arrays in Update texture");
-            int vert_attrib_id = Shaders::Instance()->returnShaderAttrib("vert_coord", simple_2d_id);
-            Graphics::Instance()->EnableVertexAttribArray(vert_attrib_id);
-            glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(float), (const void *)blood_point_vbo.offset());
+            {
+                GLuint buffers[1] = {blood_point_vbo.id()};
+                GLintptr offsets[1] = {(GLintptr)blood_point_vbo.offset()};
+                GLsizei strides[1] = {2 * sizeof(float)};
+                Graphics::Instance()->BeginVertexLayout(VertCoordLayout(), simple_2d_id, 0x1, buffers, offsets, strides, 0);
+            }
             Graphics::Instance()->DrawArrays(GL_LINES, 0, blood_points.size() / 2);
+            Graphics::Instance()->EndVertexLayout();
             Graphics::Instance()->ResetVertexAttribArrays();
         }
         dry_steps = 50;
@@ -451,12 +464,8 @@ void BloodSurface::Update(SceneGraph *scenegraph, float timestep, bool force_upd
                 square_vbo.Fill(kVBOFloat | kVBOStatic, sizeof(data), (void *)data);
                 index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(index), (void *)index);
             }
-            square_vbo.Bind();
-            index_vbo.Bind();
-
-            int vert_attrib_id = Shaders::Instance()->returnShaderAttrib("vert_coord", character_accumulate_id);
-            Graphics::Instance()->EnableVertexAttribArray(vert_attrib_id);
-            glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+            VBOContainer *vbos[1] = {&square_vbo};
+            Graphics::Instance()->BeginVertexLayout(VertCoordLayout(), character_accumulate_id, vbos, index_vbo.id());
         }
         {
             PROFILER_ZONE(g_profiler_ctx, "Draw");
@@ -464,6 +473,7 @@ void BloodSurface::Update(SceneGraph *scenegraph, float timestep, bool force_upd
         }
         {
             PROFILER_ZONE(g_profiler_ctx, "End");
+            Graphics::Instance()->EndVertexLayout();
             Graphics::Instance()->ResetVertexAttribArrays();
 
             EndDrawingToBloodTexture();
@@ -581,9 +591,9 @@ void BloodSurface::CleanBlood() {
         CHECK_FBO_ERROR();
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        glColorMask(true, false, false, false);
+        Graphics::Instance()->setColorMask(true, false, false, false);
         glClear(GL_COLOR_BUFFER_BIT);
-        glColorMask(true, true, true, true);
+        Graphics::Instance()->setColorMask(true, true, true, true);
         surface_walkers.clear();
         dry_steps = 0;
 
@@ -606,9 +616,9 @@ void BloodSurface::SetFire(float fire) {
                      0.0f,
                      fire,
                      0.0f);
-        glColorMask(false, false, true, false);
+        Graphics::Instance()->setColorMask(false, false, true, false);
         glClear(GL_COLOR_BUFFER_BIT);
-        glColorMask(true, true, true, true);
+        Graphics::Instance()->setColorMask(true, true, true, true);
 
         Graphics::Instance()->EndTextureSpaceRendering();
         Graphics::Instance()->PopFramebuffer();
@@ -629,9 +639,9 @@ void BloodSurface::SetWet(float wet) {
                      wet,
                      0.0f,
                      0.0f);
-        glColorMask(false, true, false, false);
+        Graphics::Instance()->setColorMask(false, true, false, false);
         glClear(GL_COLOR_BUFFER_BIT);
-        glColorMask(true, true, true, true);
+        Graphics::Instance()->setColorMask(true, true, true, true);
 
         Graphics::Instance()->EndTextureSpaceRendering();
         Graphics::Instance()->PopFramebuffer();
@@ -709,7 +719,7 @@ void BloodSurface::AddDecalToTriangles(const std::vector<int> &hit_list, vec3 po
     Shaders *shaders = Shaders::Instance();
     Textures *textures = Textures::Instance();
     StartDrawingToBloodTexture();
-    glm::mat4 proj = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f);
+    glm::mat4 proj = ReverseZ(glm::ortho(0.0f, 1.0f, 0.0f, 1.0f));
     shaders->setProgram(simple_2d_stab_id);
     graphics->SetBlendFunc(GL_SRC_ALPHA, GL_ONE);
     shaders->SetUniformMat4("mvp_mat", (const GLfloat *)&proj);
@@ -718,19 +728,26 @@ void BloodSurface::AddDecalToTriangles(const std::vector<int> &hit_list, vec3 po
     PROFILER_LEAVE(g_profiler_ctx);
 
     PROFILER_ENTER(g_profiler_ctx, "Fill VBO");
-    static VBORingContainer data_vbo(V_MIBIBYTE, kVBOFloat | kVBODynamic);
+    static VBORingContainer data_vbo(V_MIBIBYTE, kVBOFloat | kVBODynamic | kVBOFrame);
     data_vbo.Fill(sizeof(GLfloat) * data.size(), (void *)&data[0]);
-    data_vbo.Bind();
     PROFILER_LEAVE(g_profiler_ctx);
 
     PROFILER_ENTER(g_profiler_ctx, "Draw");
-    int vert_attrib_id = shaders->returnShaderAttrib("vert_coord", simple_2d_stab_id);
-    int tex_attrib_id = shaders->returnShaderAttrib("tex_coord", simple_2d_stab_id);
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    graphics->EnableVertexAttribArray(tex_attrib_id);
-    glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void *)(data_vbo.offset() + 2 * sizeof(GLfloat)));
-    glVertexAttribPointer(tex_attrib_id, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void *)(data_vbo.offset()));
+    // Overgrowth Online (GL 4.6 stage 2.4): the decal's triangles, interleaved
+    // (decal coord 2, vertex 2)
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+        layout.Add("tex_coord", 0, 2);
+    }
+    {
+        GLuint buffers[2] = {data_vbo.id(), data_vbo.id()};
+        GLintptr offsets[2] = {(GLintptr)data_vbo.offset(), (GLintptr)data_vbo.offset()};
+        GLsizei strides[2] = {4 * sizeof(GLfloat), 4 * sizeof(GLfloat)};
+        graphics->BeginVertexLayout(layout, simple_2d_stab_id, 0x3, buffers, offsets, strides, 0);
+    }
     graphics->DrawArrays(GL_TRIANGLES, 0, hit_list.size() * 3);
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
     EndDrawingToBloodTexture();
     PROFILER_LEAVE(g_profiler_ctx);
@@ -795,14 +812,12 @@ void BloodSurface::Ignite() {
             square_vbo.Fill(kVBOFloat | kVBOStatic, sizeof(data), (void *)data);
             index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(index), (void *)index);
         }
-        square_vbo.Bind();
-        index_vbo.Bind();
         CHECK_GL_ERROR();
 
-        int vert_attrib_id = Shaders::Instance()->returnShaderAttrib("vert_coord", ignite_id);
-        Graphics::Instance()->EnableVertexAttribArray(vert_attrib_id);
-        glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+        VBOContainer *vbos[1] = {&square_vbo};
+        Graphics::Instance()->BeginVertexLayout(VertCoordLayout(), ignite_id, vbos, index_vbo.id());
         Graphics::Instance()->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        Graphics::Instance()->EndVertexLayout();
         Graphics::Instance()->ResetVertexAttribArrays();
 
         CHECK_GL_ERROR();
@@ -834,13 +849,11 @@ void BloodSurface::Extinguish() {
             square_vbo.Fill(kVBOFloat | kVBOStatic, sizeof(data), (void *)data);
             index_vbo.Fill(kVBOElement | kVBOStatic, sizeof(index), (void *)index);
         }
-        square_vbo.Bind();
-        index_vbo.Bind();
 
-        int vert_attrib_id = Shaders::Instance()->returnShaderAttrib("vert_coord", extinguish_id);
-        Graphics::Instance()->EnableVertexAttribArray(vert_attrib_id);
-        glVertexAttribPointer(vert_attrib_id, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), 0);
+        VBOContainer *vbos[1] = {&square_vbo};
+        Graphics::Instance()->BeginVertexLayout(VertCoordLayout(), extinguish_id, vbos, index_vbo.id());
         Graphics::Instance()->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        Graphics::Instance()->EndVertexLayout();
         Graphics::Instance()->ResetVertexAttribArrays();
 
         EndDrawingToBloodTexture();

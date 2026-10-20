@@ -23,6 +23,7 @@
 //-----------------------------------------------------------------------------
 #include "text.h"
 
+#include <Graphics/reversez.h>
 #include <Graphics/textures.h>
 #include <Graphics/graphics.h>
 #include <Graphics/font_renderer.h>
@@ -1097,17 +1098,24 @@ void TextAtlasRenderer::Draw(TextAtlas* atlas, Graphics* graphics, char flags, c
     shaders->setProgram(shader_id);
     CHECK_GL_ERROR();
     glm::mat4 proj_mat;
-    proj_mat = glm::ortho(0.0f, (float)graphics->window_dims[0], (float)graphics->window_dims[1], 0.0f);
+    proj_mat = ReverseZ(glm::ortho(0.0f, (float)graphics->window_dims[0], (float)graphics->window_dims[1], 0.0f));
 
     CHECK_GL_ERROR();
-    graphics->EnableVertexAttribArray(shader_attrib_vert_coord);
-    graphics->EnableVertexAttribArray(shader_attrib_tex_coord);
-    vert_vbo.Bind();
-    index_vbo.Bind();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, atlas->tex);
-    glVertexAttribPointer(shader_attrib_vert_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void*)vert_vbo.offset());
-    glVertexAttribPointer(shader_attrib_tex_coord, 2, GL_FLOAT, false, 4 * sizeof(GLfloat), (const void*)(vert_vbo.offset() + sizeof(GL_FLOAT) * 2));
+    glBindSampler(0, 0);  // Overgrowth Online: its own parameters, not a sampler left on the unit
+    // Overgrowth Online (GL 4.6 stage 2.4): position then tex coord, interleaved
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vert_coord", 0, 2);
+        layout.Add("tex_coord", 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat));
+    }
+    {
+        const GLuint buffers[2] = {vert_vbo.id(), vert_vbo.id()};
+        const GLintptr offsets[2] = {(GLintptr)vert_vbo.offset(), (GLintptr)vert_vbo.offset()};
+        const GLsizei strides[2] = {4 * sizeof(GLfloat), 4 * sizeof(GLfloat)};
+        graphics->BeginVertexLayout(layout, shader_id, vert_vbo.valid() ? 3u : 0u, buffers, offsets, strides, index_vbo.valid() ? index_vbo.id() : 0);
+    }
     CHECK_GL_ERROR();
 
     int num_indices = sizeof(indices) * num_characters / kMaxCharacters / sizeof(float);
@@ -1117,14 +1125,15 @@ void TextAtlasRenderer::Draw(TextAtlas* atlas, Graphics* graphics, char flags, c
         offset_mat[3][0] += 1.0f;
         offset_mat[3][1] += 1.0f;
         glm::mat4 mat = proj_mat * offset_mat;
-        glUniformMatrix4fv(uniform_mvp_mat, 1, false, (GLfloat*)&mat);
-        glUniform4f(uniform_color, 0.0f, 0.0f, 0.0f, color.a() / 2.0f);
+        Shaders::Instance()->SetUniformMat4(uniform_mvp_mat, (GLfloat*)&mat);  // (Overgrowth Online 3.4: through Shaders, a default-block member on the Vulkan build)
+        Shaders::Instance()->SetUniformVec4(uniform_color, vec4(0.0f, 0.0f, 0.0f, color.a() / 2.0f));
         graphics->DrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, (const void*)index_vbo.offset());
     }
 
-    glUniformMatrix4fv(uniform_mvp_mat, 1, false, (GLfloat*)&proj_mat);
-    glUniform4fv(uniform_color, 1, &color[0]);
+    Shaders::Instance()->SetUniformMat4(uniform_mvp_mat, (GLfloat*)&proj_mat);
+    Shaders::Instance()->SetUniformVec4(uniform_color, &color[0]);
     graphics->DrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, (const void*)index_vbo.offset());
+    graphics->EndVertexLayout();
 
     graphics->BindElementVBO(0);
     graphics->BindArrayVBO(0);
@@ -1132,6 +1141,6 @@ void TextAtlasRenderer::Draw(TextAtlas* atlas, Graphics* graphics, char flags, c
     CHECK_GL_ERROR();
 }
 
-TextAtlasRenderer::TextAtlasRenderer() : vert_vbo(65536, kVBOFloat | kVBOStream),
-                                         index_vbo(65536 / 4, kVBOElement | kVBOStream) {
+TextAtlasRenderer::TextAtlasRenderer() : vert_vbo(65536, kVBOFloat | kVBOStream | kVBOFrame),
+                                         index_vbo(65536 / 4, kVBOElement | kVBOStream | kVBOFrame) {
 }

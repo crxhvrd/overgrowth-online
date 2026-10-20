@@ -67,51 +67,19 @@ static void DrawPatchModel(Model& model, Graphics* graphics, Shaders* shaders, i
         PROFILER_ZONE(g_profiler_ctx, "createVBO");
         model.createVBO();
     }
-    model.VBO_faces.Bind();
-    int attrib_ids[4];
-    for (int i = 0; i < 4; ++i) {
-        const char* attrib_str;
-        int num_el;
-        VBOContainer* vbo;
-        switch (i) {
-            case 0:
-                attrib_str = "vertex_attrib";
-                num_el = 3;
-                vbo = &model.VBO_vertices;
-                break;
-            case 1:
-                attrib_str = "tangent_attrib";
-                num_el = 3;
-                vbo = &model.VBO_tangents;
-                break;
-            case 2:
-                attrib_str = "tex_coord_attrib";
-                num_el = 2;
-                vbo = &model.VBO_tex_coords;
-                break;
-            case 3:
-                attrib_str = "detail_tex_coord";
-                num_el = 2;
-                vbo = &model.VBO_tex_coords2;
-                break;
-            default:
-                __builtin_unreachable();
-                break;
-        }
-        CHECK_GL_ERROR();
-        vbo->Bind();
-        CHECK_GL_ERROR();
-        attrib_ids[i] = shaders->returnShaderAttrib(attrib_str, shader);
-        if (attrib_ids[i] != -1) {
-            CHECK_GL_ERROR();
-            graphics->EnableVertexAttribArray(attrib_ids[i]);
-            CHECK_GL_ERROR();
-            glVertexAttribPointer(attrib_ids[i], num_el, GL_FLOAT, false, num_el * sizeof(GLfloat), 0);
-            CHECK_GL_ERROR();
-        }
+    // Overgrowth Online (GL 4.6 stage 2.4): the terrain layout
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vertex_attrib", 0, 3);
+        layout.Add("tangent_attrib", 1, 3);
+        layout.Add("tex_coord_attrib", 2, 2);
+        layout.Add("detail_tex_coord", 3, 2);
     }
+    VBOContainer* vbos[4] = {&model.VBO_vertices, &model.VBO_tangents, &model.VBO_tex_coords, &model.VBO_tex_coords2};
+    graphics->BeginVertexLayout(layout, shader, vbos, model.VBO_faces.id());
     CHECK_GL_ERROR();
     graphics->DrawElements(use_tesselation ? GL_PATCHES : GL_TRIANGLES, (unsigned int)model.faces.size(), GL_UNSIGNED_INT, 0);
+    graphics->EndVertexLayout();
     CHECK_GL_ERROR();
     graphics->ResetVertexAttribArrays();
     CHECK_GL_ERROR();
@@ -261,34 +229,27 @@ void TerrainObject::DrawDepthMap(const mat4& proj_view_matrix, const vec4* cull_
     shaders->SetUniformVec3("cam_pos", ActiveCameras::Get()->GetPos());
     const vec3 translation = GetTranslation();
 
-    int vert_attrib_id = shaders->returnShaderAttrib("vertex_attrib", shader);
-    graphics->EnableVertexAttribArray(vert_attrib_id);
-    for (auto& patch : terrain_.terrain_patches) {
-        const vec3 adjusted_min = patch.min_coords + translation;
-        const vec3 adjusted_max = patch.max_coords + translation;
-        if (CheckBoxAgainstPlanes(adjusted_min, adjusted_max, cull_planes, num_cull_planes)) {
-            if (!patch.vbo_loaded) {
-                patch.createVBO();
+    // Overgrowth Online (GL 4.6 stage 2.4): positions only
+    static VertexLayout layout;
+    if (layout.Count() == 0) {
+        layout.Add("vertex_attrib", 0, 3);
+    }
+    for (auto* patches : {&terrain_.terrain_patches, &terrain_.edge_terrain_patches}) {
+        for (auto& patch : *patches) {
+            const vec3 adjusted_min = patch.min_coords + translation;
+            const vec3 adjusted_max = patch.max_coords + translation;
+            if (CheckBoxAgainstPlanes(adjusted_min, adjusted_max, cull_planes, num_cull_planes)) {
+                if (!patch.vbo_loaded) {
+                    graphics->EndVertexLayout();  // (making its buffers binds the engine's)
+                    patch.createVBO();
+                }
+                VBOContainer* vbos[1] = {&patch.VBO_vertices};
+                graphics->BeginVertexLayout(layout, shader, vbos, patch.VBO_faces.id());
+                graphics->DrawElements(use_tesselation ? GL_PATCHES : GL_TRIANGLES, (unsigned int)patch.faces.size(), GL_UNSIGNED_INT, 0);
             }
-            patch.VBO_faces.Bind();
-            patch.VBO_vertices.Bind();
-            glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 3 * sizeof(GLfloat), 0);
-            graphics->DrawElements(use_tesselation ? GL_PATCHES : GL_TRIANGLES, (unsigned int)patch.faces.size(), GL_UNSIGNED_INT, 0);
         }
     }
-    for (auto& patch : terrain_.edge_terrain_patches) {
-        const vec3 adjusted_min = patch.min_coords + translation;
-        const vec3 adjusted_max = patch.max_coords + translation;
-        if (CheckBoxAgainstPlanes(adjusted_min, adjusted_max, cull_planes, num_cull_planes)) {
-            if (!patch.vbo_loaded) {
-                patch.createVBO();
-            }
-            patch.VBO_faces.Bind();
-            patch.VBO_vertices.Bind();
-            glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 3 * sizeof(GLfloat), 0);
-            graphics->DrawElements(use_tesselation ? GL_PATCHES : GL_TRIANGLES, (unsigned int)patch.faces.size(), GL_UNSIGNED_INT, 0);
-        }
-    }
+    graphics->EndVertexLayout();
     graphics->ResetVertexAttribArrays();
 }
 
@@ -449,7 +410,7 @@ void TerrainObject::DrawTerrain() {
 
     Graphics* graphics = Graphics::Instance();
     graphics->setGLState(gl_state_);
-    glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+    graphics->setAlphaToCoverage(false);
 
     Shaders* shaders = Shaders::Instance();
     Textures* textures = Textures::Instance();

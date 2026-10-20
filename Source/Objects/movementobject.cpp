@@ -767,7 +767,7 @@ void MovementObject::Draw() {
                 if (distance_squared(position, cam->GetPos()) <= kCullRadius * kCullRadius) {
                     occluded = false;
                 } else {
-                    glColorMask(false, false, false, false);
+                    Graphics::Instance()->setColorMask(false, false, false, false);
                     PROFILER_ZONE(g_profiler_ctx, "Launch occlusion query");
                     int active_cam_id = ActiveCameras::Instance()->GetID();
                     int curr_query_id = -1;
@@ -808,21 +808,24 @@ void MovementObject::Draw() {
                     mat4 mvp = cam->GetProjMatrix() * cam->GetViewMatrix() * char_mat;
 
                     Shaders::Instance()->SetUniformMat4("mvp", mvp);
-                    int vert_attrib_id = Shaders::Instance()->returnShaderAttrib("vert_attrib", shader_id);
                     Model* probe_model = &Models::Instance()->GetModel(scenegraph_->light_probe_collection.probe_model_id);
                     if (!probe_model->vbo_loaded) {
                         probe_model->createVBO();
                     }
-                    probe_model->VBO_vertices.Bind();
-                    probe_model->VBO_faces.Bind();
-                    Graphics::Instance()->EnableVertexAttribArray(vert_attrib_id);
-                    glVertexAttribPointer(vert_attrib_id, 3, GL_FLOAT, false, 3 * sizeof(GL_FLOAT), 0);
+                    // Overgrowth Online (GL 4.6 stage 2.4): the occlusion sphere (positions only)
+                    static VertexLayout layout;
+                    if (layout.Count() == 0) {
+                        layout.Add("vert_attrib", 0, 3);
+                    }
+                    VBOContainer* vbos[1] = {&probe_model->VBO_vertices};
+                    Graphics::Instance()->BeginVertexLayout(layout, shader_id, vbos, probe_model->VBO_faces.id());
                     Graphics::Instance()->DrawElements(GL_TRIANGLES, probe_model->faces.size(), GL_UNSIGNED_INT, 0);
+                    Graphics::Instance()->EndVertexLayout();
                     Graphics::Instance()->ResetVertexAttribArrays();
 
                     // LOGI << "glEndQuery on " << occlusion_queries[curr_query_id].id <<  std::endl;
                     glEndQuery(GL_SAMPLES_PASSED);
-                    glColorMask(true, true, true, true);
+                    Graphics::Instance()->setColorMask(true, true, true, true);
                 }
             }
 
@@ -4928,9 +4931,6 @@ void MovementObject::ReceiveObjectMessageVAList(OBJECT_MSG::Type type, va_list a
             ReceiveMessage(str);
             break;
         }
-        case OBJECT_MSG::UPDATE_GPU_SKINNING:
-            rigged_object_->UpdateGPUSkinning();
-            break;
         default:
             Object::ReceiveObjectMessageVAList(type, args);
             break;

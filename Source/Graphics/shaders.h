@@ -152,6 +152,7 @@ class Shader {
     std::vector<std::string> definitions;
     std::vector<int64_t> include_modified;
     std::vector<std::string> include_files;
+    std::string dump_name;  // Overgrowth Online: its file in Data/CompiledShaders (config shader_debug)
 };
 
 enum CommonShaderUniformIDs {
@@ -172,6 +173,23 @@ class Program {
     int shader_ids[kMaxShaderTypes];
     std::vector<GLint> tex_uniform;
     std::vector<int> sampler_units;  // Overgrowth Online: the units its "texN" samplers read
+    int optional_shaders = 0;        // Overgrowth Online: the OptionalShaders it was asked for (the manifest)
+    // Overgrowth Online (GL 4.6 stage 3.4): the Vulkan build's default uniform block,
+    // which holds what were loose uniforms. SetUniform* write this CPU copy (members
+    // found by reflection at link); a draw sends it when it changed
+    struct ShadowMember {
+        GLint offset, array_stride, matrix_stride, size;
+        GLenum type;
+        bool is_bool;
+        bool refused_logged;
+    };
+    std::vector<unsigned char> shadow_data;  // (empty: the program has none)
+    std::vector<ShadowMember> shadow_members;
+    ska::flat_hash_map<std::string, int> shadow_member_ids;  // name (and "name[0]") -> member
+    bool shadow_dirty = true;
+    uint64_t shadow_sent_frame = ~0ull;
+    GLuint shadow_sent_buffer = 0, shadow_sent_offset = 0;
+    std::vector<GLuint> own_shaders;  // its stage objects when made from the Vulkan build
     typedef ska::flat_hash_map<std::string, GLint> UniformAddressCacheMap;
     UniformAddressCacheMap uniform_address_cache;
     typedef ska::flat_hash_map<GLint, GLint> UniformOffsetCacheMap;
@@ -229,6 +247,21 @@ class Shaders {
     GLint returnShaderBlockSize(int block_index, int program_id);
     int returnShader(const char* path, ShaderType type, const std::vector<std::string>& definitions);
     int returnProgram(std::string name, OptionalShaders optional_shaders = kNone);
+    // Overgrowth Online (GL 4.6 stage 3.1): compile and link failures since the last
+    // clear (the shader_check bridge command); with config shader_manifest, every
+    // program made is appended to <write dir>/Data/shader_manifest.txt ("flags<TAB>name")
+    std::vector<std::string> compile_failures;
+    // Overgrowth Online (GL 4.6 stage 3.4): IDs above this are default-block members
+    // (returnShaderVariable hands them out; SetUniform* write the program's copy)
+    static const GLint kShadowUniformBase = 0x40000000;
+    static const GLuint kDefaultBlockBinding = 3;  // (spirv_patch.BLOCK_BINDINGS)
+    void FlushShadowBlock();  // before a draw: the bound program's default block, if it has one
+    void ShadowWrite(GLint var_id, const void* src, int elements, int columns, int rows, bool is_int);
+    // A program's stage source as dumped to Data/CompiledShaders (empty: none)
+    std::string StageDumpName(int which_program, int stage) const {
+        int sid = programs[which_program].shader_ids[stage];
+        return sid >= 0 ? shaders[sid].dump_name : std::string();
+    }
     bool createShader(int which, ShaderType type);
     void createProgram(int which_program);
     Program* GetCurrentProgram();
