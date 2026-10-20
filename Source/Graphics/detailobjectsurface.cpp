@@ -524,8 +524,10 @@ void DetailObjectSurface::Draw(const mat4& transform, DetailObjectShaderType sha
     // Overgrowth Online: the decal atlas is never bound for detail objects; their
     // decal sampler always read unit 0 (their own colour map), which is how grass
     // over path and blood decals has always looked. Samplers get their own unit at
-    // link now (an empty one here: grass went dark), so it's pointed back at 0
-    shaders->SetUniformInt(shaders->GetTexUniform(TEX_DECAL_COLOR), 0);
+    // link now (an empty one here: grass went dark), so the colour map is bound at
+    // the decal unit too. (Pointing the sampler at unit 0 instead did nothing on
+    // Vulkan, where a sampler's unit is fixed: rocks under decals were black)
+    Textures::Instance()->bindTexture(batch.texture_ref[0], TEX_DECAL_COLOR);
     if (light_probe_collection->light_probe_texture_buffer.valid()) {
         shaders->SetUniformInt("num_tetrahedra", light_probe_collection->ShaderNumTetrahedra());
         shaders->SetUniformInt("num_light_probes", light_probe_collection->ShaderNumLightProbes());

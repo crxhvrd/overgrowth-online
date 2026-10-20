@@ -49,6 +49,13 @@ struct State {
     VkDebugUtilsMessengerEXT messenger = VK_NULL_HANDLE;
     bool labels = false;  // VK_EXT_debug_utils enabled: labels for capture tools
     std::function<void()> on_fatal;
+    // Vsync pacing (VK_KHR_present_id + VK_KHR_present_wait): each present waits until the
+    // frame before it is on screen, as GL's swap blocks. Without it the GPU was held back
+    // only by the display handing images back in bursts: a run of fast frames, then a
+    // long one, every 7-9 frames
+    bool present_wait = false;
+    uint64_t present_id = 0;
+    uint64_t swapchain_first_id = 1;  // (the first id presented on the current swapchain)
     FrameDiag diag, last_diag;
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     VkPhysicalDevice physical = VK_NULL_HANDLE;
@@ -461,6 +468,23 @@ bool CreateDevice() {
     std::vector<const char*> extensions;
     extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     extensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+    // (vsync pacing, where the device has it: see State::present_wait)
+    VkPhysicalDevicePresentIdFeaturesKHR present_id = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR};
+    VkPhysicalDevicePresentWaitFeaturesKHR present_wait = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR};
+    if (HasExtension(available, VK_KHR_PRESENT_ID_EXTENSION_NAME) && HasExtension(available, VK_KHR_PRESENT_WAIT_EXTENSION_NAME)) {
+        VkPhysicalDeviceFeatures2 have_present = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+        have_present.pNext = &present_id;
+        present_id.pNext = &present_wait;
+        vkGetPhysicalDeviceFeatures2(s.physical, &have_present);
+        present_id.pNext = NULL;
+        if (present_id.presentId && present_wait.presentWait) {
+            extensions.push_back(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+            extensions.push_back(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
+            f13.pNext = &present_id;
+            present_id.pNext = &present_wait;
+            s.present_wait = true;
+        }
+    }
     VkPhysicalDevicePushDescriptorPropertiesKHR push = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR};
     VkPhysicalDeviceDepthStencilResolveProperties resolve = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES};
     push.pNext = &resolve;
@@ -621,6 +645,7 @@ bool CreateSwapchain() {
         return false;
     }
     s.extent = extent;
+    s.swapchain_first_id = s.present_id + 1;  // (present ids go on rising; the wait is per swapchain)
 
     VK_CHECK(vkGetSwapchainImagesKHR(s.device, s.swapchain, &n, NULL));
     s.images.resize(n);
@@ -631,7 +656,7 @@ bool CreateSwapchain() {
         VK_CHECK(vkCreateSemaphore(s.device, &si, NULL, &sem));
     }
     LOGI << "Vulkan swapchain: " << extent.width << "x" << extent.height << ", " << n << " images, format " << (int)format.format
-         << ", " << PresentModeString(mode) << std::endl;
+         << ", " << PresentModeString(mode) << (s.present_wait && s.vsync ? ", paced by present wait" : "") << std::endl;
     return true;
 }
 
@@ -934,7 +959,22 @@ void Present(const float clear_color[4], const std::function<void(VkImage, uint3
         present.swapchainCount = 1;
         present.pSwapchains = &s.swapchain;
         present.pImageIndices = &image;
+        const uint64_t id = ++s.present_id;
+        VkPresentIdKHR present_id = {VK_STRUCTURE_TYPE_PRESENT_ID_KHR};
+        present_id.swapchainCount = 1;
+        present_id.pPresentIds = &id;
+        if (s.present_wait) {
+            present.pNext = &present_id;
+        }
         r = vkQueuePresentKHR(s.queue, &present);
+        // Vsync: the frame two before this one on screen first (State::present_wait; one
+        // frame queued besides, as GL drivers allow: a single slow frame doesn't miss a
+        // refresh. At most 100 ms: a window being moved or covered may hold presents back)
+        if (s.present_wait && s.vsync && (r == VK_SUCCESS || r == VK_SUBOPTIMAL_KHR) && id > s.swapchain_first_id + 1) {
+            const auto start = std::chrono::steady_clock::now();
+            vkWaitForPresentKHR(s.device, s.swapchain, id - 2, 100000000ull);
+            s.diag.slot_wait_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+        }
         if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR) {
             s.swapchain_stale = true;
         } else if (r != VK_SUCCESS) {
