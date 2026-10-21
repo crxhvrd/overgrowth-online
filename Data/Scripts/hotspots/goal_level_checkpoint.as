@@ -41,7 +41,7 @@ void OnEnter(MovementObject @mo) {
 		(mo.QueryIntFunction("int CombatSong()") == 0);
             Object@ obj = ReadObjectFromID(level_hotspot_id);
             int checkpoint_id = params.GetInt("checkpoint_id");
-            obj.ReceiveScriptMessage("player_entered_checkpoint "+checkpoint_id);
+            obj.ReceiveScriptMessage("player_entered_checkpoint "+checkpoint_id+" "+mo.GetID());  // (who: co-op revives beside them)
         }
     }
 }

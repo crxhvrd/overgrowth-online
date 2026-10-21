@@ -559,7 +559,9 @@ class Online {
     // Sounds: scripts of characters this machine runs are playing (main thread)
     int owned_script_depth = 0;
     std::atomic<uint64_t> sounds_from_clients{0};  // host: client characters' sounds received
-    bool ShouldShareSound() const { return IsHosting() || (IsClient() && owned_script_depth > 0); }
+    // Sounds of characters this machine runs, from their scripts (level, hotspot and dialogue
+    // scripts run on every machine: the host's copies doubled the guests' own)
+    bool ShouldShareSound() const { return IsActive() && owned_script_depth > 0; }
     void ReceiveItemDrop(CommonObjectID character, CommonObjectID item);
     void ReceiveItemUnstick(const OnlineMessageRef& ref, CommonObjectID character, CommonObjectID item, PeerID from);
 

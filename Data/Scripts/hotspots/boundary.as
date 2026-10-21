@@ -44,7 +44,7 @@ void Update(){
 		for(uint i = 0; i < charIDs.size(); i++){
             if(ReadObjectFromID(charIDs[i]).GetType() == _movement_object){
     			MovementObject@ this_mo = ReadCharacterID(charIDs[i]);
-                if(!this_mo.static_char){
+                if(!this_mo.static_char && !this_mo.network_proxy){  // (online: a copy moves as streamed)
         		    const float _push_force_mult = 0.5f;
         		    vec3 push_force;
         			vec3 direction = ReadObjectFromID(hotspot.GetID()).GetRotation() * vec3(0,0,-1);// normalize(this_mo.position - oldPos);

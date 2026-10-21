@@ -88,7 +88,9 @@ def dist(a, b):
     return math.dist(a, b)
 
 
-KNOWN_STOCK_ERRORS = ("campaign_common.as",)  # main menu include that stock 1.4 also fails
+# Stock 1.4 also logs these: the main menu's missing include; aschar's sheath swap indexing
+# weapon_slots by an item id; goal_level.as's missing include and Folti's Cliff's music name
+KNOWN_STOCK_ERRORS = ("campaign_common.as", "weapon_slots out of array bounds", "lugaru_campaign.as", "load music\"folticliff\"")
 
 
 def script_errors(inst):
@@ -675,6 +677,30 @@ def _zone_respawn(ctx):
 
 
 SCENARIOS["zone_respawn"] = _zone_respawn
+
+
+def _drika_coop(ctx):
+    from .drika_suite import drika_coop
+    return drika_coop(ctx)
+
+
+SCENARIOS["drika_coop"] = _drika_coop
+
+
+def _drika_levels(ctx):
+    from .drika_suite import drika_levels
+    return drika_levels(ctx)
+
+
+SCENARIOS["drika_levels"] = _drika_levels
+
+
+def _drika_fall(ctx):
+    from .drika_suite import drika_fall
+    return drika_fall(ctx)
+
+
+SCENARIOS["drika_fall"] = _drika_fall
 
 
 def _item_flares(ctx):

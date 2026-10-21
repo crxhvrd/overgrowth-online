@@ -1786,11 +1786,8 @@ void AttachPhysics(ASContext* context) {
 
 #include "Sound/sound.h"
 static int ASPlaySound(std::string path) {
-    Online* online = Online::Instance();
-
-    if (online->IsHosting()) {
-        online->Send<OnlineMessages::AudioPlaySoundMessage>(path);
-    }
+    // Overgrowth Online: not sent. A sound without a place is for this machine's player
+    // (stings, ambience): every machine plays its own, guests heard the host's too
 
     SoundPlayInfo spi;
     spi.path = path;
@@ -1801,11 +1798,8 @@ static int ASPlaySound(std::string path) {
 }
 
 static int ASPlaySoundLoop(const std::string& path, float gain) {
-    Online* online = Online::Instance();
-
-    if (online->IsHosting()) {
-        online->Send<OnlineMessages::AudioPlaySoundLoopMessage>(path, gain);
-    }
+    // Overgrowth Online: not sent. A loop is never stopped or moved on the others (a
+    // burning character's fire went on where it started); each machine plays its own
 
     SoundPlayInfo spi;
     spi.path = path;
@@ -1818,11 +1812,8 @@ static int ASPlaySoundLoop(const std::string& path, float gain) {
 }
 
 static int ASPlaySoundLoopAtLocation(const std::string& path, vec3 pos, float gain) {
-    Online* online = Online::Instance();
-
-    if (online->IsHosting()) {
-        online->Send<OnlineMessages::AudioPlaySoundLoopAtLocationMessage>(path, gain, pos);
-    }
+    // Overgrowth Online: not sent. A loop is never stopped or moved on the others (a
+    // burning character's fire went on where it started); each machine plays its own
 
     SoundPlayInfo spi;
     spi.path = path;
@@ -1851,11 +1842,8 @@ static int ASPlaySoundAtLocation(std::string path, vec3 location) {
 
 static int ASPlaySoundGroupRelative(std::string path) {
     // SoundGroupRef sgr = SoundGroups::Instance()->ReturnRef(path);
-    Online* online = Online::Instance();
-
-    if (online->IsHosting()) {
-        online->Send<OnlineMessages::AudioPlaySoundGroupRelativeMessage>(path);
-    }
+    // Overgrowth Online: not sent. A sound without a place is for this machine's player
+    // (stings, ambience): every machine plays its own, guests heard the host's too
     SoundGroupRef sgr = Engine::Instance()->GetAssetManager()->LoadSync<SoundGroup>(path);
     SoundGroupPlayInfo sgpi(SoundGroupPlayInfo(*sgr, vec3(0.0f)));
     sgpi.flags = sgpi.flags | SoundFlags::kRelative;
@@ -1867,11 +1855,8 @@ static int ASPlaySoundGroupRelative(std::string path) {
 
 static int ASPlaySoundGroupRelativeGain(std::string path, float gain) {
     // SoundGroupRef sgr = SoundGroups::Instance()->ReturnRef(path);
-    Online* online = Online::Instance();
-
-    if (online->IsHosting()) {
-        online->Send<OnlineMessages::AudioPlaySoundGroupRelativeGainMessage>(path, gain);
-    }
+    // Overgrowth Online: not sent. A sound without a place is for this machine's player
+    // (stings, ambience): every machine plays its own, guests heard the host's too
 
     SoundGroupRef sgr = Engine::Instance()->GetAssetManager()->LoadSync<SoundGroup>(path);
     SoundGroupPlayInfo sgpi(SoundGroupPlayInfo(*sgr, vec3(0.0f)));
@@ -1932,6 +1917,11 @@ static int ASPlaySoundGroupGain(std::string path, vec3 location, float gain) {
 }
 
 static void ASSetRemoteAirWhoosh(int id, float volume, float pitch) {
+    // Overgrowth Online: not sent. A player's own machine runs its character and its
+    // whoosh (the host's copy of a guest's character set the guest's from the stream)
+    if (Online::Instance()->IsActive()) {
+        return;
+    }
     // Send the whoosh to the client
     for (const auto& it : Online::Instance()->online_session->player_states) {
         if (it.second.object_id == id) {  // TODO This assumes that player_id == peer_id!

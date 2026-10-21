@@ -51,9 +51,13 @@ class Victim{
 }
 
 void KillCharacter(int character_id){
+	if(!MovementObjectExists(character_id)){
+		return;  // (online: a player who left)
+	}
 	MovementObject@ char = ReadCharacterID(character_id);
 	char.Execute(	"SetKnockedOut(_dead);" +
-					"Ragdoll(_RGDL_LIMP);");
+					"Ragdoll(_RGDL_LIMP);" +
+					"zone_killed = 1;");  // (a zone's death: co-op gets the player up beside a teammate)
 }
 
 void Reset(){

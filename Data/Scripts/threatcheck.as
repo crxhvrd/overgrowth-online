@@ -40,6 +40,12 @@ int GetPlayerCharacterID() {
     return -1;
 }
 
+// Offline, or the only player online. With teammates the host starts the level
+// over once every player is down (Online::CoopUpdate), not a script's timer
+bool CoopAlone() {
+    return !Online_IsActive() || GetControlledCharacterIDs().length() < 2;
+}
+
 // Every player's character is down (co-op: the level stops only then)
 bool AllPlayersDown() {
     int num = GetNumCharacters();

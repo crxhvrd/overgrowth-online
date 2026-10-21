@@ -187,14 +187,14 @@ void CheckReset() {
         }
     }
 
-    // Place player character at correct spawn point
+    // Place player character at correct spawn point. Co-op: the first player
+    // on it, the others on safe spots beside it (overgrowth_level.as)
     array<int> player_ids = GetControlledCharacterIDs();
     for(uint i = 0; i < player_ids.length(); i++) {
         MovementObject@ mo = ReadCharacter(player_ids[i]);
-        if(progress == 0){ // Spawn at actual initial player spawn point
-            Object@ obj = ReadObjectFromID(mo.GetID());
-            mo.position = obj.GetTranslation();
-            mo.SetRotationFromFacing(obj.GetRotation() * vec3(0,0,1));
+        Object@ spawn = null;
+        if(progress == 0){ // Spawn at actual initial player spawn point (the level's player)
+            @spawn = ReadObjectFromID(ReadCharacter(player_ids[0]).GetID());
         } else { // Spawn at a custom spawn point
             string param_str = params.GetString("player_spawn");
             token_iter.Init();
@@ -202,13 +202,16 @@ void CheckReset() {
                 token_iter.FindNextToken(param_str);
             }
             int id = atoi(token_iter.GetToken(param_str));
-            if(ObjectExists(id)){
-                Object@ obj = ReadObjectFromID(id);
-                if(obj.GetType() == _placeholder_object){
-                    mo.position = obj.GetTranslation();
-                    mo.SetRotationFromFacing(obj.GetRotation() * vec3(0,0,1));
-                    mo.Execute("SetCameraFromFacing();");
-                }
+            if(ObjectExists(id) && ReadObjectFromID(id).GetType() == _placeholder_object){
+                @spawn = ReadObjectFromID(id);
+            }
+        }
+        if(spawn !is null){
+            vec3 facing = spawn.GetRotation() * vec3(0,0,1);
+            mo.position = i == 0 ? spawn.GetTranslation() : Online_SafeSpotNear(spawn.GetTranslation(), facing, int(i));
+            mo.SetRotationFromFacing(facing);
+            if(progress != 0){
+                mo.Execute("SetCameraFromFacing();");
             }
         }
     }
@@ -315,12 +318,15 @@ void Update() {
 				ko_time = the_time;
 			}
 			if(ko_time < the_time - 1.0){
-				if(GetInputPressed(0, "attack") || ko_time < the_time - 5.0){
+				if(GetInputPressed(0, "attack") || (CoopAlone() && ko_time < the_time - 5.0)){
 	            	level.SendMessage("reset"); 				
                     level.SendMessage("skip_dialogue");                 
 				}
 			}
             blackout_amount = 0.2 + 0.6 * (1.0 - pow(0.5, (the_time - ko_time)));
+            if(Online_Spectating() != ""){
+                blackout_amount = 0.0;  // (online: watching a teammate who is up)
+            }
 		} else {
 			ko_time = -1.0f;
 		}
@@ -328,7 +334,7 @@ void Update() {
         ko_time = -1.0f;
     }
 
-    if(win_time != -1.0 && the_time > win_time && ko_time == -1.0){
+    if(win_time != -1.0 && the_time > win_time && (Online_IsActive() ? !AllPlayersDown() : ko_time == -1.0)){
         while(progress < win_target){
             IncrementProgress();
         }
@@ -352,7 +358,7 @@ void Update() {
         }
     }
 
-    if(GetInputPressed(0, "k")){
+    if(!Online_IsActive() && GetInputPressed(0, "k")){  // (a debug key: it changed progress on any machine)
         ++progress;
         if(!params.HasParam("goal_"+progress)){
             progress = 0;

@@ -78,6 +78,7 @@ class Hotspot : public Object {
     void UpdateScriptParams() override;
     std::string GetTypeString();
     bool ASHasVar(const std::string& name);
+    bool HasScript() const { return as_context != NULL; }  // Overgrowth Online (the ASGet* need one)
     int ASGetIntVar(const std::string& name);
     int ASGetArrayIntVar(const std::string& name, int index);
     float ASGetFloatVar(const std::string& name);

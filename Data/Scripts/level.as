@@ -275,7 +275,11 @@ void ReceiveMessage(string msg) {
     } else if(token == "loadlevel"){
         token_iter.FindNextToken(msg);
         Log(info,"Received loadlevel message: "+token_iter.GetToken(msg));
-        LoadLevel(token_iter.GetToken(msg));
+        if(Online_IsClient()){
+            Log(info, "(online the host loads it, we follow)");
+        } else {
+            LoadLevel(token_iter.GetToken(msg));
+        }
     } else if(token == "make_all_aware"){
         CharactersNoticeEachOther();
     } else if(token == "start_dialogue"){

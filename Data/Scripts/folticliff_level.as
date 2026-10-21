@@ -68,11 +68,14 @@ void Update() {
 				ko_time = the_time;
 			}
 			if(ko_time < the_time - 1.0){
-				if(GetInputPressed(0, "attack") || ko_time < the_time - 5.0){
+				if(GetInputPressed(0, "attack") || (CoopAlone() && ko_time < the_time - 5.0)){
 	            	level.SendMessage("reset"); 				               
 				}
 			}
             blackout_amount = 0.2 + 0.6 * (1.0 - pow(0.5, (the_time - ko_time)));
+            if(Online_Spectating() != ""){
+                blackout_amount = 0.0;  // (online: watching a teammate who is up)
+            }
 		} else {
 			ko_time = -1.0f;
 		}

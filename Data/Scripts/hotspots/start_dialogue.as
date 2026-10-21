@@ -89,7 +89,26 @@ void HandleEvent(string event, MovementObject @mo){
     }
 }
 
+// Online with teammates: High Monastery's "Fall" dialogue (falling off: the story's
+// end, to the main menu, for the whole game) is a death for the one who fell (up
+// beside a teammate after a moment; every player down: the level starts over)
+bool CoopFallDeath() {
+    if(!Online_IsActive() || params.GetString("Dialogue") != "Fall" || GetCurrLevelRelPath().findFirst("drika/highmonastery") < 0){
+        return false;
+    }
+    int players = 0;
+    for(int i=0, len=GetNumCharacters(); i<len; ++i){
+        if(ReadCharacter(i).controlled){
+            ++players;
+        }
+    }
+    return players >= 2;
+}
+
 void TryToPlayDialogue() {
+    if(CoopFallDeath()){
+        return;
+    }
     // Online a guest asks the host: dialogues are the host's, and its start reaches everyone
     if(!played && Online_IsClient()){
         level.SendMessage("ohr coop_talk "+hotspot.GetID());
@@ -118,6 +137,12 @@ void TryToPlayDialogue() {
 }
 
 void OnEnter(MovementObject @mo) {
+    if(CoopFallDeath()){
+        if(mo.controlled){  // (a teammate's copy is its owner's to kill)
+            mo.Execute("if(knocked_out == _awake){ zone_killed = 1; ko_shield = 0; TakeDamage(1.0f); Ragdoll(_RGDL_FALL); }");
+        }
+        return;
+    }
     if(mo.controlled && params.GetInt("Automatic") == 1){
         TryToPlayDialogue();
     }
@@ -199,7 +224,7 @@ void PreDraw(float curr_game_time) {
             int id = collides_with[i];
             if(ObjectExists(id) && ReadObjectFromID(id).GetType() == _movement_object){
                 MovementObject@ mo = ReadCharacterID(id);
-                if(mo.controlled){
+                if(mo.controlled && !mo.remote){  // (online: our own character, not a teammate's copy)
                     mo.Execute("dialogue_request_time = time;");
                 }
             }

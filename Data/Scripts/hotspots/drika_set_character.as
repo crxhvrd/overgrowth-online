@@ -60,6 +60,9 @@ class DrikaSetCharacter : DrikaElement{
 			return false;
 		}
 		MovementObject@ character = ReadCharacterID(character_id);
+		if(character.network_proxy){
+			return true;  // (online: its owner switches it, the engine brings the new body here)
+		}
 		original_character_path = character.char_path;
 		character.char_path = character_path;
 		character.Execute(	"character_getter.Load(this_mo.char_path);" +
@@ -68,7 +71,7 @@ class DrikaSetCharacter : DrikaElement{
 		return true;
 	}
 	void Reset(){
-		if(!original_character_path.isEmpty() && MovementObjectExists(character_id)){
+		if(!original_character_path.isEmpty() && MovementObjectExists(character_id) && !ReadCharacterID(character_id).network_proxy){
 			MovementObject@ character = ReadCharacterID(character_id);
 			character.char_path = original_character_path;
 			character.Execute(	"character_getter.Load(this_mo.char_path);" +

@@ -2475,6 +2475,25 @@ static bool InBox(const vec3& l) {
     return std::fabs(l.x()) <= 2.0f && std::fabs(l.y()) <= 2.0f && std::fabs(l.z()) <= 2.0f;
 }
 
+// A fall death checkpoint kills only once the level's progress has reached it (its
+// level script acts on the message only then). Before, its box is air over the climb:
+// Sky Ark's checkpoint 7 box holds checkpoints 0-4, and every spot there was refused
+static bool FallDeathActive(SceneGraph* sg, Hotspot* h) {
+    ScriptParams* params = h->GetScriptParams();
+    if (!params->HasParam("checkpoint_id") || !params->HasParam("level_hotspot_id")) {
+        return true;
+    }
+    Object* o = sg->GetObjectFromID(params->ASGetInt("level_hotspot_id"));
+    if (o == nullptr || o->GetType() != _hotspot_object) {
+        return true;
+    }
+    Hotspot* level = static_cast<Hotspot*>(o);
+    if (!level->HasScript() || !level->ASHasVar("progress")) {
+        return true;
+    }
+    return level->ASGetIntVar("progress") >= params->ASGetInt("checkpoint_id");
+}
+
 bool Online::GroundHazard(const vec3& ground) const {
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
     if (sg == nullptr) {
@@ -2488,7 +2507,7 @@ bool Online::GroundHazard(const vec3& ground) const {
         const string& file = h->GetScriptFile();
         bool water = file.find("wet_cube") != string::npos || file.find("wet_cylinder") != string::npos;
         bool lethal = file.find("kill") != string::npos || file.find("spike") != string::npos ||
-                      (file.find("checkpoint") != string::npos && h->GetScriptParams()->HasParam("fall_death"));
+                      (file.find("checkpoint") != string::npos && h->GetScriptParams()->HasParam("fall_death") && FallDeathActive(sg, h));
         if (water) {
             // Deeper than a wade (the surface is the top of the box), or lethal water
             vec3 l = HotspotLocal(h, ground);
@@ -2799,7 +2818,8 @@ bool Online::CoopCampaign() {
             }
             for (const ModInstance::Campaign& c : mod->campaigns) {
                 if (!campaign_id.empty() && campaign_id == c.id.str()) {
-                    coop_campaign = string(c.main_script.str()).find("linear_campaign") != string::npos;
+                    // (and Drika's Story: therium_campaign.as, its levels on overgrowth_level.as)
+                    coop_campaign = string(c.main_script.str()).find("linear_campaign") != string::npos || campaign_id == "com-wolfire-drika";
                 }
             }
         }
@@ -2810,6 +2830,9 @@ bool Online::CoopCampaign() {
 }
 
 void Online::CoopUpdate(SceneGraph* sg) {
+    if (host_started_level) {
+        CoopCampaign();  // (cached; decided and logged as each level starts, on every machine)
+    }
     TrackSafeGround(sg);
     CoopCutsceneUpdate(sg);
 

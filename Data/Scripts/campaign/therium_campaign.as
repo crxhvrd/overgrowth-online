@@ -67,6 +67,22 @@ void ReceiveMessage(string msg) {
         token_iter.FindNextToken(msg);
         string chosen_path = token_iter.GetToken(msg);
 
+        if(Online_IsClient()) {
+            // Online: the host's load takes everyone on (a guest's own load split it from
+            // the game). A guest loaded the level by its path, so its level id is empty
+            // here: the path's name is unlocked when it is a level of this campaign (in
+            // Drika's Story it always is the next level's id)
+            array<ModLevel>@ levels = GetCampaign(GetCurrCampaignID()).GetLevels();
+            for(uint i = 0; i < levels.length(); ++i) {
+                if(levels[i].GetID() == chosen_path) {
+                    Log(info, "unlocking " + chosen_path + " (the host loads it)");
+                    CampaignSave().AppendArrayValueIfUnique("unlocked_levels", chosen_path);
+                    save_file.WriteInPlace();
+                }
+            }
+            return;
+        }
+
         Campaign campaign = GetCampaign(GetCurrCampaignID());
         ModLevel level = campaign.GetLevel(GetCurrLevelID());
         Parameter level_proot = level.GetParameter();

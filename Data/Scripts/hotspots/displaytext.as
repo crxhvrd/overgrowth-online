@@ -30,6 +30,9 @@ void SetParameters() {
 }
 
 void HandleEvent(string event, MovementObject @mo) {
+    if(mo.remote){
+        return;  // (online: a teammate's copy; its owner shows its own text)
+    }
     if( event == "enter" 
         || event == "exit" 
         || event == "disengaged_player_control"  
@@ -47,7 +50,7 @@ void HandleEvent(string event, MovementObject @mo) {
                 if(obj !is null) {
                     if( obj.GetType() == _movement_object ) {
                         MovementObject @mo1 = ReadCharacterID(collides_with[i]);
-                        if( mo1.controlled ) {
+                        if( mo1.controlled && !mo1.remote ) {
                             show_text = true;
                         }
                     }

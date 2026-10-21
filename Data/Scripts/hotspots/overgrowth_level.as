@@ -747,7 +747,11 @@ void ReceiveMessage(string msg) {
                 int fell = token_iter.FindNextToken(msg) ? atoi(token_iter.GetToken(msg)) : -1;
                 if(fell != -1 && MovementObjectExists(fell)){
                     MovementObject@ char = ReadCharacterID(fell);
-                    if(!char.remote){
+                    if(!char.remote && Online_IsActive() && LandsSoon(char)){
+                        // Online: a jump, not a fall. A teammate's progress turned the box
+                        // on around this player (offline it is always behind you)
+                        Log(info, "Overgrowth Online: fall death zone " + checkpoint_id + " ignored for " + fell + ", ground under it");
+                    } else if(!char.remote){
                         char.ReceiveMessage("fall_death");
                     }
                 } else {
@@ -772,6 +776,12 @@ void ReceiveMessage(string msg) {
             }
         }
     }
+}
+
+// Ground within a jump's height under the character
+bool LandsSoon(MovementObject@ char){
+    vec3 end = char.position - vec3(0.0f, 3.5f, 0.0f);
+    return distance(col.GetRayCollision(char.position, end), end) > 0.01f;
 }
 
 void SetMusicLayer(int layer){

@@ -63,10 +63,13 @@ void Initialize() {
 }
 
 // Overgrowth Online: the story campaigns in co-op, the linear ones the co-op
-// rules know (Online::CoopCampaign), and the Arena, player against player
-// (online_arena.as). The 1.4 data marks none as online, so this doesn't ask;
-// Large Battles and Versus stay out.
+// rules know (Online::CoopCampaign) and Drika's Story, and the Arena, player
+// against player (online_arena.as). The 1.4 data marks none as online, so this
+// doesn't ask; Large Battles, Versus and Therium-2 stay out.
 bool CoopCampaign(Campaign &in camp) {
+    if(camp.GetID() == "com-wolfire-drika") {
+        return true;  // (therium_campaign.as; its levels run on overgrowth_level.as)
+    }
     return camp.GetMainScript().findFirst("linear_campaign") >= 0 && camp.GetMenuScript().findFirst("arena") < 0 &&
         camp.GetMenuScript().findFirst("aio_battle") < 0;  // (Versus runs on linear_campaign too, with an arena menu)
 }

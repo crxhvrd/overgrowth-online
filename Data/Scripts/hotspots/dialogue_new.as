@@ -47,7 +47,26 @@ void HandleEvent(string event, MovementObject @mo){
     }
 }
 
+// Another player already in the hotspot (online: it played when they came in)
+bool OtherPlayerInside(MovementObject @mo) {
+    array<int> ids;
+    level.GetCollidingObjects(hotspot.GetID(), ids);
+    for(uint i = 0; i < ids.size(); ++i){
+        if(ids[i] != mo.GetID() && ObjectExists(ids[i]) && ReadObjectFromID(ids[i]).GetType() == _movement_object &&
+           ReadCharacterID(ids[i]).controlled){
+            return true;
+        }
+    }
+    return false;
+}
+
 void OnEnter(MovementObject @mo) {
+    if(Online_IsClient()){
+        return;  // (online the host starts dialogues)
+    }
+    if(Online_IsActive() && params.GetInt("Play Once") == 0 && mo.controlled && OtherPlayerInside(mo)){
+        return;
+    }
     if((mo.GetIntVar("knocked_out") > 0 || params.GetInt("Play only If dead") == 0)
 		&& (!played || params.GetInt("Play Once") == 0)
 		&& (mo.controlled || params.GetInt("Play for npcs") == 1)){
