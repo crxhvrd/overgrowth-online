@@ -506,6 +506,11 @@ class Online {
     // downed get up beside them at once, before the next goal's steps run
     // (a dialogue there would stand them up where they lie)
     void CoopCheckpoint(ObjectID by = -1);
+    // Every machine, its own player's character: killed where no teammate can
+    // reach the body (a fall, lava, spikes, deep water, out of the world), it
+    // gets up beside one who is up after a moment
+    void CoopZoneRespawn(SceneGraph* sg);
+    double coop_lost_since_ms = -1.0;
     ObjectID HostAvatarID() const;                  // the host's player's character here, or -1
     int GuestIndex(ObjectID id) const;              // 1, 2, ... for the guests' characters (player order), else 0
     // Cutscenes: the guests' characters are hidden on every machine while a

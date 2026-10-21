@@ -110,6 +110,8 @@ void PrecreatePipelines();
 std::vector<std::pair<std::string, uint32_t> > WarmUpPrograms();
 void StartWarmUp();
 bool WarmUpDone();  // (every recorded pipeline whose program is made is made)
+// Pipelines made of the warm-up's (total 0: not started yet); false once it is done
+bool WarmUpProgress(size_t* done, size_t* total);
 void DrainWarmUp();
 void StopWarmUp();
 

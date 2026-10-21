@@ -86,6 +86,9 @@ void PCSFileTransferMetadataMessage::Execute(const OnlineMessageRef& ref, void* 
     online->SessionStarted(false);
 
     Online::Instance()->level_name = t->map_name;
+    // Overgrowth Online: the host's campaign, ours too (co-op rules: a guest knew
+    // none, so it never counted as a story level)
+    Online::Instance()->campaign_id = t->campaign_id;
     if (ModLoading::Instance().WhichCampaignLevelBelongsTo(t->map_name) != "") {
         Online::Instance()->online_session->free_avatars.clear();
 

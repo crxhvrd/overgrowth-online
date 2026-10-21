@@ -442,6 +442,8 @@ class Graphics {
     // Overgrowth Online (GL 4.6 stage 5.8): each menu frame on Vulkan, the recorded
     // pipelines' programs made a few at a time, then their pipelines warmed up
     void VulkanMenuWarmUp();
+    // ... its progress (programs first, then pipelines); false when there's none to show
+    bool VulkanWarmUpProgress(int* done, int* total, bool* pipelines) const;
     void setScissorTest(const bool scissor_test);
     void setColorMask(const bool red, const bool green, const bool blue, const bool alpha);
     void setSimpleShadows(const bool val);

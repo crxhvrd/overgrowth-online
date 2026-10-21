@@ -669,6 +669,14 @@ def _zone_revive(ctx):
 SCENARIOS["zone_revive"] = _zone_revive
 
 
+def _zone_respawn(ctx):
+    from .zone_revive_suite import zone_respawn
+    return zone_respawn(ctx)
+
+
+SCENARIOS["zone_respawn"] = _zone_respawn
+
+
 def _item_flares(ctx):
     from .item_flares_suite import item_flares
     return item_flares(ctx)

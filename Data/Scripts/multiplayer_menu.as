@@ -138,6 +138,42 @@ const float kCardWidth = 480.0f;
 const float kCardHeight = 360.0f;
 FontSetup section_font("edosz", 48, HexColor("#9A9A9A"), true);
 
+// How many public games are open now, beside "Browse games" (the browser's
+// list: Online_PublicGames; asked again every 20 s, read every second)
+FontSetup count_font("edosz", 40, HexColor("#9A9A9A"), true);
+IMText@ public_count_text;
+float public_ask_timer = 0.0f;
+float public_read_timer = 0.0f;
+
+string PublicCountLabel() {
+    array<string>@ lines = Online_PublicGames().split("
+");
+    string state = lines.length() > 0 ? lines[0] : "failed";
+    int open = 0;
+    for(uint i = 1; i < lines.length(); ++i) {
+        if(lines[i].split("	").length() >= 7) {
+            ++open;
+        }
+    }
+    if(open > 0) {
+        return open + " open";
+    }
+    return state == "busy" ? "looking..." : state == "ready" ? "none open" : "";  // (failed, or no Steam: nothing)
+}
+
+void UpdatePublicCount() {
+    public_ask_timer -= time_step;
+    if(public_ask_timer <= 0.0f) {
+        public_ask_timer = 20.0f;
+        Online_RequestPublicGames();
+    }
+    public_read_timer -= time_step;
+    if(public_read_timer <= 0.0f && public_count_text !is null) {
+        public_read_timer = 1.0f;
+        public_count_text.setText(PublicCountLabel());
+    }
+}
+
 void AddWideButton(const string &in text, IMDivider@ parent, const string &in icon) {
     AddButton(text, parent, icon, button_background_diamond, true, kButtonWidth);
 }
@@ -169,7 +205,13 @@ void BuildUI(){
     mainDiv.append(IMSpacer(DOHorizontal, 40));
 
     AddSection(left_panel, "Play online");
-    AddWideButton("Browse games", left_panel, play_icon);         // public games anywhere (multiplayer_browser.as)
+    IMDivider browse_row("browse_row", DOHorizontal);             // public games anywhere (multiplayer_browser.as),
+    browse_row.setAlignment(CALeft, CACenter);                    // and how many are open
+    AddWideButton("Browse games", browse_row, play_icon);
+    browse_row.append(IMSpacer(DOHorizontal, 20));
+    @public_count_text = IMText(PublicCountLabel(), count_font);
+    browse_row.append(public_count_text);
+    left_panel.append(browse_row);
     AddWideButton("Join a friend", left_panel, play_icon);        // Steam friends hosting (multiplayer_join_friend.as)
     AddWideButton("Your character", left_panel, settings_icon);   // character, colours and name: their own screen
 
@@ -233,6 +275,7 @@ void Update() {
     text_box_playername.Update();
 
 	UpdateKeyboardMouse();
+    UpdatePublicCount();
     // process any messages produced from the update
     while( imGUI.getMessageQueueSize() > 0 ) {
         IMMessage@ message = imGUI.getNextMessage();

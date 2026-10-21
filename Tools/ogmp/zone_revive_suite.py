@@ -129,3 +129,105 @@ def zone_revive(ctx, profile="typical"):
         if errs:
             m[f"{name}_script_errors"] = [f"{l} x{n}" for l, n in errs[:4]]
     return {"passed": not fails, "metrics": m, "notes": fails}
+
+
+PROBE_FALL = 'level.SendMessage("probe_fd " + this_mo.GetID() + " " + (fall_death ? 1 : 0) + " " + zone_killed + " " + knocked_out);'
+
+
+def _wait_up(inst, cid, seconds):
+    t0 = time.time()
+    while time.time() - t0 < seconds:
+        c = _char_c(inst, cid)
+        if c is not None and not c.get("knocked_out"):
+            return round(time.time() - t0, 1)
+        time.sleep(0.25)
+    return None
+
+
+def zone_respawn(ctx, profile="typical"):
+    """zone_respawn: story co-op (Lugaru village, the Overhaul mod's aschar), the
+    guest dies where nobody can reach the body; with the host up it must get up
+    beside the host on its own (no checkpoint, no drag), and live on: (a) a fall
+    death zone's death (aschar fall_death), then a 2.5 m drop that the stale flag
+    would make lethal; (b) out of the world (y < -99).
+
+        python -I Tools/ogmp.py run zone_respawn
+    """
+    import math
+    import os
+    from .online_mod_suite import OVERHAUL
+
+    m, fails = {}, []
+    old = os.environ.get("OGMP_MODS")
+    os.environ["OGMP_MODS"] = OVERHAUL
+    try:
+        host = ctx.instance("host")
+        host.bridge.call("net_sim", **PROFILES[profile])
+        host.bridge.call("host", level="load_campaign_level village", campaign="com-wolfire-lugaru-campaign")
+        wait_loaded(host)
+        g = ctx.instance("client1")
+        g.bridge.call("net_sim", **PROFILES[profile])
+        join(ctx, host, g)
+    finally:
+        if old is None:
+            os.environ.pop("OGMP_MODS", None)
+        else:
+            os.environ["OGMP_MODS"] = old
+    time.sleep(4.0)
+    for _ in range(8):
+        if not _in_dialogue(host):
+            break
+        host.bridge.hold(steps=10, skip_dialogue=1.0)
+        time.sleep(1.5)
+    gme = g.bridge.me()
+    gc = next(c["common_id"] for c in g.bridge.state() if c["id"] == gme["id"])
+
+    def flags():
+        g.bridge.call("level_messages", prefix="probe_fd")
+        g.bridge.call("exec", target=gme["id"], code=PROBE_FALL)
+        time.sleep(0.2)
+        got = g.bridge.call("level_messages", prefix="probe_fd")["messages"]
+        return got[-1].split()[2:] if got else None  # fall_death, zone_killed, knocked_out
+
+    KILLS = {"fall": 'ReceiveMessage("fall_death"); this_mo.position += vec3(0.0f, 3.0f, 0.0f); this_mo.velocity = vec3(0.0f, -2.0f, 0.0f);',
+             "void": "this_mo.position = vec3(this_mo.position.x, -120.0f, this_mo.position.z); this_mo.velocity = vec3(0.0f);"}
+    for name, code in KILLS.items():
+        g.bridge.call("exec", target=gme["id"], code=code)
+        t0 = time.time()
+        dead = False
+        while time.time() - t0 < 4.0 and not dead:
+            dead = bool((_char_c(g, gc) or {}).get("knocked_out"))
+            time.sleep(0.2)
+        m[f"{name}_dead_flags"] = flags()
+        if not dead:
+            fails.append(f"{name}: the guest didn't die (test setup)")
+            continue
+        up_s = _wait_up(g, gc, 10.0)
+        m[f"{name}_up_after_s"] = up_s
+        if up_s is None:
+            fails.append(f"{name}: the guest stayed down (no respawn beside the host)")
+            continue
+        time.sleep(1.0)
+        hid = host.bridge.me()["id"]
+        hc = next(c["common_id"] for c in host.bridge.state() if c["id"] == hid)
+        d = math.dist(g.bridge.me()["pos"], _char_c(g, hc)["pos"])  # (the guest's copy of the host's character)
+        m[f"{name}_from_host_m"] = round(d, 2)
+        if d > 6.0:
+            fails.append(f"{name}: up {d:.1f} m from the host (not beside)")
+        m[f"{name}_up_flags"] = flags()
+        # A jump's landing (2.5 m): with the zone's flag left over, it kills
+        g.bridge.call("exec", target=gme["id"], code="this_mo.position += vec3(0.0f, 2.5f, 0.0f); this_mo.velocity = vec3(0.0f);")
+        time.sleep(3.0)
+        c = _char_c(g, gc) or {}
+        m[f"{name}_after_drop_knocked_out"] = c.get("knocked_out")
+        if c.get("knocked_out"):
+            fails.append(f"{name}: up again, then a 2.5 m drop killed the guest (flags {flags()})")
+        if not (_char_c(host, gc) and host.bridge.me()):
+            fails.append(f"{name}: the host lost the guest")
+    for name, inst in (("host", host), ("guest", g)):
+        if not inst.alive():
+            fails.append(f"the {name} crashed")
+        errs = script_errors(inst) if inst.alive() else []
+        if errs:
+            m[f"{name}_script_errors"] = [f"{l} x{n}" for l, n in errs[:4]]
+    return {"passed": not fails, "metrics": m, "notes": fails}

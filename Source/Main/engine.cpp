@@ -4346,6 +4346,47 @@ void LoadCollisionNormals(SceneGraph* scenegraph) {
     }
 }
 
+// Overgrowth Online: while the menus compile shaders (Vulkan's warm-up), a
+// notice in the top right corner with its progress, then "ready" a moment
+static void DrawShaderNotice(Graphics* graphics) {
+    static uint32_t ready_until = 0;
+    static uint32_t last_menu_frame = 0;
+    static bool was_busy = false;
+    int done = 0, total = 0;
+    bool pipelines = false;
+    const bool busy = graphics->VulkanWarmUpProgress(&done, &total, &pipelines);
+    const uint32_t now = SDL_GetTicks();
+    if (now - last_menu_frame > 1000) {
+        was_busy = false;  // (back from a level: no "ready" for a warm-up the load finished)
+    }
+    last_menu_frame = now;
+    if (was_busy && !busy) {
+        ready_until = now + 2000;
+    }
+    was_busy = busy;
+    if (!busy && now >= ready_until) {
+        return;
+    }
+
+    ImGuiIO& io = ImGui::GetIO();
+    const float scale = io.FontGlobalScale;
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 16.0f * scale, 16.0f * scale), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+    ImGui::SetNextWindowBgAlpha(0.7f);
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize |
+                                   ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+    if (ImGui::Begin("##shader_notice", nullptr, flags)) {
+        if (busy) {
+            ImGui::Text("Compiling shaders");
+            char overlay[64];
+            snprintf(overlay, sizeof(overlay), total > 0 ? "%s %d / %d" : "%s", pipelines ? "pipelines" : "programs", done, total);
+            ImGui::ProgressBar(total > 0 ? (float)done / total : 0.0f, ImVec2(280.0f * scale, 0.0f), overlay);
+        } else {
+            ImGui::Text("Shaders ready");
+        }
+    }
+    ImGui::End();
+}
+
 // Draw the current frame
 void Engine::Draw() {
     Graphics* graphics = Graphics::Instance();
@@ -4376,6 +4417,7 @@ void Engine::Draw() {
     if (check_save_level_changes_dialog_is_showing || !scenegraph_) {
         // No level loaded, so draw menu instead
         graphics->VulkanMenuWarmUp();  // Overgrowth Online (GL 4.6 stage 5.8)
+        DrawShaderNotice(graphics);
         graphics->setViewport(0, 0, graphics->window_dims[0], graphics->window_dims[1]);
         graphics->SetClearColor(vec4(0.0f));
         graphics->Clear(true);

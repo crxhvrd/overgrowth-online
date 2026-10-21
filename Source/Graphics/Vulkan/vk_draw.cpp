@@ -806,6 +806,7 @@ std::vector<std::thread>& warm_threads = *new std::vector<std::thread>();
 std::atomic<size_t> warm_next(0);
 std::atomic<bool> warm_stop(false);
 std::atomic<int> warm_running(0);
+std::atomic<size_t> warm_made(0);  // (jobs finished, for the menus' notice)
 bool warm_complete = false;
 
 void WarmWorker() {
@@ -817,6 +818,7 @@ void WarmWorker() {
             std::lock_guard<std::mutex> lock(warm_lock);
             warm_done.push_back(std::make_pair(j.key, p));
         }
+        ++warm_made;
     }
     --warm_running;
 }
@@ -1360,6 +1362,7 @@ void StartWarmUp() {
     }
     unsigned threads = std::max(1u, std::min(3u, std::thread::hardware_concurrency() / 4));
     warm_next = 0;
+    warm_made = 0;
     warm_stop = false;
     warm_running = (int)threads;
     for (unsigned t = 0; t < threads; ++t) {
@@ -1370,6 +1373,15 @@ void StartWarmUp() {
 
 bool WarmUpDone() {
     return warm_complete && warm_running == 0;
+}
+
+bool WarmUpProgress(size_t* done, size_t* total) {
+    if (warm_complete && warm_threads.empty()) {
+        return false;
+    }
+    *total = warm_threads.empty() ? 0 : warm_jobs.size();
+    *done = std::min<size_t>(warm_made, *total);
+    return true;
 }
 
 void DrainWarmUp() {

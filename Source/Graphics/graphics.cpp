@@ -2420,15 +2420,20 @@ static void LogSlowFrame() {
     last_pipelines = pipelines;
 }
 
+static struct {
+    std::vector<std::pair<std::string, uint32_t> > todo;
+    bool listed = false;
+    size_t next = 0;
+} g_menu_warm;
+
 void Graphics::VulkanMenuWarmUp() {
     if (!UseVulkan()) {
         return;
     }
-    static std::vector<std::pair<std::string, uint32_t> > todo;
-    static bool listed = false;
-    static size_t next = 0;
-    if (!listed) {
-        listed = true;
+    std::vector<std::pair<std::string, uint32_t> >& todo = g_menu_warm.todo;
+    size_t& next = g_menu_warm.next;
+    if (!g_menu_warm.listed) {
+        g_menu_warm.listed = true;
         todo = VkDraw::WarmUpPrograms();
     }
     if (next < todo.size()) {
@@ -2445,6 +2450,26 @@ void Graphics::VulkanMenuWarmUp() {
     }
     VkDraw::StartWarmUp();  // (once; again after a level's load stopped it part way)
     VkDraw::DrainWarmUp();
+}
+
+bool Graphics::VulkanWarmUpProgress(int* done, int* total, bool* pipelines) const {
+    if (!UseVulkan() || !g_menu_warm.listed) {
+        return false;
+    }
+    if (g_menu_warm.next < g_menu_warm.todo.size()) {
+        *done = (int)g_menu_warm.next;
+        *total = (int)g_menu_warm.todo.size();
+        *pipelines = false;
+        return true;
+    }
+    size_t d = 0, t = 0;
+    if (!VkDraw::WarmUpProgress(&d, &t)) {
+        return false;
+    }
+    *done = (int)d;
+    *total = (int)t;
+    *pipelines = true;
+    return true;
 }
 
 // Overgrowth Online (GL 4.6 stage 5.8): there from a Vulkan start until its first frames

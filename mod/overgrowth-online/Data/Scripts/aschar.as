@@ -3414,6 +3414,9 @@ void EndAnim() {
 }
 
 void RecoverHealth() {
+    if(knocked_out != _awake) {
+        fall_death = false;  // (a fall death zone's: up again, the next landing would kill. A level reset clears it offline)
+    }
     SetKnockedOut(_awake);
     blood_health = 1.0f;
     block_health = 1.0f;
@@ -3438,6 +3441,7 @@ void RecoverHealth() {
 void Recover() {
     RecoverHealth();
     cut_throat = false;
+    fall_death = false;
     this_mo.rigged_object().CleanBlood();
     ClearTemporaryDecals();
 }

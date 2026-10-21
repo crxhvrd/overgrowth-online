@@ -2803,6 +2803,8 @@ bool Online::CoopCampaign() {
                 }
             }
         }
+        LOGI << "Overgrowth Online: " << level_name << " (campaign \"" << campaign_id << "\"): co-op story rules "
+             << (coop_campaign ? "on" : "off") << std::endl;
     }
     return coop_campaign;
 }
@@ -2839,6 +2841,7 @@ void Online::CoopUpdate(SceneGraph* sg) {
         }
     }
     pending_revives.swap(waiting);
+    CoopZoneRespawn(sg);
 
     if (!IsHosting() || !host_started_level || sg == nullptr || sg->level == nullptr) {
         coop_all_down_ms = -1.0;
@@ -2918,6 +2921,49 @@ void Online::CoopCheckpoint(ObjectID by) {
                                                    to_string(facing.x()) + " " + to_string(facing.z()));
         }
     }
+}
+
+void Online::CoopZoneRespawn(SceneGraph* sg) {
+    const double kRespawnMs = 4000.0;  // (seen dying, and watching a teammate, a while first)
+    ObjectID me = IsHosting() ? HostAvatarID() : GetOwnPlayerState().object_id;
+    Object* o = sg != nullptr && me >= 0 && host_started_level && !coop_cutscene && IsLocalAvatar(me) ? sg->GetObjectFromID(me) : nullptr;
+    MovementObject* mo = o != nullptr && o->GetType() == _movement_object ? static_cast<MovementObject*>(o) : nullptr;
+    bool lost = mo != nullptr && mo->NetworkVitalsSupported() && mo->ASHasVar("zone_killed") && mo->ASHasVar("fall_death") &&
+                mo->ASGetIntVar("knocked_out") != 0 &&
+                (mo->ASGetIntVar("zone_killed") != 0 || mo->ASGetBoolVar("fall_death") || mo->position[1] < -90.0f) &&
+                PlayerAvatarIDs().size() >= 2 && CoopCampaign();
+    if (!lost) {
+        coop_lost_since_ms = -1.0;
+        return;
+    }
+    double now = OnlineClockMs();
+    if (coop_lost_since_ms < 0.0) {
+        coop_lost_since_ms = now;
+        LOGI << "Overgrowth Online: player character " << me << " died where nobody can reach it (zone " << mo->ASGetIntVar("zone_killed")
+             << ", fall " << mo->ASGetBoolVar("fall_death") << ", y " << mo->position[1] << ")" << std::endl;
+    }
+    if (now - coop_lost_since_ms < kRespawnMs) {
+        return;
+    }
+
+    // Beside the nearest teammate who is up (none: everyone down, the host's reset comes)
+    vector<std::pair<float, ObjectID>> up;
+    for (ObjectID id : PlayerAvatarIDs()) {
+        if (id != me && AvatarUp(sg, id)) {
+            up.push_back({distance_squared(static_cast<MovementObject*>(sg->GetObjectFromID(id))->position, mo->position), id});
+        }
+    }
+    std::sort(up.begin(), up.end());
+    for (const auto& a : up) {
+        vec3 pos, facing;
+        if (SpotBeside(this, sg, a.second, std::max(1, GuestIndex(me)), &pos, &facing)) {
+            LOGI << "Overgrowth Online: player character " << me << " back up beside " << a.second << std::endl;
+            coop_lost_since_ms = -1.0;
+            ReviveAvatar(mo, pos, facing);
+            return;
+        }
+    }
+    coop_lost_since_ms = now - kRespawnMs + 1000.0;  // (no safe ground beside anyone: again in a second)
 }
 
 // Every machine. A dialogue is the host's character's scene: the guests'
