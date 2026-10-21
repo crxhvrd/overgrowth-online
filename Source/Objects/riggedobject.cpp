@@ -624,8 +624,13 @@ void RiggedObject::StoreNetworkMorphTargets() {
         }
     }
 
-    for (auto& morph_target : morph_targets) {
-        for (auto& network_morph : network_morphs) {
+    for (size_t i = 0; i < morph_targets.size(); ++i) {
+        MorphTarget& morph_target = morph_targets[i];
+        // Overgrowth Online: network_morphs is built in morph_targets' order, so the same
+        // index is the one (was a search of every name, for every morph, every frame)
+        size_t first = (i < network_morphs.size() && network_morphs[i].name == morph_target.name) ? i : 0;
+        for (size_t k = first; k < network_morphs.size(); ++k) {
+            MorphTargetStateStorage& network_morph = network_morphs[k];
             if (morph_target.name == network_morph.name) {
                 float a = morph_target.disp_weight;
                 float b = network_morph.disp_weight;
@@ -639,6 +644,7 @@ void RiggedObject::StoreNetworkMorphTargets() {
                     network_morph.disp_weight = morph_target.disp_weight;
                     network_morph.dirty = true;
                 }
+                break;  // (names are unique in it)
             }
         }
     }
@@ -2214,11 +2220,14 @@ vec3 CalcVertexOffset(const vec3& world_pos, float wind_amount) {
 }
 
 bool RiggedObject::GetOnlineIncomingMorphTargetState(MorphTargetStateStorage& dest, const char* name) {
-    if (incoming_network_morphs.find(name) == incoming_network_morphs.end()) {
+    if (incoming_network_morphs.empty()) {
         return false;
     }
-
-    dest = incoming_network_morphs[name];
+    auto it = incoming_network_morphs.find(name);  // (one lookup, not two)
+    if (it == incoming_network_morphs.end()) {
+        return false;
+    }
+    dest = it->second;
     return true;
 }
 
@@ -2231,11 +2240,32 @@ void RiggedObject::ApplyBoneMatricesToModel(bool old, int lod_level) {
     if (kMorphTargetsEnabled) {
         // Determine which morphs are active (have effective weight > 0)
         for (auto& m_t : morph_targets) {
-            if (network_proxy || m_t.weight > 0.0f ||
+            if (network_proxy) {
+                // Overgrowth Online: another machine's character. Its morphs' weights are
+                // the stream's, looked up once per morph (it was per vertex, a new string
+                // each time, for every morph); one at weight 0 adds nothing and is skipped.
+                // On guests every NPC is such a character: twice a frame each, this was
+                // most of the guest's lower frame rate
+                MorphTargetStateStorage state;
+                const bool streamed = GetOnlineIncomingMorphTargetState(state, m_t.name.c_str());
+                if (streamed && state.disp_weight <= 0.0f) {
+                    m_t.disp_weight = 0.0f;
+                    continue;
+                }
+                m_t.PreDrawCamera(GetTimeBetweenLastTwoAnimUpdates(), GetTimeSinceLastAnimUpdate(), lod_level, char_id);
+                if (streamed) {
+                    m_t.disp_weight = state.disp_weight;
+                }
+                if (m_t.disp_weight > 0.0f) {
+                    active_morph_targets.push_back(&m_t);
+                }
+                continue;
+            }
+            if (m_t.weight > 0.0f ||
                 (m_t.anim_weight > 0.0f && m_t.script_weight_weight < 1.0f) ||
                 (m_t.script_weight > 0.0f && m_t.script_weight_weight > 0.0f)) {
                 m_t.PreDrawCamera(GetTimeBetweenLastTwoAnimUpdates(), GetTimeSinceLastAnimUpdate(), lod_level, char_id);
-                if (network_proxy || m_t.weight > 0.0f) {
+                if (m_t.weight > 0.0f) {
                     active_morph_targets.push_back(&m_t);
                 }
             }
@@ -2267,12 +2297,6 @@ void RiggedObject::ApplyBoneMatricesToModel(bool old, int lod_level) {
                 vert_id = j;
                 vert_id_index = vert_id * 3;
 
-                if (network_proxy) {
-                    MorphTargetStateStorage state;
-                    if (GetOnlineIncomingMorphTargetState(state, morph->name.c_str())) {
-                        morph->disp_weight = state.disp_weight;
-                    }
-                }
                 model->morph_transform_vec[vert_id][0] += morph_model->vertices[vert_id_index + 0] * morph->disp_weight;
                 model->morph_transform_vec[vert_id][1] += morph_model->vertices[vert_id_index + 1] * morph->disp_weight;
                 model->morph_transform_vec[vert_id][2] += morph_model->vertices[vert_id_index + 2] * morph->disp_weight;
