@@ -23,7 +23,7 @@
 #include "overhaul_weather.as"
 #include "overhaul_tab_weather.as"
 
-const string kVersion = "0.39.9";
+const string kVersion = "0.40.0";
 
 bool menu_open = false;
 bool paused_by_menu = false;

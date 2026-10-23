@@ -18,6 +18,22 @@ void Update() {
     //}
 }
 
+// Online a guest loaded the level by its path: its level id is empty, found by that path
+string CurrLevelID() {
+    string id = GetCurrLevelID();
+    if(id != ""){
+        return id;
+    }
+    array<ModLevel>@ levels = GetCampaign(GetCurrCampaignID()).GetLevels();
+    string here = GetCurrLevelRelPath();
+    for(uint i = 0; i < levels.length(); ++i) {
+        if(here == "Data/Levels/" + levels[i].GetPath() || here == levels[i].GetPath()) {
+            return levels[i].GetID();
+        }
+    }
+    return "";
+}
+
 void EnterCampaign() {
     disable_progress = false;
     SavedLevel@ campaign_save = CampaignSave();
@@ -33,15 +49,15 @@ void EnterLevel() {
     Log(info, "Entered level " + GetCurrLevelName() );
     if(!disable_progress) {
         Campaign campaign = GetCampaign(GetCurrCampaignID());
-        ModLevel level = campaign.GetLevel(GetCurrLevelID());
+        ModLevel level = campaign.GetLevel(CurrLevelID());
 
         SavedLevel@ level_save = LevelSave(level);
         SavedLevel@ campaign_save = CampaignSave();
         SavedLevel@ global_save = GlobalSave();
         level_save.SetValue("level_played","true"); 
-        campaign_save.SetValue("last_level_played",GetCurrLevelID());
+        campaign_save.SetValue("last_level_played",CurrLevelID());
         global_save.SetValue("last_campaign_played",GetCurrCampaignID());
-        global_save.SetValue("last_level_played",GetCurrLevelID());
+        global_save.SetValue("last_level_played",CurrLevelID());
         save_file.WriteInPlace();
     } else {
         Log(warning, "Will not mark level as last-played, we've been in editor mode and block_cheating_progress is true");
@@ -69,15 +85,18 @@ void ReceiveMessage(string msg) {
 
         if(Online_IsClient()) {
             // Online: the host's load takes everyone on (a guest's own load split it from
-            // the game). A guest loaded the level by its path, so its level id is empty
-            // here: the path's name is unlocked when it is a level of this campaign (in
-            // Drika's Story it always is the next level's id)
+            // the game); here only the unlock. A guest loaded the level by its path, so its
+            // level id is empty here: the level is found by that path
             array<ModLevel>@ levels = GetCampaign(GetCurrCampaignID()).GetLevels();
+            string here = GetCurrLevelRelPath();
             for(uint i = 0; i < levels.length(); ++i) {
-                if(levels[i].GetID() == chosen_path) {
-                    Log(info, "unlocking " + chosen_path + " (the host loads it)");
-                    CampaignSave().AppendArrayValueIfUnique("unlocked_levels", chosen_path);
-                    save_file.WriteInPlace();
+                if(here == "Data/Levels/" + levels[i].GetPath() || here == levels[i].GetPath()) {
+                    string next_level_id = levels[i].GetParameter()["levelnext"][chosen_path].asString();
+                    if(next_level_id != "") {
+                        Log(info, "unlocking " + next_level_id + " (the host loads it)");
+                        CampaignSave().AppendArrayValueIfUnique("unlocked_levels", next_level_id);
+                        save_file.WriteInPlace();
+                    }
                 }
             }
             return;

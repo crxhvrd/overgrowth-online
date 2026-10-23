@@ -474,10 +474,11 @@ void MovementObject::ApplyNetworkPose(const CharSnapshot::Frame& pose) {
 
         for (size_t i = 0; i < bones.size(); ++i) {
             const CharSnapshot::Bone& b = pose.bones[i];
-            // A bone its owner shrank to nothing is that player's own first-person
+            // A bone a player's owner shrank to nothing is that player's own first-person
             // view (Overhaul hides the head and whatever is near the eye): here it
-            // keeps this rig's own inflation (the same parameters), else spikes
-            float scale = b.scale > 0.0f ? b.scale : (bones[i].display_scale > 0.0f ? bones[i].display_scale : 1.0f);
+            // keeps this rig's own inflation (the same parameters), else spikes. An
+            // NPC's is the character's (Therium-2's Gunk has no left arm)
+            float scale = b.scale > 0.0f || !controlled ? b.scale : (bones[i].display_scale > 0.0f ? bones[i].display_scale : 1.0f);
             rigged_object_->network_display_bone_matrices[i] = rigged_object_->NetworkBoneMatrix((int)i, b.rotation, b.translation, scale);
             if (i < rigged_object_->display_bone_transforms.size()) {  // gear hangs from these (backpacks)
                 rigged_object_->display_bone_transforms[i] = rigged_object_->NetworkAttachMatrix((int)i, b.rotation, b.translation);

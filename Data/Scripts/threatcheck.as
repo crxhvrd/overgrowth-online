@@ -46,6 +46,22 @@ bool CoopAlone() {
     return !Online_IsActive() || GetControlledCharacterIDs().length() < 2;
 }
 
+// "Play If No Combat" for a player. A teammate's copy runs no script on this machine
+// (its CombatSong() stays 0): judged by the NPCs instead, any awake one fighting
+bool CoopNoCombat(MovementObject@ mo) {
+    if(!mo.remote){
+        return mo.QueryIntFunction("int CombatSong()") == 0;
+    }
+    for(int i=0, n=GetNumCharacters(); i<n; ++i){
+        MovementObject@ c = ReadCharacter(i);
+        if(!c.controlled && !mo.OnSameTeam(c) && c.GetIntVar("knocked_out") == _awake &&
+           c.QueryIntFunction("int IsAggressive()") == 1){
+            return false;
+        }
+    }
+    return true;
+}
+
 // Every player's character is down (co-op: the level stops only then)
 bool AllPlayersDown() {
     int num = GetNumCharacters();

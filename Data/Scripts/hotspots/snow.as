@@ -68,12 +68,12 @@ void HandleEvent(string event, MovementObject @mo) {
     Object@ mo_obj = ReadObjectFromID(mo.GetID());
 
     if(event == "enter") {
-        if(mo_obj.GetPlayer()) {
+        if(mo_obj.GetPlayer() && !mo.remote) {  // (online: ours, not a teammate's copy)
             ++g_player_in_hotspot_count;
         }
     } else if(event == "exit") {
-        if(mo_obj.GetPlayer()) {
-            --g_player_in_hotspot_count;
+        if(mo_obj.GetPlayer() && !mo.remote) {
+            g_player_in_hotspot_count = max(0, g_player_in_hotspot_count - 1);
         }
     }
 }

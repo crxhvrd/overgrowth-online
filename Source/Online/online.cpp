@@ -172,6 +172,9 @@ void Online::RemoveObject(Object* o, ObjectID my_id) {
 }
 
 bool Online::NetworkRemoveableType(Object* o) const {
+    if (o->online_local) {
+        return false;  // (each machine's script made its own: another object has this id there)
+    }
     EntityType type = o->GetType();
     return type == _env_object || type == _movement_object || type == _item_object;
 }
@@ -2818,8 +2821,9 @@ bool Online::CoopCampaign() {
             }
             for (const ModInstance::Campaign& c : mod->campaigns) {
                 if (!campaign_id.empty() && campaign_id == c.id.str()) {
-                    // (and Drika's Story: therium_campaign.as, its levels on overgrowth_level.as)
-                    coop_campaign = string(c.main_script.str()).find("linear_campaign") != string::npos || campaign_id == "com-wolfire-drika";
+                    // (and Drika's Story and Therium-2: therium_campaign.as)
+                    coop_campaign = string(c.main_script.str()).find("linear_campaign") != string::npos || campaign_id == "com-wolfire-drika" ||
+                                    campaign_id == "com-wolfire-timbles-therium";
                 }
             }
         }
@@ -3257,8 +3261,9 @@ void Online::UpdateObjects(SceneGraph* scenegraph_) {
             for (Object* o : scenegraph_->objects_) {
                 switch (o->GetType()) {
                     case _env_object:
-                        // (gear on a character follows its bones everywhere)
-                        if (o->online_transform_dirty && (o->parent == nullptr || o->parent->GetType() != _movement_object)) {
+                        // (gear on a character follows its bones everywhere; what a script made
+                        // here alone is each machine's own, under other ids there)
+                        if (o->online_transform_dirty && !o->online_local && (o->parent == nullptr || o->parent->GetType() != _movement_object)) {
                             Send<OnlineMessages::EnvObjectUpdate>(static_cast<EnvObject*>(o));
                         }
                         break;

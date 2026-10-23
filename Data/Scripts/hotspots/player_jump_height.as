@@ -57,7 +57,7 @@ void Update() {
         for(int i = 0, len = GetNumCharacters(); i < len; i++) {
             MovementObject@ character = ReadCharacter(i);
 
-            if(ReadObjectFromID(character.GetID()).GetPlayer()) {
+            if(ReadObjectFromID(character.GetID()).GetPlayer() && !character.remote) {
                 character.Execute(
                     "jump_info.jetpack_fuel = " + new_jetpack_fuel + ";" +
                     "this_mo.velocity.y *= " + initial_jump_velocity_multiplier + ";");

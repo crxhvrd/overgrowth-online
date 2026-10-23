@@ -38,6 +38,9 @@ void HandleEvent(string event, MovementObject @mo){
 }
 
 void OnEnter(MovementObject @mo) {
+        if(Online_IsClient()){
+            return;  // (online: the host's, and it decides the dialogue it removes)
+        }
         string to_disappear = params.GetString("Object name to disappear");
         array<int> @object_ids = GetObjectIDs();
         int num_objects = object_ids.length();

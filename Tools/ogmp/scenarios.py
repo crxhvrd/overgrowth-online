@@ -90,7 +90,7 @@ def dist(a, b):
 
 # Stock 1.4 also logs these: the main menu's missing include; aschar's sheath swap indexing
 # weapon_slots by an item id; goal_level.as's missing include and Folti's Cliff's music name
-KNOWN_STOCK_ERRORS = ("campaign_common.as", "weapon_slots out of array bounds", "lugaru_campaign.as", "load music\"folticliff\"")
+KNOWN_STOCK_ERRORS = ("campaign_common.as", "weapon_slots out of array bounds", "lugaru_campaign.as", "can't load music")  # (music names missing from the 1.4 data: Folti's Cliff, Therium-2)
 
 
 def script_errors(inst):
@@ -701,6 +701,30 @@ def _drika_fall(ctx):
 
 
 SCENARIOS["drika_fall"] = _drika_fall
+
+
+def _drika_dhs(ctx):
+    from .drika_suite import drika_dhs
+    return drika_dhs(ctx)
+
+
+SCENARIOS["drika_dhs"] = _drika_dhs
+
+
+def _t2_levels(ctx):
+    from .drika_suite import t2_levels
+    return t2_levels(ctx)
+
+
+SCENARIOS["t2_levels"] = _t2_levels
+
+
+def _t2_coop(ctx):
+    from .drika_suite import t2_coop
+    return t2_coop(ctx)
+
+
+SCENARIOS["t2_coop"] = _t2_coop
 
 
 def _item_flares(ctx):

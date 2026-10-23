@@ -2567,6 +2567,9 @@ int ASCreateObject(const std::string& path, bool exclude_from_save) {
                 (obj->GetType() == _movement_object || obj->GetType() == _item_object)) {
                 online->Send<OnlineMessages::CreateEntity>(path, obj->GetTranslation(), id);
             }
+            // The rest (env objects, hotspots, lights, decals: a spike's stick, a water
+            // surface) each machine's script makes for itself, under its own ids
+            obj->online_local = obj->GetType() != _movement_object && obj->GetType() != _item_object;
         } else {
             LOGE << "Failed at creating object from: " << path << std::endl;
         }

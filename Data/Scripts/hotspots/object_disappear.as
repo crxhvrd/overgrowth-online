@@ -38,7 +38,7 @@ void HandleEvent(string event, MovementObject @mo){
 }
 
 void OnEnter(MovementObject @mo) {
-    if(mo.controlled){
+    if(mo.controlled && !Online_IsClient()){  // (online: the host's deletions reach the guests)
         string to_disappear = params.GetString("Object name to disappear");
         array<int> @object_ids = GetObjectIDs();
         int num_objects = object_ids.length();

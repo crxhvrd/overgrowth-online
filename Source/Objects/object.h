@@ -141,6 +141,7 @@ class Object {
     bool transparent;
     bool exclude_from_undo;
     bool exclude_from_save;
+    bool online_local;  // Overgrowth Online: a script made it on this machine only (never streamed or removed by id)
     int update_list_entry;
     Object* parent;
     std::vector<int> unfinalized_connected_from;
@@ -164,6 +165,7 @@ class Object {
           transparent(false),
           exclude_from_undo(false),
           exclude_from_save(false),
+          online_local(false),
           update_list_entry(-1),
           enabled_(true),
           parent(NULL),

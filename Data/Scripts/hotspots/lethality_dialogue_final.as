@@ -22,6 +22,22 @@
 //
 //-----------------------------------------------------------------------------
 
+#include "threatcheck.as"
+
+// Online: a cutscene's end places the guests beside the host's character, often inside
+// this hotspot; that isn't walking in (a dialogue here would play again, and again)
+float coop_cutscene_time = -10.0f;
+
+void Update() {
+    if(level.QueryIntFunction("int HasCameraControl()") == 1){
+        coop_cutscene_time = the_time;
+    }
+}
+
+bool CoopJustPlaced() {
+    return Online_IsActive() && the_time < coop_cutscene_time + 1.0f;
+}
+
 bool played;
 
 void Reset() {
@@ -54,10 +70,13 @@ void HandleEvent(string event, MovementObject @mo){
 }
 
 void OnEnter(MovementObject @mo) {
+	if(CoopJustPlaced()){
+		return;
+	}
 	if(mo.controlled || params.GetInt("Play for NPCs") == 1)													//condition for "Play for NPCs"
     if((mo.GetIntVar("knocked_out") > 0 || params.GetInt("Play Only If Dead") == 0)								//condition for "Play Only If Dead"
 		&& (!played || params.GetInt("Play Once") == 0)															//condition for "Play once"
-		&& (mo.QueryIntFunction("int CombatSong()") == 0) || params.GetInt("Play If No Combat") == 0){			//condition for No Combat
+		&& CoopNoCombat(mo) || params.GetInt("Play If No Combat") == 0){			//condition for No Combat
 		
 		int num_chars = GetNumCharacters();
 		bool everyone_alive = true;

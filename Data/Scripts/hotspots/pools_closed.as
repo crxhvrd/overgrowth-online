@@ -44,6 +44,9 @@ int victim_id = -1;
 int font_size = 70;
 
 void Update(){
+    if(victim_id != -1 && !MovementObjectExists(victim_id)){
+        victim_id = -1;
+    }
     if(victim_id != -1){
         if(GetInputDown(ReadCharacterID(victim_id).controller_id, "crouch")){
             drown_timer += time_step;
@@ -74,5 +77,7 @@ void OnExit(MovementObject @mo) {
 }
 
 void OnEnter(MovementObject @mo) {
-    victim_id = mo.GetID();
+    if(mo.controlled && !mo.remote){  // (online: ours; an NPC's or a teammate's copy read our crouch)
+        victim_id = mo.GetID();
+    }
 }

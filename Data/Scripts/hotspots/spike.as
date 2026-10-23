@@ -72,6 +72,7 @@ void Init() {
 }
 
 void Reset(){
+    arm_count = 0;
     spike_num = 5;
     spiked = -1;
     armed = 0;
@@ -85,13 +86,17 @@ void SetArmed(int val){
     }
 }
 
+int arm_count = 0;  // (characters on the tip: one leaving doesn't disarm it under another)
+
 void ReceiveMessage(string msg) {
     if(!super_spike){
         if(msg == "arm_spike"){
+            ++arm_count;
             SetArmed(1);
         }
         if(msg == "disarm_spike"){
-            if(spiked == -1){
+            arm_count = max(0, arm_count - 1);
+            if(spiked == -1 && arm_count == 0){
                 SetArmed(0);
             }
         }
@@ -233,6 +238,7 @@ void Update() {
                 if(spiked == -1){
                     vec3 dir = normalize(start-end);
                     float extend = 0.4;
+                    if(!char.network_proxy){  // (online: a copy is pinned on its owner's machine)
                     col.CheckRayCollisionCharacters(start+dir*extend, end+dir*-extend);
                     for(int i=0; i<sphere_col.NumContacts(); ++i){
                         int bone = sphere_col.GetContact(i).tri;
@@ -242,6 +248,7 @@ void Update() {
                     for(int i=0; i<sphere_col.NumContacts(); ++i){
                         int bone = sphere_col.GetContact(i).tri;
                         char.rigged_object().SpikeRagdollPart(bone,end,start,sphere_col.GetContact(i).position);   
+                    }
                     }
                     //string sound = "Data/Sounds/hit/hit_medium_juicy.xml";
                     string sound = "Data/Sounds/weapon_foley/cut/flesh_hit.xml";

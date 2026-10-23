@@ -93,21 +93,55 @@ void InterpData(){
 	ReorderElements();
 }
 
+// Online the host runs the sequence and the guests follow it: "ohl drika <hotspot> <line>
+// live" as each step is done (sounds and particles too), and "... state" every 2 s for
+// players who joined later (only the steps that leave a state: objects on/off, bodies)
+float drika_sync_next = 0.0f;
+
 void Update(){
 	if(!post_init_done){
 		InterpData();
 		post_init_done = true;
 		return;
 	}
-	if(!script_finished && !EditorModeActive()){
+	if(Online_IsClient()){
+		return;  // (the host's progress moves ours: FollowHost)
+	}
+	if(!script_finished && !EditorModeActive() && drika_indexes.size() > 0){
 		if(GetCurrentElement().Trigger()){
 			Log(info, "Go to next line");
 			if(current_line == int(drika_indexes.size() - 1)){
 				script_finished = true;
 			}
 			current_line += 1;
+			if(Online_IsHosting()){
+				level.SendMessage("ohl drika " + hotspot.GetID() + " " + current_line + " live");
+			}
 		}
 	}
+	if(Online_IsHosting() && the_time >= drika_sync_next){
+		drika_sync_next = the_time + 2.0f;
+		level.SendMessage("ohl drika " + hotspot.GetID() + " " + current_line + " state");
+	}
+}
+
+// A guest: up to the host's line. Steps that leave a state always (a body swap on a
+// copy the host runs is its owner's: the engine brings it); a live step's sound and
+// particles too; waits are the host's
+void FollowHost(int line, bool live){
+	line = min(line, int(drika_indexes.size()));
+	if(line < current_line){
+		Reset();  // (the host started over)
+	}
+	while(current_line < line){
+		DrikaElement@ element = GetCurrentElement();
+		if(element.drika_element_type == drika_set_enabled || element.drika_element_type == drika_set_character ||
+		   (live && (element.drika_element_type == drika_play_sound || element.drika_element_type == drika_create_particle))){
+			element.Trigger();
+		}
+		current_line += 1;
+	}
+	script_finished = drika_indexes.size() > 0 && current_line >= int(drika_indexes.size());
 }
 
 bool reorded = false;
@@ -318,6 +352,17 @@ void ReceiveMessage(string msg){
         return;
     }
     string token = token_iter.GetToken(msg);
+	if(token == "level_event" && Online_IsClient()){
+		// Online: the host's progress ("ohl drika <hotspot> <line> live|state")
+		if(token_iter.FindNextToken(msg) && token_iter.GetToken(msg) == "ohl" &&
+		   token_iter.FindNextToken(msg) && token_iter.GetToken(msg) == "drika" &&
+		   token_iter.FindNextToken(msg) && atoi(token_iter.GetToken(msg)) == hotspot.GetID() &&
+		   token_iter.FindNextToken(msg) && post_init_done){
+			int line = atoi(token_iter.GetToken(msg));
+			FollowHost(line, token_iter.FindNextToken(msg) && token_iter.GetToken(msg) == "live");
+		}
+		return;
+	}
 	if(token == "level_event" and !script_finished && drika_indexes.size() > 0){
 		token_iter.FindNextToken(msg);
 		string message = token_iter.GetToken(msg);

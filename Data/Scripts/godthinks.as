@@ -72,7 +72,7 @@ void HandleEvent(string event, MovementObject @mo){
 }
 
 void OnEnter(MovementObject @mo) {
-    if(GetInputDown(mo.controller_id, god_key)){
+    if(mo.controlled && !mo.remote && GetInputDown(mo.controller_id, god_key)){
 		PlaySound("Data/Sounds/voice/torikamal/fallscream_4.wav");
 	}else{
 	}

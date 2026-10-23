@@ -67,6 +67,23 @@ void Update() {
 	}
 }
 
+void ReceiveMessage(string msg){
+    if(msg == "coop_played"){  // online: the host played it
+        played = true;
+    }
+    if(msg == "coop_request" && (!played || params.GetInt("Play Once") == 0)){  // online, the host: a guest's key
+        PlayIt();
+    }
+}
+
+void PlayIt() {
+    level.SendMessage("start_dialogue \""+params.GetString("Dialogue")+"\"");
+    played = true;
+    if(Online_IsHosting()){
+        level.SendMessage("ohl coop_talked "+hotspot.GetID());
+    }
+}
+
 void HandleEvent(string event, MovementObject @mo){
     if(event == "enter"){
         OnEnter(mo);
@@ -76,13 +93,21 @@ void HandleEvent(string event, MovementObject @mo){
 }
 
 void OnEnter(MovementObject @mo) {
+    if(mo.controlled && mo.remote){
+        return;  // (online: a teammate's copy; its owner presses the key there)
+    }
     if((mo.GetIntVar("knocked_out") > 0 || params.GetInt("Play only If dead") == 0)
 		&& (!played || params.GetInt("Play Once") == 0)
 		&&( (!mo.controlled && params.GetInt("Play for npc's") == 1)
 		|| (mo.controlled && params.GetInt("Play for player") == 1) && GetInputPressed(mo.controller_id, dialogue_key) && params.GetInt("Play on button") == 1)){
 		
-        level.SendMessage("start_dialogue \""+params.GetString("Dialogue")+"\"");
-        played = true;
+        if(Online_IsClient()){
+            if(mo.controlled){
+                level.SendMessage("ohr coop_talk "+hotspot.GetID());  // (the host plays it for everyone)
+            }
+            return;
+        }
+        PlayIt();
     }
 }
 

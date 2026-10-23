@@ -22,6 +22,8 @@
 //
 //-----------------------------------------------------------------------------
 
+#include "threatcheck.as"
+
 void Init() {
 }
 
@@ -34,8 +36,15 @@ void HandleEvent(string event, MovementObject @mo){
     } 
 }
 
-void OnEnter(MovementObject @mo) {;
-    if(mo.controlled){
-        level.SendMessage("reset");
+void OnEnter(MovementObject @mo) {
+    if(!mo.controlled){
+        return;
     }
+    if(CoopAlone() || level.QueryIntFunction("int HasCameraControl()") == 1){
+        if(!Online_IsClient()){
+            level.SendMessage("reset");
+        }
+        return;
+    }
+    mo.Execute("if(knocked_out == _awake){ zone_killed = 1; ko_shield = 0; TakeDamage(1.0f); Ragdoll(_RGDL_FALL); }");  // (on its owner's machine)
 }

@@ -50,6 +50,9 @@ vec3 orig_translation;
 quaternion orig_rotation;
 
 void Update(){
+    if(Online_IsClient()){
+        return;  // (the host's stream moves them)
+    }
     TokenIterator token_iter;
     token_iter.Init();
     string str = params.GetString("Objects");

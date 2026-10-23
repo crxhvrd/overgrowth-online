@@ -68,7 +68,7 @@ float ko_time = -1.0;
 
 void Update() {
     int player_id = GetPlayerCharacterID();
-    if(player_id != -1 && ReadCharacter(player_id).GetIntVar("knocked_out") != _awake){
+    if(player_id != -1 && ReadCharacter(player_id).GetIntVar("knocked_out") != _awake && Online_Spectating() == ""){
         PlaySong(music_prefix + "sad");
         return;
     }

@@ -196,7 +196,7 @@ void PreDraw(float curr_game_time) {
         }
         delay -= delta_time;
 
-        if(delay <= 0.0f){
+        if(delay <= 0.0f && num_ribbons > 0){  // (a fire with no ribbons: no spark from one)
             for(int i=0; i<1; ++i){
                 uint32 id = MakeParticle("Data/Particles/firespark.xml", ribbons[int(RangedRandomFloat(0, num_ribbons-0.01))].pos, vec3(RangedRandomFloat(-2.0f, 2.0f), RangedRandomFloat(5.0f, 10.0f), RangedRandomFloat(-2.0f, 2.0f)), vec3(1.0f));
             }
@@ -233,7 +233,7 @@ void PreDraw(float curr_game_time) {
             if(params.HasParam("Light Distance")){
                 distance *= params.GetFloat("Light Distance");
             }
-            if(ribbons[0].particles.size()>3){
+            if(num_ribbons > 0 && ribbons[0].particles.size()>3){  // (no ribbons: no light to place)
                 Object@ fire_obj = ReadObjectFromID(fire_object_id);
                 fire_obj.SetTranslation(mix(ribbons[0].particles[3].pos, ribbons[0].particles[2].pos, ribbons[0].spawn_new_particle_delay / 0.1f));
                 fire_obj.SetTint(amplify * 0.2 * vec3(2.0,1.0,0.0)*(2.0 + mix(ribbons[0].particles[3].heat, ribbons[0].particles[2].heat, ribbons[0].spawn_new_particle_delay / 0.1f)));
