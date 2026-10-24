@@ -23,7 +23,8 @@
 //-----------------------------------------------------------------------------
 
 #include "menu_common.as"
-#include "arena_meta_persistence.as"
+// Overgrowth Online: no arena_meta_persistence.as (unused here, and it doesn't compile outside
+// a level: level_name), which kept the roll from opening
 #include "music_load.as"
 
 // Load the music 
@@ -38,6 +39,7 @@ const float scrollUpdateSize = 2;
 // Just to avoid some repeated text
 // Some structure to hold the credits in 
 IMDivider creditDiv( "mainDiv", DOVertical );
+FontSetup creditFontNotice("OptimusPrinceps", 40, white, false);  // Overgrowth Online: the trademark notice
 
 void addToTextScroll( string text, bool isHeaer = false ) {
 	if( isHeaer ) {
@@ -156,6 +158,15 @@ void Initialize() {
 
 	creditDiv.appendSpacer( postGroup );
 
+	// Overgrowth Online: the upscalers (NVIDIA's DLSS licence asks for its credit, its marks named)
+	addToTextScroll( "Upscaling", true);
+	addToTextScroll( "NVIDIA DLSS");
+	addToTextScroll( "AMD FidelityFX Super Resolution");
+	creditDiv.appendSpacer( postName );
+	creditDiv.append( IMText( "NVIDIA, the NVIDIA logo and DLSS are trademarks of NVIDIA Corporation", creditFontNotice ) );
+
+	creditDiv.appendSpacer( postGroup );
+
 	creditDiv.append( IMImage( "Textures/ui/menus/credits/logo.tga" ) );
 
 
@@ -232,7 +243,7 @@ void StartArenaMeta(){
 
 }
 bool CanGoBack(){
-	return false;
+	return true;  // Overgrowth Online: was false, so the roll's own "back" (its end, Esc, a click) never left it
 }
 void Dispose(){
 

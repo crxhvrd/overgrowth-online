@@ -89,6 +89,14 @@ for lib, src in [("SDL2", "SDL2-2.0.20/COPYING.txt"), ("SDL2_net", "SDL2_net-2.0
 for lib in ["implot", "tclap", "zstd", "tween", "FastQuadricMeshSimplification", "Triangle", "glslang"]:
     shutil.copy2(f"{HERE}/licenses/{lib}.txt", f"{online}/licenses/{lib}.txt")
 shutil.copy2(HERE + "/THIRD_PARTY.txt", online + "/licenses/THIRD_PARTY.txt")
+# The upscalers' runtimes (a build with DLSS_SDK / FIDELITYFX_SDK: CMake put them beside the
+# exe, the DLLs went out with the rest above) and their licences
+for dll, lic, notice in [("nvngx_dlss.dll", "nvngx_dlss_LICENSE.txt", "NVIDIA-DLSS"),
+                         ("amd_fidelityfx_vk.dll", "amd_fidelityfx_LICENSE.txt", "AMD-FidelityFX")]:
+    if os.path.exists(f"{build}/{dll}"):
+        if not os.path.exists(f"{build}/{lic}"):
+            sys.exit(f"{dll} without its licence ({lic}) in {build}: build again with the SDK")
+        shutil.copy2(f"{build}/{lic}", f"{online}/licenses/{notice}.txt")
 
 # The launcher, the mod, the installer
 os.makedirs(out + "/launcher")

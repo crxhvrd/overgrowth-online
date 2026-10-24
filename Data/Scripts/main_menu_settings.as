@@ -43,7 +43,7 @@ void Initialize() {
 
     // Actually setup the GUI -- must do this before we do anything
     imGUI.setup();
-    BuildUI("Graphics");
+    BuildUI("Screen");
     setBackGround();
 }
 

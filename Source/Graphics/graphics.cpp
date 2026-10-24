@@ -48,6 +48,7 @@
 #include <Graphics/models.h>
 #include <Graphics/flares.h>
 #include <Graphics/render_backend.h>
+#include <Graphics/temporal.h>
 #include <Graphics/Vulkan/vk_backend.h>
 #include <Graphics/Vulkan/vk_draw.h>
 #include <Graphics/Vulkan/vk_gl.h>
@@ -894,11 +895,11 @@ void Graphics::BindElementVBO(int val) {
 // Start the scene drawing by clearing and setting the matrixmode
 void Graphics::startDraw(vec2 start, vec2 end, ScreenType screen_type) {
     PROFILER_GPU_ZONE(g_profiler_ctx, "Graphics::startDraw()");
-    if (screen_type == kRender) {
-        setViewport((GLint)((float)render_dims[0] * start[0]),
-                    (GLint)((float)render_dims[1] * start[1]),
-                    (GLint)((float)render_dims[0] * end[0]),
-                    (GLint)((float)render_dims[1] * end[1]));
+    if (screen_type == kRender) {  // (Overgrowth Online DLSS: the scene's size, scene_dims)
+        setViewport((GLint)((float)scene_dims[0] * start[0]),
+                    (GLint)((float)scene_dims[1] * start[1]),
+                    (GLint)((float)scene_dims[0] * end[0]),
+                    (GLint)((float)scene_dims[1] * end[1]));
     } else if (screen_type == kWindow) {
         setViewport((GLint)((float)window_dims[0] * start[0]),
                     (GLint)((float)window_dims[1] * start[1]),
@@ -1101,6 +1102,12 @@ void Graphics::Initialize() {
 
 void Graphics::GetShaderNames(std::map<std::string, int>& preload_shaders) {
     preload_shaders[shader] = 0;
+    if (Temporal::Enabled()) {  // Overgrowth Online (TAA)
+        preload_shaders["taa #MOTION"] = 0;
+        preload_shaders["taa #RESOLVE"] = 0;
+        preload_shaders["taa #SHARPEN"] = 0;
+        preload_shaders["taa #REACTIVE"] = 0;
+    }
 }
 
 void Graphics::WindowResized(ivec2 value) {
@@ -1119,9 +1126,12 @@ void Graphics::Dispose() {
     screen_color_tex.clear();
     screen_vel_tex.clear();
     screen_depth_tex.clear();
+    screen_mv_tex.clear();
+    post_color_tex.clear();
 
     post_effects.temp_screen_tex.clear();
     post_effects.tone_mapped_tex.clear();
+    post_effects.motion_blur_tex.clear();
 
     if (UseVulkan()) {
         VkBackend::Shutdown();  // (before the window: its surface)
@@ -1263,7 +1273,7 @@ void Graphics::BlitDepthBuffer() {
     setGLState(state);
     // The above code is here to fix a mysterious problem
     // (Overgrowth Online stage 5.0: through BlitRenderTarget)
-    PixelRect all(0, 0, render_dims[0], render_dims[1]);
+    PixelRect all(0, 0, scene_dims[0], scene_dims[1]);  // (Overgrowth Online DLSS: the scene's size)
     BlitRenderTarget(multisample_target, 0, all, scene_target, 0, all, true);
     Shaders::Instance()->noProgram();
 }
@@ -1845,7 +1855,16 @@ void Graphics::InitScreen() {
         use_sample_alpha_to_coverage = false;
     }
 
-    if (render_dims[0] != old_render_dims[0] || render_dims[1] != old_render_dims[1] || config_.FSAA_samples() != old_FSAA_samples) {
+    // Overgrowth Online (DLSS): the scene's own size: render_dims, or less where an
+    // upscaler brings it up to render_dims before the post effects
+    {
+        const float scale = Temporal::RenderScale();
+        for (int i = 0; i < 2; ++i) {
+            scene_dims[i] = scale < 1.0f ? std::max(1, (int)((float)render_dims[i] * scale + 0.5f)) : render_dims[i];
+        }
+    }
+    if (render_dims[0] != old_render_dims[0] || render_dims[1] != old_render_dims[1] || config_.FSAA_samples() != old_FSAA_samples ||
+        config_.temporal_aa() != old_temporal_aa || scene_dims[0] != old_scene_dims[0] || scene_dims[1] != old_scene_dims[1]) {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Setting up framebuffers for post effects");
         PushRenderTarget();
 
@@ -1861,11 +1880,11 @@ void Graphics::InitScreen() {
         if (features_.frame_buffer_fsaa_enabled() && config_.FSAA_samples() > 1) {
             int samples = config_.FSAA_samples();
             GLint color_format = features_.HDR_enable() ? GL_RGBA16F : GL_RGBA8;
-            multisample_color_tex = textures->makeMultisampleTexture(render_dims[0], render_dims[1], samples, color_format);
+            multisample_color_tex = textures->makeMultisampleTexture(scene_dims[0], scene_dims[1], samples, color_format);
             textures->SetTextureName(multisample_color_tex, "Post::Multisample Color");
-            multisample_vel_tex = textures->makeMultisampleTexture(render_dims[0], render_dims[1], samples, color_format);
+            multisample_vel_tex = textures->makeMultisampleTexture(scene_dims[0], scene_dims[1], samples, color_format);
             textures->SetTextureName(multisample_vel_tex, "Post::Multisample Velocity");
-            multisample_depth_tex = textures->makeMultisampleTexture(render_dims[0], render_dims[1], samples, GL_DEPTH_COMPONENT32F);  // (float: reversed-Z)
+            multisample_depth_tex = textures->makeMultisampleTexture(scene_dims[0], scene_dims[1], samples, GL_DEPTH_COMPONENT32F);  // (float: reversed-Z)
             textures->SetTextureName(multisample_depth_tex, "Post::Multisample Depth");
             multisample_target = RenderTarget().Color(multisample_color_tex).Color(multisample_vel_tex).Depth(multisample_depth_tex);
             BindRenderTarget(multisample_target);
@@ -1877,17 +1896,29 @@ void Graphics::InitScreen() {
             screen_color_tex.clear();
             screen_vel_tex.clear();
             screen_depth_tex.clear();
+            screen_mv_tex.clear();
+            post_color_tex.clear();
             post_effects.temp_screen_tex.clear();
             post_effects.tone_mapped_tex.clear();
+            post_effects.motion_blur_tex.clear();
         }
         textures->DeleteUnusedTextures();
 
-        screen_color_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], features_.HDR_enable() ? GL_RGBA16F : GL_RGBA, GL_RGBA);
+        screen_color_tex = textures->makeRectangularTexture(scene_dims[0], scene_dims[1], features_.HDR_enable() ? GL_RGBA16F : GL_RGBA, GL_RGBA);
         textures->SetTextureName(screen_color_tex, "Post::Screen Color");
-        screen_vel_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], features_.HDR_enable() ? GL_RGBA16F : GL_RGBA, GL_RGBA);
+        screen_vel_tex = textures->makeRectangularTexture(scene_dims[0], scene_dims[1], features_.HDR_enable() ? GL_RGBA16F : GL_RGBA, GL_RGBA);
         textures->SetTextureName(screen_vel_tex, "Post::Screen Velocity");
-        screen_depth_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT);  // (float: reversed-Z)
+        screen_depth_tex = textures->makeRectangularTexture(scene_dims[0], scene_dims[1], GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT);  // (float: reversed-Z)
         textures->SetTextureName(screen_depth_tex, "Post::Screen Depth");
+        if (scene_dims[0] != render_dims[0] || scene_dims[1] != render_dims[1]) {
+            // Overgrowth Online (DLSS): the frame brought up to render_dims, where the post
+            // effects start; and where the motion blur goes (at the scene's size it went
+            // back into the velocity texture)
+            post_color_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], GL_RGBA16F, GL_RGBA);
+            textures->SetTextureName(post_color_tex, "Post::Upscaled Color");
+            post_effects.motion_blur_tex = textures->makeRectangularTexture(render_dims[0], render_dims[1], GL_RGBA16F, GL_RGBA);
+            textures->SetTextureName(post_effects.motion_blur_tex, "Post::Motion Blurred");
+        }
 
         post_effects.temp_screen_tex = textures->makeRectangularTexture(
             render_dims[0], render_dims[1],
@@ -1899,10 +1930,17 @@ void Graphics::InitScreen() {
             features().HDR_enable() ? GL_RGBA16F : GL_RGBA, GL_RGBA);
         textures->SetTextureName(post_effects.tone_mapped_tex, "Post::Tone-Mapped");
 
-        scene_target = RenderTarget().Color(screen_color_tex).Color(screen_vel_tex).Depth(screen_depth_tex);
+        scene_target = RenderTarget().Color(screen_color_tex).Color(screen_vel_tex);
+        if (Temporal::Enabled()) {  // Overgrowth Online (TAA): what moves writes its motion
+            screen_mv_tex = textures->makeRectangularTexture(scene_dims[0], scene_dims[1], GL_RGBA16F, GL_RGBA);
+            textures->SetTextureName(screen_mv_tex, "Post::Screen Motion");
+            scene_target.Color(screen_mv_tex);
+        }
+        scene_target.Depth(screen_depth_tex);
         BindRenderTarget(scene_target);
         CHECK_FBO_ERROR();
         framebuffer_exists = true;
+        Temporal::Reset();
 
         PopRenderTarget();
     }
@@ -1937,7 +1975,10 @@ void Graphics::InitScreen() {
     GLVK(GetIntegerv)(GL_MAX_VERTEX_ATTRIBS, &max_vertex_attrib_arrays);
     old_render_dims[0] = render_dims[0];
     old_render_dims[1] = render_dims[1];
+    old_scene_dims[0] = scene_dims[0];
+    old_scene_dims[1] = scene_dims[1];
     old_FSAA_samples = config_.FSAA_samples();
+    old_temporal_aa = config_.temporal_aa();
     first_load = false;
     gl_lib_loaded_ = true;
     settings_changed = true;
@@ -2005,7 +2046,7 @@ void Graphics::SetSimpleLineDrawState() {
 
 void Graphics::BlitColorBuffer() {
     // (Overgrowth Online stage 5.0: colour and velocity, through BlitRenderTarget)
-    PixelRect all(0, 0, render_dims[0], render_dims[1]);
+    PixelRect all(0, 0, scene_dims[0], scene_dims[1]);  // (Overgrowth Online DLSS: the scene's size)
     BlitRenderTarget(multisample_target, 0, all, scene_target, 0, all);
     BlitRenderTarget(multisample_target, 1, all, scene_target, 1, all);
 }
@@ -2021,6 +2062,16 @@ void Graphics::SetFromConfig(const Config& config, bool dynamic) {
         config_.SetFullscreen(static_cast<FullscreenMode::Mode>(config["fullscreen"].toNumber<int>()));
         config_.SetTextureReduce(config["texture_reduce"].toNumber<int>());
         config_.SetFSAASamples(config["multisample"].toNumber<int>());
+        // (Overgrowth Online: a DLSS mode chosen as anti-aliasing, before the upscaler
+        // setting: the upscaler now, TAA as the anti-aliasing for when it's off)
+        Config& settings = const_cast<Config&>(config);
+        const int old_mode = settings["temporal_aa"].toNumber<int>();
+        if (settings["upscaler"].toNumber<int>() == 0 && old_mode >= 2 && old_mode <= 6) {
+            settings.GetRef("upscaler") = 1;
+            settings.GetRef("upscaler_quality") = std::min(4, settings["temporal_aa"].toNumber<int>() - 2);
+            settings.GetRef("temporal_aa") = 1;
+        }
+        config_.SetTemporalAA(TemporalModeFromConfig(config));
         config_.SetAnisotropy(config["anisotropy"].toNumber<float>());
         config_.SetVSync(config["vsync"].toNumber<bool>());
         config_.SetLimitFpsInGame(config["limit_fps_in_game"].toNumber<bool>());
@@ -2264,8 +2315,26 @@ void Graphics::SetFullscreen(FullscreenMode::Mode val) {
 }
 
 void Graphics::SetFSAA(int val) {
-    if (config_.FSAA_samples() != val) {
+    if (config_.FSAA_setting() != val) {
         config_.SetFSAASamples(val);
+        if (initialized) {
+            InitScreen();
+        }
+    }
+}
+
+int Graphics::TemporalModeFromConfig(const Config& config) {
+    const int quality = std::max(0, std::min(4, config["upscaler_quality"].toNumber<int>()));
+    switch (config["upscaler"].toNumber<int>()) {
+        case 1: return 2 + quality;  // DLSS: native (DLAA) .. ultra performance, Temporal::kDLAA ..
+        case 2: return 7 + quality;  // FSR: native AA .. ultra performance, Temporal::kFSRNative ..
+        default: return std::max(0, std::min(11, config["temporal_aa"].toNumber<int>()));
+    }
+}
+
+void Graphics::SetTemporalAA(int val) {
+    if (config_.temporal_aa() != val) {
+        config_.SetTemporalAA(val);
         if (initialized) {
             InitScreen();
         }

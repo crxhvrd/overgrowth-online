@@ -936,11 +936,29 @@ mat4 Camera::GetViewMatrix() {
 }
 
 mat4 Camera::GetProjMatrix() {
+    mat4 proj_mat = GetUnjitteredProjMatrix();
+    if (jitter_[0] != 0.0f || jitter_[1] != 0.0f) {
+        // (clip x and y moved by the jitter times w: the same sub-pixel shift at
+        // every depth; column-major, row 3 is w's)
+        for (int c = 0; c < 4; ++c) {
+            proj_mat.entries[c * 4 + 0] += jitter_[0] * proj_mat.entries[c * 4 + 3];
+            proj_mat.entries[c * 4 + 1] += jitter_[1] * proj_mat.entries[c * 4 + 3];
+        }
+    }
+    return proj_mat;
+}
+
+mat4 Camera::GetUnjitteredProjMatrix() {
     mat4 proj_mat;
     for (int i = 0; i < 16; ++i) {
         proj_mat.entries[i] = (float)projection_matrix[i];
     }
     return proj_mat;
+}
+
+void Camera::SetJitter(float clip_x, float clip_y) {
+    jitter_[0] = clip_x;
+    jitter_[1] = clip_y;
 }
 
 void Camera::SetAutoCamera(bool val) {

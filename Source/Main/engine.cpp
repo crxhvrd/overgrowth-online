@@ -25,6 +25,7 @@
 #include <Graphics/reversez.h>
 #include <Graphics/frame_timers.h>
 #include <Graphics/render_backend.h>
+#include <Graphics/temporal.h>
 #include <Graphics/Vulkan/vk_draw.h>
 #include <Game/hardcoded_assets.h>
 #include <Game/level.h>
@@ -385,6 +386,8 @@ bool g_make_invisible_visible = false;
 
 std::string script_dir_path;
 static float prev_view_time;
+// Overgrowth Online (TAA): the frame has one screen (split screen draws without it)
+static bool temporal_one_screen = false;
 
 static const float shadow_sizes[] = {20.0f, 60.0f, 250.0f, 1100.0f};  // Dimensions in world space of square for each shadow cascade
 
@@ -2504,6 +2507,16 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
         graphics->BlitColorBuffer();
     }
 
+    if (post_effects_type == Engine::kFinal) {
+        // Overgrowth Online (TAA, DLSS): into PostColor(); under an upscaler with no temporal
+        // pass this frame (split screen), the scene brought up to its size plainly
+        if (!Temporal::Resolve(quad_vert_vbo, quad_index_vbo) && graphics->Upscaling()) {
+            graphics->BlitRenderTarget(RenderTarget().Color(graphics->screen_color_tex), 0, PixelRect(0, 0, graphics->scene_dims[0], graphics->scene_dims[1]),
+                                       RenderTarget().Color(graphics->post_color_tex), 0, PixelRect(0, 0, graphics->render_dims[0], graphics->render_dims[1]),
+                                       false, true);
+        }
+    }
+
     if (kDrawHistogram) {
         CreateHistogram(graphics->screen_color_tex);
     }
@@ -2557,7 +2570,7 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
 
         graphics->setViewport(0, 0, graphics->render_dims[0], graphics->render_dims[1]);
 
-        TextureRef final_texture = graphics->screen_color_tex;
+        TextureRef final_texture = graphics->PostColor();  // (Overgrowth Online DLSS: the upscaled frame, under an upscaler)
         TextureRef temp_texture = graphics->post_effects.temp_screen_tex;
 
         // Overgrowth Online (GL 4.6 stage 2.4): each pass draws the screen quad with
@@ -2665,9 +2678,11 @@ void ApplyPostEffects(std::string post_shader, Engine::DrawingViewport drawing_v
                 textures->bindTexture(temp_texture, 2);
                 textures->bindTexture(graphics->pure_noise_ref, TEX_PURE_NOISE);
                 textures->bindTexture(graphics->screen_depth_tex, TEX_SCREEN_DEPTH);
-                graphics->BindRenderTarget(graphics->screen_vel_tex);
+                // (Overgrowth Online DLSS: under an upscaler the velocity is at the scene's size)
+                const TextureRef& blurred = graphics->Upscaling() ? graphics->post_effects.motion_blur_tex : graphics->screen_vel_tex;
+                graphics->BindRenderTarget(blurred);
                 draw_quad();
-                final_texture = graphics->screen_vel_tex;
+                final_texture = blurred;
             }
         }
 
@@ -2930,7 +2945,8 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
     // Prepare for drawing
     {
         PROFILER_GPU_ZONE(g_profiler_ctx, "Clear screen");
-        graphics->SetDrawBuffers(2);  // (colour and velocity cleared; velocity then written by what moves)
+        // (colour and velocity cleared, and with TAA motion; then written by what moves)
+        graphics->SetDrawBuffers(graphics->CurrentRenderTarget().num_color);
         graphics->SetClearColor(vec4(0.0f));
         graphics->drawing_shadow = false;
         graphics->Clear(true);
@@ -2954,6 +2970,11 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
         for (auto& cam : virt_cam) {
             cam.applyViewpoint();
         }
+
+        // Overgrowth Online (TAA): a screen's final frame drawn jittered, its motion kept
+        if (post_effects_type == Engine::kFinal && drawing_viewport == kScreen && temporal_one_screen) {
+            Temporal::BeginScene(view_cam, graphics->scene_dims[0], graphics->scene_dims[1], graphics->render_dims[0], graphics->render_dims[1]);
+        }
     }
 
     {  // Perform per-frame, per-camera functions, like character LOD and spawning grass
@@ -2973,7 +2994,8 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
     }
 
     if (!g_no_decals) {
-        scenegraph_->PrepareLightsAndDecals(active_screen_start, active_screen_end, vec2(graphics->render_dims[0], graphics->render_dims[1]));
+        // (Overgrowth Online DLSS: the clusters over the scene's size)
+        scenegraph_->PrepareLightsAndDecals(active_screen_start, active_screen_end, vec2(graphics->scene_dims[0], graphics->scene_dims[1]));
     }
 
     // Draw everything
@@ -3035,6 +3057,7 @@ void Engine::DrawScene(DrawingViewport drawing_viewport, Engine::PostEffectsType
                 post_shader_name += " " + custom_shader;
             }
         }
+        Temporal::EndScene(ActiveCameras::Get());  // Overgrowth Online (TAA): the post effects unjittered
         ApplyPostEffects(post_shader_name, drawing_viewport, active_screen_start, active_screen_end, post_effects_type, quad_vert_vbo, quad_index_vbo);
     }
     if (scenegraph_->IsCollisionNavMeshVisible() || g_draw_collision) {
@@ -4472,6 +4495,7 @@ void Engine::Draw() {
         if (num_screens > 1) {
             g_simple_water = true;
         }
+        temporal_one_screen = num_screens == 1;
 
         {  // Perform per-frame calculations (like character shadows or LOD)
             PROFILER_GPU_ZONE(g_profiler_ctx, "Pre-draw frame");

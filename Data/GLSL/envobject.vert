@@ -159,6 +159,16 @@ in vec2 tex_coord_attrib;
             int at = bone_base + int(id) * 4;
             return mat4(texelFetch(tex20, at), texelFetch(tex20, at + 1), texelFetch(tex20, at + 2), texelFetch(tex20, at + 3));
         }
+
+        #if defined(TEMPORAL_MV) && !defined(DEPTH_ONLY)
+            // Overgrowth Online (TAA): last frame's bones, the same way from prev_bone_base
+            uniform int prev_bone_base;
+
+            mat4 PrevBoneMat(float id) {
+                int at = prev_bone_base + int(id) * 4;
+                return mat4(texelFetch(tex20, at), texelFetch(tex20, at + 1), texelFetch(tex20, at + 2), texelFetch(tex20, at + 3));
+            }
+        #endif
     #endif  // GPU_SKINNING
 #elif defined(SKY)
     uniform mat4 projection_view_mat;
@@ -241,6 +251,19 @@ in vec2 tex_coord_attrib;
 
 
 out vec3 world_vert;
+
+// Overgrowth Online (TAA): the motion of what moves, this frame's clip position and
+// last frame's, both through the cameras without the jitter (Temporal::ViewProj)
+#if defined(TEMPORAL_MV) && !defined(DEPTH_ONLY) && (defined(CHARACTER) || defined(ITEM))
+    uniform mat4 taa_view_proj;
+    uniform mat4 taa_prev_view_proj;
+    #if defined(ITEM)
+        uniform mat4 taa_prev_model_mat;
+    #endif
+
+    out vec4 taa_clip;
+    out vec4 taa_prev_clip;
+#endif
 
 #if defined(PARTICLE)
     out vec2 tex_coord;
@@ -915,6 +938,21 @@ void main() {
 
         vec3 transformed_vertex = (concat_bone * vec4(vertex_attrib, 1.0)).xyz;
 
+        #if defined(TEMPORAL_MV) && !defined(DEPTH_ONLY)
+            #if defined(GPU_SKINNING)
+                mat4 prev_bone = PrevBoneMat(bone_ids[0]) * bone_weights[0];
+
+                for (int i = 1; i < 4; i++) {
+                    prev_bone += bone_weights[i] * PrevBoneMat(bone_ids[i]);
+                }
+
+                prev_bone[3] += vec4((prev_bone * vec4(morph_offsets, 0.0)).xyz, 0.0);
+                vec3 taa_prev_vertex = (prev_bone * vec4(vertex_attrib, 1.0)).xyz;
+            #else
+                vec3 taa_prev_vertex = transformed_vertex;
+            #endif
+        #endif
+
         mat4 projection_view_mat = mvp;
 
         // Set up varyings to pass bone matrix to fragment shader
@@ -1024,6 +1062,15 @@ void main() {
     #endif
 
     world_vert = transformed_vertex;
+
+    #if defined(TEMPORAL_MV) && !defined(DEPTH_ONLY) && (defined(CHARACTER) || defined(ITEM))
+        taa_clip = taa_view_proj * vec4(transformed_vertex, 1.0);
+        #if defined(CHARACTER)
+            taa_prev_clip = taa_prev_view_proj * vec4(taa_prev_vertex, 1.0);
+        #else
+            taa_prev_clip = taa_prev_view_proj * (taa_prev_model_mat * vec4(vertex_attrib, 1.0));
+        #endif
+    #endif
 
     #ifndef SHADOW_CASCADE
 	   gl_Position = projection_view_mat * vec4(transformed_vertex, 1.0);

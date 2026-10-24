@@ -903,6 +903,28 @@ SCENARIOS["vk_textures"] = _render("vk_textures")
 SCENARIOS["vk_parity"] = _render("vk_parity")
 
 
+# Temporal anti-aliasing and upscalers (Overgrowth Online TAA): temporal_suite.py
+def _temporal(name, **kw):
+    def run(ctx):
+        from . import temporal_suite
+        return getattr(temporal_suite, name)(ctx, **kw)
+    return run
+
+
+SCENARIOS["taa_check"] = _temporal("taa_check")
+SCENARIOS["dlaa_check"] = _temporal("taa_check", mode="2")
+SCENARIOS["dlss_quality_check"] = _temporal("taa_check", mode="3")
+SCENARIOS["dlss_performance_check"] = _temporal("taa_check", mode="5")
+SCENARIOS["dlss_ultra_check"] = _temporal("taa_check", mode="6")
+SCENARIOS["flare_check"] = _temporal("flare_check")
+SCENARIOS["fsr_native_check"] = _temporal("taa_check", mode="7")
+SCENARIOS["fsr_quality_check"] = _temporal("taa_check", mode="8")
+SCENARIOS["fsr_performance_check"] = _temporal("taa_check", mode="10")
+SCENARIOS["fsr_ultra_check"] = _temporal("taa_check", mode="11")
+SCENARIOS["dlss_flare_check"] = _temporal("flare_check", mode="5")
+SCENARIOS["fsr_flare_check"] = _temporal("flare_check", mode="10")
+
+
 # Shader checks (docs_gl46_plan.md stage 3.1): shader_suite.py
 def _shaders(name, **kw):
     def run(ctx):

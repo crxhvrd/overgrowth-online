@@ -252,6 +252,10 @@ class RiggedObject : public Object {
     float network_rig_scale = 0.0f;
     uint32_t network_skeleton_id = 0;                  // Overgrowth Online: hash of the skeleton file, the same on every machine
     std::vector<mat4> display_bone_matrices;          // Final interpolated bone matrices for rendering
+    // Overgrowth Online (TAA): the bones of the last two frames this character was drawn
+    // in (Temporal::Frame), for the motion of its vertices
+    std::vector<mat4> taa_bones_[2];
+    uint64_t taa_bones_frame_ = UINT64_MAX;  // the frame taa_bones_[1] is of
     std::vector<BoneTransform> display_bone_transforms;
 #ifdef USE_SSE
     simd_mat4 *simd_bone_mats;

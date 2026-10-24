@@ -416,6 +416,15 @@ out vec4 out_color;
     out vec4 out_vel;
 #endif  // NO_VELOCITY_BUF
 
+// Overgrowth Online (TAA): the motion of what moves, into the scene's third attachment
+// (after out_vel: location 2)
+#if defined(TEMPORAL_MV) && !defined(DEPTH_ONLY) && !defined(NO_VELOCITY_BUF) && (defined(CHARACTER) || defined(ITEM))
+    #define TAA_WRITES_MOTION
+    in vec4 taa_clip;
+    in vec4 taa_prev_clip;
+    out vec4 out_mv;
+#endif
+
 #define shadow_tex_coords tc1
 #define tc0 frag_tex_coords
 
@@ -3733,6 +3742,11 @@ void main() {
                     #endif
 
                 #endif  // ^ !defined(NO_VELOCITY_BUF)
+
+                #if defined(TAA_WRITES_MOTION)
+                    // (uv this frame minus uv last frame; w: written, not from depth)
+                    out_mv = vec4((taa_clip.xy / taa_clip.w - taa_prev_clip.xy / taa_prev_clip.w) * 0.5, 0.0, 1.0);
+                #endif
 
                 #if defined(FIRE_DECAL_ENABLED) && !defined(NO_DECALS)
                     color.xyz = mix(color.xyz, flame_final_color, flame_final_contrib);

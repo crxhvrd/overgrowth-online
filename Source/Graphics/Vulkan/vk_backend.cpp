@@ -8,6 +8,7 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_backend.h"
+#include "vk_ngx.h"
 
 #include <Logging/logdata.h>
 #include <Internal/error.h>
@@ -193,6 +194,24 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBits
         }
         return VK_FALSE;
     }
+    // Overgrowth Online (TAA): NGX's own driver calls (DLSS's kernels, VK_NVX_binary_import)
+    // with structs newer than the layer knows. Logged once, not counted
+    // ... and FSR's (FidelityFX's) and NGX's shaders' storage images, whose declared formats
+    // aren't those of the images they're given: ours use no storage images
+    if (data->pMessageIdName != NULL && strcmp(data->pMessageIdName, "Undefined-Value-StorageImage-FormatMismatch-ImageView") == 0) {
+        static std::atomic<int> seen_storage(0);
+        if (seen_storage++ == 0) {
+            LOGW << "Vulkan (FSR's or NGX's shaders; not counted): " << (data->pMessage ? data->pMessage : "") << std::endl;
+        }
+        return VK_FALSE;
+    }
+    if (data->pMessageIdName != NULL && strncmp(data->pMessageIdName, "VUID-VkCu", 9) == 0) {
+        static std::atomic<int> seen_ngx(0);
+        if (seen_ngx++ == 0) {
+            LOGW << "Vulkan (NGX's, DLSS; not counted): " << (data->pMessage ? data->pMessage : "") << std::endl;
+        }
+        return VK_FALSE;
+    }
     // Another program's code in the game (an overlay hooked into the present, as RivaTuner's
     // is, draws with render pass objects; the renderer never does: dynamic rendering only).
     // Logged once, not counted
@@ -266,7 +285,8 @@ bool CreateInstance(int validation) {
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             debug_utils = true;
         }
-        if (found && validation > 1) {
+        // (and with DLSS: see the features below)
+        if (found && (validation > 1 || VkNgx::Requested())) {
             // (the layer's own extension)
             uint32_t le = 0;
             vkEnumerateInstanceExtensionProperties("VK_LAYER_KHRONOS_validation", &le, NULL);
@@ -293,6 +313,8 @@ bool CreateInstance(int validation) {
         }
     }
 
+    VkNgx::AppendInstanceExtensions(&extensions);  // Overgrowth Online (TAA): DLAA/DLSS's
+
     VkApplicationInfo app = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
     app.pApplicationName = "Overgrowth Online";
     app.applicationVersion = 1;
@@ -308,8 +330,15 @@ bool CreateInstance(int validation) {
 
     const VkValidationFeatureEnableEXT sync_validation = VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT;
     VkValidationFeaturesEXT features = {VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT};
-    features.enabledValidationFeatureCount = 1;
+    features.enabledValidationFeatureCount = validation > 1 ? 1 : 0;
     features.pEnabledValidationFeatures = &sync_validation;
+    // Overgrowth Online (TAA): DLSS (NGX) hands image views' driver handles to its own
+    // kernels; the layer's wrapped handles reach the driver there and crash it
+    const VkValidationFeatureDisableEXT unique_handles = VK_VALIDATION_FEATURE_DISABLE_UNIQUE_HANDLES_EXT;
+    if (VkNgx::Requested()) {
+        features.disabledValidationFeatureCount = 1;
+        features.pDisabledValidationFeatures = &unique_handles;
+    }
 
     VkInstanceCreateInfo info = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     info.pApplicationInfo = &app;
@@ -332,7 +361,8 @@ bool CreateInstance(int validation) {
         VK_CHECK(vkCreateDebugUtilsMessengerEXT(s.instance, &messenger_info, NULL, &s.messenger));
     }
     LOGI << "Vulkan instance: loader " << VersionString(loader_version) << (layers.empty() ? "" : ", validation layer")
-         << (validation_features ? " with synchronization checks" : "") << std::endl;
+         << (validation_features && validation > 1 ? " with synchronization checks" : "")
+         << (validation_features && VkNgx::Requested() ? " (no handle wrapping: DLSS)" : "") << std::endl;
     return true;
 }
 
@@ -438,24 +468,41 @@ bool CreateDevice() {
     want.multiDrawIndirect = have.multiDrawIndirect;
     want.drawIndirectFirstInstance = have.drawIndirectFirstInstance;
     want.geometryShader = have.geometryShader;
+    // Overgrowth Online (FSR): FidelityFX picks its 16-bit shaders by what the device
+    // has, not by what's enabled: on where it has them
+    want.shaderInt16 = have.shaderInt16;
 
     VkPhysicalDeviceVulkan11Features have11 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
     VkPhysicalDeviceVulkan12Features have12 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+    VkPhysicalDeviceVulkan13Features have13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
     VkPhysicalDeviceFeatures2 have2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     have2.pNext = &have11;
     have11.pNext = &have12;
+    have12.pNext = &have13;
     vkGetPhysicalDeviceFeatures2(s.physical, &have2);
 
     VkPhysicalDeviceVulkan13Features f13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
     f13.dynamicRendering = VK_TRUE;
     f13.synchronization2 = VK_TRUE;
+    // Overgrowth Online (FSR): its wave sizes, where the device lets them be chosen
+    f13.subgroupSizeControl = have13.subgroupSizeControl;
+    f13.computeFullSubgroups = have13.computeFullSubgroups;
     VkPhysicalDeviceVulkan12Features f12 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
     f12.pNext = &f13;
     f12.timelineSemaphore = VK_TRUE;  // (required in 1.2: every submit numbered, stage 5.3)
     f12.hostQueryReset = have12.hostQueryReset;
+    // Overgrowth Online (TAA): NGX's buffers (DLSS) take device addresses where the device has them
+    f12.bufferDeviceAddress = have12.bufferDeviceAddress;
+    // Overgrowth Online (FSR): its 16-bit shaders and descriptor arrays, as above
+    f12.shaderFloat16 = have12.shaderFloat16;
+    f12.shaderStorageBufferArrayNonUniformIndexing = have12.shaderStorageBufferArrayNonUniformIndexing;
+    f12.shaderSampledImageArrayNonUniformIndexing = have12.shaderSampledImageArrayNonUniformIndexing;
+    f12.shaderStorageImageArrayNonUniformIndexing = have12.shaderStorageImageArrayNonUniformIndexing;
     VkPhysicalDeviceVulkan11Features f11 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
     f11.pNext = &f12;
     f11.shaderDrawParameters = have11.shaderDrawParameters;
+    f11.storageBuffer16BitAccess = have11.storageBuffer16BitAccess;  // (Overgrowth Online FSR)
+    f11.uniformAndStorageBuffer16BitAccess = have11.uniformAndStorageBuffer16BitAccess;
     VkPhysicalDeviceFeatures2 f2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     f2.pNext = &f11;
     f2.features = want;
@@ -484,6 +531,12 @@ bool CreateDevice() {
             present_id.pNext = &present_wait;
             s.present_wait = true;
         }
+    }
+    VkNgx::AppendDeviceExtensions(s.instance, s.physical, available, &extensions);  // Overgrowth Online (TAA): DLAA/DLSS's
+    // Overgrowth Online (FSR): FidelityFX asks for vkGetBufferMemoryRequirements2 by its KHR
+    // name, which the device only answers with the (core since 1.1) extension enabled
+    if (HasExtension(available, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME)) {
+        extensions.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
     }
     VkPhysicalDevicePushDescriptorPropertiesKHR push = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR};
     VkPhysicalDeviceDepthStencilResolveProperties resolve = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES};
@@ -993,6 +1046,10 @@ void Present(const float clear_color[4], const std::function<void(VkImage, uint3
 
 uint64_t FramesPresented() {
     return s.presented;
+}
+
+VkInstance Instance() {
+    return s.instance;
 }
 
 VkDevice Device() {

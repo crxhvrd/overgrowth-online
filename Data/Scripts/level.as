@@ -531,7 +531,7 @@ void Update(int paused) {
                 imGUI.clear();
                 imGUI.setup();
                 ResetController();
-                BuildUI("Graphics");
+                BuildUI("Screen");
             }else{
                 ProcessSettingsMessage(message);
             }
@@ -544,7 +544,7 @@ void Update(int paused) {
         {
             draw_settings = true;
             ResetController();
-            BuildUI("Graphics");
+            BuildUI("Screen");
         }
         else if (message.name == "Disconnect")
         {            

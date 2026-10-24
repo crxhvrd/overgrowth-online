@@ -27,6 +27,7 @@
 
 #include <Graphics/vboringcontainer.h>
 #include <Graphics/graphics.h>
+#include <Graphics/temporal.h>
 #include <Graphics/particles.h>
 #include <Graphics/camera.h>
 #include <Graphics/shaders.h>
@@ -822,7 +823,10 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
     char* shader_str[2] = {buf[0], buf[1]};
     // Overgrowth Online (GL 4.6 stage 4a): skinned on the GPU, the only way now (named
     // as GetShaderNames preloads it: the define before the pass's suffix)
-    FormatString(shader_str[0], kShaderStrSize, "%s #GPU_SKINNING %s", ofc->shader_name.c_str(), global_shader_suffix);
+    // (Overgrowth Online TAA: the scene's full draw also writes the motion)
+    const bool temporal_motion = type == Object::kFullDraw && Temporal::InScene();
+    FormatString(shader_str[0], kShaderStrSize, "%s #GPU_SKINNING %s", ofc->shader_name.c_str(),
+                 temporal_motion ? Temporal::MotionSuffix(global_shader_suffix).c_str() : global_shader_suffix);
 
     int the_shader = shaders->returnProgram(shader_str[0]);
 
@@ -848,6 +852,27 @@ void RiggedObject::DrawRiggedObject(const mat4& proj_view_matrix, Object::DrawTy
             memcpy(a.ptr, &bones[0].entries[0], bytes);
             textures->BindFrameRingTexels(TEX_BONES);
             shaders->SetUniformInt("bone_base", (int)(a.offset / 16));
+
+            if (temporal_motion) {
+                // Overgrowth Online (TAA): last frame's bones beside them, the ones this
+                // frame's (kept for the next) if it wasn't drawn then
+                const uint64_t frame = Temporal::Frame();
+                if (taa_bones_frame_ != frame) {
+                    const bool last_frame = taa_bones_frame_ != UINT64_MAX && taa_bones_frame_ + 1 == frame;
+                    taa_bones_[0].swap(taa_bones_[1]);
+                    if (!last_frame) {
+                        taa_bones_[0].clear();
+                    }
+                    taa_bones_[1] = bones;
+                    taa_bones_frame_ = frame;
+                }
+                const std::vector<mat4>& prev = taa_bones_[0].size() == bones.size() ? taa_bones_[0] : bones;
+                FrameRing::Allocation p = FrameRing::Allocate(bytes, 16);
+                memcpy(p.ptr, &prev[0].entries[0], bytes);
+                shaders->SetUniformInt("prev_bone_base", (int)(p.offset / 16));
+                shaders->SetUniformMat4("taa_view_proj", Temporal::ViewProj());
+                shaders->SetUniformMat4("taa_prev_view_proj", Temporal::PrevViewProj());
+            }
         }
 
         CHECK_GL_ERROR();

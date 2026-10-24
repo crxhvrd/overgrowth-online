@@ -127,6 +127,7 @@ struct Texture {
     GLuint wrap_t, wrap_s, min_filter, mag_filter;
     SamplerState sampler;  // Overgrowth Online: what its parameters are (the sampler bound with it)
     GLuint gl_sampler;     // that state's sampler object (0: looked up on the next bind)
+    GLuint gl_sampler_scene;  // Overgrowth Online (DLSS): the same with the scene's LOD bias (0: not yet)
     int ref_count;
     bool no_mipmap;
     bool no_reduce;
@@ -193,6 +194,9 @@ class Textures {
     unsigned int bound_texture[PhoenixTextures::_texture_units];  // Shadow GL texture units
     GLuint unit_texture_[PhoenixTextures::_texture_units][kUnitKinds] = {};  // (UnitBinding)
     GLuint unit_sampler_[PhoenixTextures::_texture_units] = {};
+    // Overgrowth Online (DLSS): SetSceneLodBias's, and what the textures' scene samplers have
+    float scene_lod_bias_ = 0.0f;
+    float scene_samplers_bias_ = 0.0f;
     static UnitKind KindOf(GLenum target);
     TextureAssetRef blank_texture_ref;
     TextureAssetRef blank_normal_texture_ref;
@@ -392,6 +396,10 @@ class Textures {
 #endif
     void SetProcessPoolsEnabled(bool val);
     void ApplyAnisotropy();
+    // Overgrowth Online (DLSS): an LOD bias for the textures loaded from files (mipmapped
+    // ones: the scene's materials), while the scene is drawn smaller than it's shown
+    // (Temporal::BeginScene; 0 after it). Render targets and the like keep theirs
+    void SetSceneLodBias(float bias);
 
     void updateBufferTexture(TextureRef& texture, size_t size, const void* data);
 };

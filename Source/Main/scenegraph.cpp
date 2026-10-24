@@ -25,6 +25,7 @@
 #include <Graphics/decaltextures.h>
 #include <Graphics/flares.h>
 #include <Graphics/graphics.h>
+#include <Graphics/temporal.h>
 #include <Graphics/models.h>
 #include <Graphics/sky.h>
 #include <Graphics/shaders.h>
@@ -751,9 +752,12 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
             }
             if (obj.enabled_ && !obj.transparent) {
                 PROFILER_GPU_ZONE(g_profiler_ctx, "%s %d draw", CStringFromEntityType(obj.GetType()), obj.GetID());
-                bool output_velocity_buffer = (graphics->config_.motion_blur_amount_ > 0.01f) && ((obj_type == _movement_object) || (obj_type == _item_object));
+                const bool moves = (obj_type == _movement_object) || (obj_type == _item_object);
+                // (Overgrowth Online TAA: and the motion, for the temporal resolve)
+                const bool output_motion = moves && Temporal::InScene();
+                bool output_velocity_buffer = ((graphics->config_.motion_blur_amount_ > 0.01f) && moves) || output_motion;
                 if (output_velocity_buffer) {
-                    graphics->SetDrawBuffers(2);  // (Overgrowth Online stage 5.0: colour + velocity)
+                    graphics->SetDrawBuffers(output_motion ? 3 : 2);  // (Overgrowth Online stage 5.0: colour + velocity)
                 }
                 // We want to hide the terrain if we're rendering the navmesh.
                 if (obj_type == _terrain_type && nav_mesh_renderer_.IsCollisionMeshVisible()) {
@@ -765,6 +769,8 @@ void SceneGraph::Draw(SceneGraph::SceneDrawType scene_draw_type) {
                 }
             }
         }
+
+        Temporal::OpaqueDrawn();  // Overgrowth Online (FSR): the reactive mask is what comes after
 
         bool draw_transparent = false;
         if (!nav_mesh_renderer_.IsCollisionMeshVisible()) {
@@ -3004,6 +3010,12 @@ void SceneGraph::PreloadForDrawType(std::map<std::string, int>& preload_shaders,
             else if (preload_shader.second & kOptionalTessellation)
                 optional = Shaders::kTesselation;
             shaders->createProgram(shaders->returnProgram(buf, optional));
+            // Overgrowth Online (TAA): what moves also as it draws with its motion
+            if (type == kFullDraw && Temporal::Enabled() &&
+                (preload_shader.first.find("#CHARACTER") != std::string::npos || preload_shader.first.find("#ITEM") != std::string::npos)) {
+                FormatString(buf, kShaderStrSize, "%s %s", preload_shader.first.c_str(), Temporal::MotionSuffix(global_shader_suffix).c_str());
+                shaders->createProgram(shaders->returnProgram(buf, optional));
+            }
         }
     }
 }

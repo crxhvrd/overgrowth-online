@@ -890,6 +890,8 @@ void Shaders::createProgram(int which_program) {
             if (frag_shader->bind_out_vel) {
                 if (!UseVulkan()) {  // (Vulkan: stage 5.4)
                     glBindFragDataLocation(program.gl_program, 1, "out_vel");
+                    // Overgrowth Online (TAA): the motion, where the program has it
+                    glBindFragDataLocation(program.gl_program, 2, "out_mv");
                 }
                 LOGI << "Binding out vel for " << frag_shader->name << std::endl;
             }

@@ -88,6 +88,7 @@ void BuildUI(){
     AddButton("Multiplayer", buttons_holder, online_icon);
     AddButton("Settings", buttons_holder, settings_icon);
     AddButton("Mods",     buttons_holder, mods_icon);
+    AddButton("Credits",  buttons_holder, media_icon);  // Overgrowth Online: back (the roll credits NVIDIA DLSS, as its licence asks)
     AddButton("Exit",     buttons_holder, exit_icon);
 
     // Align the contained element to the left

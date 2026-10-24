@@ -160,6 +160,10 @@ class ItemObject : public Object {
 
     // final model matrix. Stored as member variable to use for network interpolation
     mat4 transform;
+    // Overgrowth Online (TAA): the transform drawn in the last two frames (Temporal::Frame)
+    mat4 taa_transforms_[2];
+    uint64_t taa_transform_frame_ = UINT64_MAX;  // the frame taa_transforms_[1] is of
+    bool taa_have_prev_ = false;
     bool use_tangent_;
     ColorTintComponent color_tint_component_;
     ItemState state_;

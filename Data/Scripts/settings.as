@@ -160,6 +160,9 @@ void BuildUI(string landing_screen){
     buttons_holder.setAlignment(CACenter, CACenter);
 
     mainDiv.append(buttons_holder);
+    // Overgrowth Online: Screen (the display, the frame rate, the renderer, anti-aliasing and
+    // upscaling) and Graphics (the detail drawn; the old Advanced checkboxes too)
+    AddCategoryButton("Screen", buttons_holder);
     AddCategoryButton("Graphics", buttons_holder);
     AddCategoryButton("Audio", buttons_holder);
     AddCategoryButton("Game", buttons_holder);
@@ -186,6 +189,10 @@ void BuildUI(string landing_screen){
     settings_background.addLeftMouseClickBehavior(IMFixedMessageOnClick("close_all_open_menus"), "");
     imGUI.getMain().setElement(@main_container);
     current_screen = "none";
+    // (Overgrowth Online, diagnostics: config test_settings_screen opens the menu there)
+    if(landing_screen_override.isEmpty() && GetConfigValueString("test_settings_screen") != "") {
+        landing_screen_override = GetConfigValueString("test_settings_screen");
+    }
     if(landing_screen_override.isEmpty()) {
         SwitchSettingsScreen(landing_screen);
     } else {
@@ -213,6 +220,9 @@ void SetActiveCategory(string name){
 }
 
 void SwitchSettingsScreen(string screen_name){
+    if(screen_name == "Advanced"){
+        screen_name = "Graphics";  // (Overgrowth Online: the old Advanced tab's options are there now)
+    }
     settings_content.clear();
     gui_elements.resize(0);
 
@@ -225,7 +235,10 @@ void SwitchSettingsScreen(string screen_name){
     RestoreCategoryButtons();
     SetActiveCategory(screen_name);
 
-    if(screen_name == "Graphics"){
+    if(screen_name == "Screen"){
+        AddScreenSettingsScreen();
+    }
+    else if(screen_name == "Graphics"){
         AddGraphicsScreen();
     }
     else if(screen_name == "Audio"){
@@ -262,15 +275,14 @@ void checkCustomResolution(){
         SetConfigValueBool("custom_resolution", true);
 }
 
-void AddGraphicsScreen(){
-    current_screen = "Graphics";
-
-    array<string> overall_settings = GetConfigValueOptions("overall");
-    AddDropDown("Overall", settings_content, DropdownConfiguration(overall_settings, overall_settings, "overall"));
+// Overgrowth Online: the screen. How the frame reaches the display: the monitor, the
+// resolution and window, the frame rate, the renderer, anti-aliasing and upscaling
+void AddScreenSettingsScreen(){
+    current_screen = "Screen";
 
     array<int> monitorIndices;
     array<string> monitorStrings;
-    
+
     int monitorCount = GetMonitorCount();
     for(int i = 0; i < monitorCount; ++i) {
         monitorIndices.insertLast(i);
@@ -279,32 +291,84 @@ void AddGraphicsScreen(){
 
     if(monitorCount > 1)
         AddDropDown("Target monitor", settings_content, DropdownConfiguration(monitorIndices, monitorStrings, "target_monitor"));
-    
+
     array<vec2> possible_resolutions = GetPossibleResolutions();
     array<string> resolutions;
     for(uint i = 0; i < possible_resolutions.size(); i++){
         resolutions.insertLast(possible_resolutions[i].x + "x" + possible_resolutions[i].y);
     }
     resolutions.insertLast("Custom");
-    
+
     array<string> config_names = {"screenwidth", "screenheight"};
     AddResolutionDropDown("Resolution", settings_content, DropdownConfiguration(possible_resolutions, resolutions, config_names ));
-    
+
     if(GetConfigValueBool("custom_resolution"))
         AddCustomResolutionInput(settings_content);
-    
+
     array<int> window_type_values = { 0, 1, 2, 3 };
     array<string> window_type_options = { "Windowed", "Fullscreen", "Windowed borderless", "Fullscreen borderless"};
     AddDropDown("Window mode", settings_content, DropdownConfiguration(window_type_values, window_type_options, "fullscreen"));
 
-    array<int> aa_values = { 1, 2, 4, 8 };
-    array<string> aa_options = {"none", "2X", "4X", "8X"};
-    AddDropDown("Anti-aliasing", settings_content, DropdownConfiguration(aa_values, aa_options, "multisample"));
-    
+    // Overgrowth Online: VSync beside the frame rate cap (the cap with VSync off; the
+    // menus keep their own)
+    array<int> vsync_values = { 0, 1 };
+    array<string> vsync_options = { "Off", "On" };
+    AddDropDown("VSync", settings_content, DropdownConfiguration(vsync_values, vsync_options, "vsync"));
+
+    array<array<int>> fps_values = { {0, 60}, {1, 30}, {1, 60}, {1, 120}, {1, 144}, {1, 165}, {1, 240} };
+    array<string> fps_config_variables = { "limit_fps_in_game", "max_frame_rate" };
+    array<string> fps_options = {"Off", "30", "60", "120", "144", "165", "240"};
+    AddDropDown("Frame rate limit", settings_content, DropdownConfiguration(fps_values, fps_options, fps_config_variables));
+
+    // Overgrowth Online: the renderer (Vulkan for testers for now; a Vulkan start
+    // that fails comes back on OpenGL)
+    array<string> renderer_values = {"gl", "vulkan"};
+    array<string> renderer_options = {"OpenGL", "Vulkan (test)"};
+    AddDropDown("Renderer", settings_content, DropdownConfiguration( renderer_values, renderer_options, "renderer", "" ), "*");
+
+    // Overgrowth Online: an upscaler, or else the anti-aliasing (TAA or MSAA). The upscalers
+    // run on the Vulkan renderer (TAA at full resolution elsewhere): DLSS with an NVIDIA RTX
+    // GPU, FSR on any; their modes draw the scene smaller and bring it up to the resolution
+    int upscaler = GetConfigValueInt("upscaler");
+    bool upscaling = upscaler != 0;
+    array<int> upscaler_values = { 0, 1, 2 };
+    array<string> upscaler_options = { "Off", "DLSS", "FSR 3.1" };
+    AddDropDown("Upscaler", settings_content, DropdownConfiguration(upscaler_values, upscaler_options, "upscaler"));
+    if(upscaling) {
+        array<int> mode_values = { 0, 1, 2, 3, 4 };
+        array<string> mode_options = { upscaler == 2 ? "Native AA" : "Native (DLAA)", "Quality", "Balanced", "Performance", "Ultra Performance" };
+        AddDropDown("Upscaling mode", settings_content, DropdownConfiguration(mode_values, mode_options, "upscaler_quality"));
+    } else {
+        array<array<int>> aa_values = { {1, 0}, {2, 0}, {4, 0}, {8, 0}, {1, 1} };
+        array<string> aa_config_variables = { "multisample", "temporal_aa" };
+        array<string> aa_options = {"None", "MSAA 2X", "MSAA 4X", "MSAA 8X", "TAA"};
+        AddDropDown("Anti-aliasing", settings_content, DropdownConfiguration(aa_values, aa_options, aa_config_variables));
+    }
+    if(upscaling) {
+        AddSlider("Sharpness", settings_content, upscaler == 2 ? "fsr_sharpness" : "dlss_sharpness", 1.0f);
+    } else if(GetConfigValueInt("temporal_aa") == 1) {
+        AddSlider("Sharpness", settings_content, "temporal_aa_sharpness", 1.0f);
+    }
+
+    AddSlider("Brightness", settings_content, "brightness", 2.0f, 200.0f);
+
+    AddLabel("*Requires Restart", settings_content);
+    if(GetConfigValueInt("upscaler") != 0 && GetConfigValueString("renderer") != "vulkan") {
+        AddNote("Upscalers need the Vulkan renderer: TAA at full resolution on OpenGL", settings_content);
+    }
+}
+
+// The graphics: the detail drawn (the preset, textures, objects, effects)
+void AddGraphicsScreen(){
+    current_screen = "Graphics";
+
+    array<string> overall_settings = GetConfigValueOptions("overall");
+    AddDropDown("Overall", settings_content, DropdownConfiguration(overall_settings, overall_settings, "overall"));
+
     array<int> anisotropy_values = { 1, 2, 4, 8 };
     array<string> anisotropy_options = {"none", "2X", "4X", "8X"};
     AddDropDown("Anisotropy", settings_content, DropdownConfiguration( anisotropy_values, anisotropy_options, "anisotropy" ));
-    
+
     array<int> texture_detail_values = {0, 1, 2, 3};
     array<string> texture_detail_options = {"Full", "1/2", "1/4", "1/8"};
     AddDropDown("Texture Detail", settings_content, DropdownConfiguration( texture_detail_values, texture_detail_options, "texture_reduce"), "*");
@@ -314,32 +378,37 @@ void AddGraphicsScreen(){
     array<string> detail_object_options = {"Off", "Low", "Medium", "High"};
     AddDropDown("Detail objects", settings_content, DropdownConfiguration( detail_object_config_values, detail_object_options, detail_object_config_variables ), "*");
 
-    // Overgrowth Online: the renderer (Vulkan for testers for now; a Vulkan start
-    // that fails comes back on OpenGL)
-    array<string> renderer_values = {"gl", "vulkan"};
-    array<string> renderer_options = {"OpenGL", "Vulkan (test)"};
-    AddDropDown("Renderer", settings_content, DropdownConfiguration( renderer_values, renderer_options, "renderer", "" ), "*");
-    AddLabel("*Requires Restart", settings_content);
-    
-    DualColumns dual_columns("checkboxes_column", 800);
-    AddCheckBox("VSync", dual_columns.left, "vsync", 0.0f);
-    AddCheckBox("Simple Shadows", dual_columns.left, "simple_shadows", 0.0f);
-    AddCheckBox("Simple Fog", dual_columns.left, "simple_fog", 0.0f);
-    AddCheckBox("Simple Water", dual_columns.left, "simple_water", 0.0f);
-    AddCheckBox("Fewer Detail Objects", dual_columns.left, "detail_objects_reduced", 0.0f);
-    //AddCheckBox("Use tet mesh lighting", dual_columns, "tet_mesh_lighting");
-    //AddCheckBox("Use ambient light volumes", dual_columns, "light_volume_lighting");
-    AddCheckBox("GPU Particle Field", dual_columns.right, "particle_field", 0.0f);
-    AddCheckBox("Simple GPU Particles", dual_columns.right, "particle_field_simple", 0.0f);
-    AddCheckBox("Enable Custom Shaders", dual_columns.right, "custom_level_shaders", 0.0f);
-    AddCheckBox("No reflection capture", dual_columns.right, "no_reflection_capture", 0.0f);
-    AddCheckBox("Depth of field", dual_columns.right, "depth_of_field", 0.0f);
-    AddCheckBox("Reduce depth of field", dual_columns.right, "depth_of_field_reduced", 0.0f);
-
-    settings_content.append(dual_columns.main);
-    
     AddSlider("Motion Blur", settings_content, "motion_blur_amount", 1.0f);
-    AddSlider("Brightness", settings_content, "brightness", 2.0f, 200.0f);
+
+    // (the old Advanced tab's, two columns: the shorter names left, the longer right, a
+    // toggle and its refinement side by side; wider columns ran past the panel)
+    DualColumns dual_columns("checkboxes_column", 860);
+    AddCheckBox("Simple Shadows", dual_columns.left, "simple_shadows", 0.0f);
+    AddCheckBox("No reflection capture", dual_columns.right, "no_reflection_capture", 0.0f);
+    AddCheckBox("Simple Fog", dual_columns.left, "simple_fog", 0.0f);
+    AddCheckBox("Fewer Detail Objects", dual_columns.right, "detail_objects_reduced", 0.0f);
+    AddCheckBox("Simple Water", dual_columns.left, "simple_water", 0.0f);
+    AddCheckBox("Enable Custom Shaders", dual_columns.right, "custom_level_shaders", 0.0f);
+    AddCheckBox("GPU Particle Field", dual_columns.left, "particle_field", 0.0f);
+    AddCheckBox("Simple GPU Particles", dual_columns.right, "particle_field_simple", 0.0f);
+    AddCheckBox("Depth of field", dual_columns.left, "depth_of_field", 0.0f);
+    AddCheckBox("Reduce depth of field", dual_columns.right, "depth_of_field_reduced", 0.0f);
+    //AddCheckBox("Use tet mesh lighting", dual_columns.left, "tet_mesh_lighting", 0.0f);
+    //AddCheckBox("Use ambient light volumes", dual_columns.right, "light_volume_lighting", 0.0f);
+    settings_content.append(dual_columns.main);
+
+    AddLabel("*Requires Restart", settings_content);
+}
+
+// Overgrowth Online: a line of explanation under the options (no asterisk: not a footnote)
+void AddNote(string text, IMDivider@ parent){
+    IMContainer note_container("note_container" + text, DOHorizontal);
+    IMText note(text, button_font_extra_small);
+    note_container.setAlignment(CARight, CACenter);
+    note_container.setElement(note);
+    note_container.setSizeY(40.0f);
+    note_container.setSizeX(725.0f);
+    parent.append(note_container);
 }
 
 void AddAudioScreen(){

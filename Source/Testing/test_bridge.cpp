@@ -778,9 +778,10 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         out["behind_10m"] = v3(cam->worldToScreen(eye - cam->GetFacing() * 10.0f));
         out["window"] = v3(vec3((float)g->window_dims[0], (float)g->window_dims[1], 0.0f));
     } else if (cmd == "flares") {
-        // The lens flares this machine would draw now: [visible_mult, distant, visible] each
-        // (the sun is one; an item's glint is "distant" only between glints, at 0;
-        // visible = the occlusion query's share of the flare's quad seen)
+        // The lens flares this machine would draw now: [visible_mult, distant, visible, x, y, z]
+        // each (the sun is one; an item's glint is "distant" only between glints, at 0;
+        // visible = the occlusion query's share of the flare's quad seen; x, y, z its
+        // position, a direction for a distant one)
         out["flares"] = Json::Value(Json::arrayValue);
         if (loaded) {
             for (Flare* f : sg->flares.flares) {
@@ -788,6 +789,9 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
                 e.append(f->visible_mult);
                 e.append(f->distant);
                 e.append(f->visible);
+                for (int i = 0; i < 3; ++i) {
+                    e.append(f->position[i]);
+                }
                 out["flares"].append(e);
             }
         }

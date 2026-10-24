@@ -94,6 +94,10 @@ struct Stats {
 };
 Stats GetStats();
 
+// The next texture made is written from compute too (an upscaler's output, FSR's reactive
+// mask): storage usage on it. Only those: on others it costs AMD's colour compression
+void NextTextureWritable();
+
 #ifdef VK_DEFINE_HANDLE
 struct ImageInfo {
     VkImage image = VK_NULL_HANDLE;
@@ -121,6 +125,13 @@ struct Attachment {
 };
 bool BeginAttachment(GLuint texture, int level, int layer, Attachment* out, bool read_only = false);
 void EndAttachment(GLuint texture, int level, int layer);
+// Overgrowth Online (TAA): a texture's level 0, layer 0 for work outside the passes (an
+// upscaler's own compute, recorded into the frame's commands): moved to `layout` until
+// EndExternal puts it back to rest. `view` is of that level alone. `whole`: every level and
+// layer moved (FidelityFX's barriers take the whole image, whatever it's told)
+bool BeginExternal(GLuint texture, VkImageLayout layout, ImageInfo* out, bool whole = false);
+void EndExternal(GLuint texture, bool whole = false);
+
 // Graphics::BlitRenderTarget: rects are x0, y0, x1, y1 (GL's: rows counted as
 // stored); a multisampled source is resolved
 void Blit(GLuint src, int src_level, int src_layer, const int src_rect[4], GLuint dst, int dst_level, int dst_layer, const int dst_rect[4],

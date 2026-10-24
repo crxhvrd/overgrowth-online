@@ -452,7 +452,8 @@ bool Compile(const char* const sources[kStages], std::vector<uint32_t> out[kStag
         for (const auto& v : modules.back().Interface(kOutput)) {
             const auto& d = modules.back().decorations[v.second.first];
             const uint32_t location = modules.back().words[d.at(kDecLocation)];
-            if ((v.first == "out_color" && location != 0) || (v.first == "out_vel" && location != 1)) {
+            if ((v.first == "out_color" && location != 0) || (v.first == "out_vel" && location != 1) ||
+                (v.first == "out_mv" && location != 2)) {  // (Overgrowth Online TAA: the motion)
                 *error = v.first + " at location " + std::to_string(location);
                 return false;
             }

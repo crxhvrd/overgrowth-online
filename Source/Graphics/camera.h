@@ -73,6 +73,7 @@ class Camera {
 
     float modelview_matrix[16];   ///< Camera modelview matrix
     float projection_matrix[16];  ///< Camera projection matrix
+    float jitter_[2] = {0.0f, 0.0f};  ///< Overgrowth Online (TAA): see SetJitter
     int viewport[4];              ///< Viewport dimensions (in pixels)
 
     int interp_steps;
@@ -337,6 +338,11 @@ class Camera {
     void ASLookAt(vec3 new_val);
     mat4 GetViewMatrix();
     mat4 GetProjMatrix();
+    // Overgrowth Online (TAA): GetProjMatrix is what the scene is drawn with, jittered
+    // while Temporal::BeginScene has it so (offsets in clip units, x and y); picking,
+    // culling and the motion use the projection without it
+    mat4 GetUnjitteredProjMatrix();
+    void SetJitter(float clip_x, float clip_y);
     void DrawSafeZone();
     int GetFlags();
     void SetFlags(int val);

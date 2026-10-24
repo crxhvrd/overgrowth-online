@@ -69,6 +69,7 @@ FrameDiag LastFrameDiag();
 // ---- for the resource layer (vk_gl.cpp) and the passes
 
 #ifdef VK_DEFINE_HANDLE
+VkInstance Instance();  // (Overgrowth Online TAA: NGX starts with it)
 VkDevice Device();
 VkPhysicalDevice PhysicalDevice();
 const VkPhysicalDeviceProperties& Properties();

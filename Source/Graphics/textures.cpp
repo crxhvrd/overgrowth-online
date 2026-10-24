@@ -552,6 +552,7 @@ void Texture::Init() {
     mag_filter = 0;
     sampler = SamplerState();
     gl_sampler = 0;
+    gl_sampler_scene = 0;
     ref_count = 1;
     no_mipmap = false;
     no_reduce = false;
@@ -856,6 +857,7 @@ void Textures::SetSamplingf(Texture& tex, GLenum pname, float value) {
 
 void Textures::SamplingChanged(Texture& tex) {
     tex.gl_sampler = 0;
+    tex.gl_sampler_scene = 0;
     for (unsigned int unit = 0; unit < _texture_units; ++unit) {
         if (bound_texture[unit] != INVALID_ID && &textures[bound_texture[unit]] == &tex) {
             unit_sampler_[unit] = SamplerFor(tex);
@@ -891,6 +893,18 @@ GLuint Textures::GetSampler(const SamplerState& state) {
 }
 
 GLuint Textures::SamplerFor(Texture& tex) {
+    // Overgrowth Online (DLSS): a file's mipmapped texture, the scene's bias added
+    const GLint min = tex.sampler.min_filter;
+    const bool mipmapped = min == GL_NEAREST_MIPMAP_NEAREST || min == GL_LINEAR_MIPMAP_NEAREST || min == GL_NEAREST_MIPMAP_LINEAR ||
+                           min == GL_LINEAR_MIPMAP_LINEAR;
+    if (scene_lod_bias_ != 0.0f && mipmapped && !tex.sub_textures.empty()) {
+        if (tex.gl_sampler_scene == 0) {
+            SamplerState biased = tex.sampler;
+            biased.lod_bias += scene_lod_bias_;
+            tex.gl_sampler_scene = GetSampler(biased);
+        }
+        return tex.gl_sampler_scene;
+    }
     if (tex.gl_sampler == 0) {
         tex.gl_sampler = GetSampler(tex.sampler);
     }
@@ -3126,6 +3140,27 @@ void Textures::SetProcessPoolsEnabled(bool val) {
     } else {
         process_pool->Resize(0);
     }
+}
+
+void Textures::SetSceneLodBias(float bias) {
+    if (bias == scene_lod_bias_) {
+        return;
+    }
+    PROFILED_TEXTURE_MUTEX_LOCK
+    if (bias != 0.0f && bias != scene_samplers_bias_) {
+        for (Texture& tex : textures) {
+            tex.gl_sampler_scene = 0;  // (made for another bias)
+        }
+        scene_samplers_bias_ = bias;
+    }
+    scene_lod_bias_ = bias;
+    // What's bound now samples the new way too (the rest as it's bound)
+    for (unsigned int unit = 0; unit < _texture_units; ++unit) {
+        if (bound_texture[unit] != INVALID_ID) {
+            RebindTexture((int)unit);
+        }
+    }
+    PROFILED_TEXTURE_MUTEX_UNLOCK
 }
 
 void Textures::ApplyAnisotropy() {

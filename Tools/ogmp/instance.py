@@ -31,7 +31,7 @@ TEST_DIR = ROOT + "/test"
 RUN_DIR = TEST_DIR + "/run"
 RESULTS = TEST_DIR + "/results"
 TOOLS = ROOT + "/tools"
-BASE_CONFIG = "D:/OvergrowthAI/test/writedir/Data/config.txt"  # known-good 1.4 settings
+BASE_CONFIG = os.environ.get("OGMP_BASE_CONFIG", "D:/OvergrowthAI/test/writedir/Data/config.txt")  # known-good 1.4 settings
 BASE_PORT = 42710
 
 STOCK_MODS = [("com-wolfire-arena", "0.0.1"), ("com-wolfire-drika", "1.0.0"), ("com-wolfire-lugaru-campaign", "1.0.0"),
@@ -150,7 +150,8 @@ class Instance:
     def start(self, bridge_timeout=150.0):
         self.prepare()
         exe, work = exe_and_dir()
-        args = (f"--write-dir {self.writedir} --working-dir {work}/ --clear-log --no-dialogues "
+        # (quoted: a repo path with a space split into two arguments)
+        args = (f"--write-dir \"{self.writedir}\" --working-dir \"{work}/\" --clear-log --no-dialogues "
                 f"--test-bridge {self.port} {self.extra_args} {os.environ.get('OGMP_EXTRA', '')}")
         if self.level:
             args += f" -l {self.level}"

@@ -78,6 +78,12 @@ Flares::~Flares() {
 
 const float _flare_grow = 0.1f;
 
+// Overgrowth Online (DLSS): the post effects' pixels per scene pixel (1 without an upscaler)
+static float SceneToOutput(int axis) {
+    const Graphics* graphics = Graphics::Instance();
+    return graphics->scene_dims[axis] > 0 ? (float)graphics->render_dims[axis] / (float)graphics->scene_dims[axis] : 1.0f;
+}
+
 static void DrawQuad() {
     Graphics::Instance()->DrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
@@ -285,7 +291,8 @@ void Flares::OcclusionQuery(int which) {
                         modelview = glm::translate(modelview, glm::vec3(projected[0], projected[1], projected[2] * 200.0f - 100.0f));
                     }
                     CHECK_GL_ERROR();
-                    modelview = glm::scale(modelview, glm::vec3(_occlusion_size * 0.5f, _occlusion_size * 0.5f, 1.0f));
+                    // (Overgrowth Online DLSS: still _occlusion_size of the scene's own pixels)
+                    modelview = glm::scale(modelview, glm::vec3(_occlusion_size * 0.5f * SceneToOutput(0), _occlusion_size * 0.5f * SceneToOutput(1), 1.0f));
                     shaders->SetUniformMat4("modelview_mat", (const GLfloat*)&modelview);
                     shaders->SetUniformVec4("color", vec4(1.0f, 0.0f, 0.0f, 0.01f));
 
@@ -320,9 +327,12 @@ void Flares::Draw(Flares::FlareType flare_type) {
     // Set basic gl state
     graphics->setGLState(gl_state);
     Shaders::Instance()->setProgram(shader_id);
-    // Set viewport projection matrix
+    // Set viewport projection matrix. Overgrowth Online (DLSS): the flares are placed and
+    // sized in the post effects' pixels (ProjectPoint, the screen size); under an upscaler
+    // the scene's viewport is smaller, the same span of them
     glm::mat4 proj;
-    proj = ReverseZ(glm::ortho(0.0f, (float)graphics->viewport_dim[2], 0.0f, (float)graphics->viewport_dim[3], -100.0f, 100.0f));
+    proj = ReverseZ(glm::ortho(0.0f, (float)graphics->viewport_dim[2] * SceneToOutput(0), 0.0f, (float)graphics->viewport_dim[3] * SceneToOutput(1),
+                               -100.0f, 100.0f));
     shaders->SetUniformMat4("proj_mat", (const GLfloat*)&proj);
     // Make sure quad-drawing VBOs are filled
     static const GLfloat data[] = {

@@ -27,6 +27,7 @@
 #include <Graphics/sky.h>
 #include <Graphics/particles.h>
 #include <Graphics/camera.h>
+#include <Graphics/temporal.h>
 #include <Graphics/pxdebugdraw.h>
 #include <Graphics/flares.h>
 
@@ -1308,7 +1309,10 @@ void ItemObject::DrawItem(const mat4& proj_view_matrix, Object::DrawType type) {
     } else {
         FormatString(shader_str[0], kShaderStrSize, "envobject #ITEM");
     }
-    FormatString(shader_str[1], kShaderStrSize, "%s %s", shader_str[0], global_shader_suffix);
+    // (Overgrowth Online TAA: the scene's full draw also writes the motion)
+    const bool temporal_motion = type == Object::kFullDraw && Temporal::InScene();
+    FormatString(shader_str[1], kShaderStrSize, "%s %s", shader_str[0],
+                 temporal_motion ? Temporal::MotionSuffix(global_shader_suffix).c_str() : global_shader_suffix);
     std::swap(shader_str[0], shader_str[1]);
     if (g_simple_shadows || !g_level_shadows) {
         batch_.texture_ref[4] = graphics->static_shadow_depth_ref;
@@ -1395,6 +1399,20 @@ void ItemObject::DrawItem(const mat4& proj_view_matrix, Object::DrawType type) {
 
     shaders->SetUniformMat4("projection_view_mat", proj_view_matrix);
     shaders->SetUniformMat4("model_mat", transform);
+    if (temporal_motion) {
+        // Overgrowth Online (TAA): where it was drawn last frame (where it is now, if it
+        // wasn't drawn then)
+        const uint64_t frame = Temporal::Frame();
+        if (taa_transform_frame_ != frame) {
+            taa_have_prev_ = taa_transform_frame_ != UINT64_MAX && taa_transform_frame_ + 1 == frame;
+            taa_transforms_[0] = taa_transforms_[1];
+            taa_transforms_[1] = transform;
+            taa_transform_frame_ = frame;
+        }
+        shaders->SetUniformMat4("taa_prev_model_mat", taa_have_prev_ ? taa_transforms_[0] : transform);
+        shaders->SetUniformMat4("taa_view_proj", Temporal::ViewProj());
+        shaders->SetUniformMat4("taa_prev_view_proj", Temporal::PrevViewProj());
+    }
     shaders->SetUniformMat4("new_vel_mat", bullet_object_->transform);
     shaders->SetUniformMat4("old_vel_mat", bullet_object_->old_transform);
     shaders->SetUniformMat3("model_rotation_mat", mat3(transform));

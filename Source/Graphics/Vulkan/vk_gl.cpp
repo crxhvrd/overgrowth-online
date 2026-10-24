@@ -336,7 +336,11 @@ bool IsCubeTarget(GLenum target) {
 
 // Storage for a texture: the image, cleared (GL drivers hand out zeroed memory;
 // nothing is ever sampled undefined), in its resting layout
+bool next_writable = false;  // (NextTextureWritable: for the next MakeStorage)
+
 void MakeStorage(GLuint name, GLenum target, uint32_t levels, GLenum internalformat, uint32_t w, uint32_t h, uint32_t d, uint32_t samples) {
+    const bool writable = next_writable;
+    next_writable = false;
     Texture* t = FindTexture(name, "TextureStorage");
     if (t == NULL) {
         return;
@@ -385,6 +389,11 @@ void MakeStorage(GLuint name, GLenum target, uint32_t levels, GLenum internalfor
         info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     } else if (!depth && (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
         info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        // Overgrowth Online (TAA): an upscaler's output, which it writes from compute
+        // (BeginExternal; NextTextureWritable)
+        if (writable && s->type == VK_IMAGE_TYPE_2D && s->samples == 1 && (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
+            info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+        }
     }
     VmaAllocationCreateInfo ai = {};
     ai.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
@@ -700,6 +709,10 @@ void Hook() {
 }
 
 }  // namespace
+
+void NextTextureWritable() {
+    next_writable = true;
+}
 
 // ---- textures
 
@@ -1493,6 +1506,50 @@ void EndAttachment(GLuint texture, int level, int layer) {
         pass_setup = true;
         Transition(s, lvl, 1, lay, 1, s.rest);
         pass_setup = false;
+    }
+}
+
+bool BeginExternal(GLuint texture, VkImageLayout layout, ImageInfo* out, bool whole) {
+    auto it = textures.find(texture);
+    if (it == textures.end() || !it->second.storage || it->second.storage->image == VK_NULL_HANDLE) {
+        LogOnce("an external use of a texture with no storage");
+        return false;
+    }
+    Texture& t = it->second;
+    Storage& s = *t.storage;
+    VkImageView view = LevelView(t, s, t.base_level, t.base_layer);
+    if (view == VK_NULL_HANDLE) {
+        return false;
+    }
+    VkBackend::TransferCommands();  // (the pass being drawn ends first)
+    if (whole) {
+        TransitionAll(s, layout);
+    } else {
+        Transition(s, t.base_level, 1, t.base_layer, 1, layout);
+    }
+    out->image = s.image;
+    out->view = view;
+    out->format = s.fmt.format;
+    out->layout = layout;
+    out->width = s.MipWidth(t.base_level);
+    out->height = s.MipHeight(t.base_level);
+    out->levels = 1;
+    out->layers = 1;
+    out->samples = s.samples;
+    return true;
+}
+
+void EndExternal(GLuint texture, bool whole) {
+    auto it = textures.find(texture);
+    if (it == textures.end() || !it->second.storage || it->second.storage->image == VK_NULL_HANDLE) {
+        return;
+    }
+    Texture& t = it->second;
+    Storage& s = *t.storage;
+    if (whole) {
+        TransitionAll(s, s.rest);
+    } else {
+        Transition(s, t.base_level, 1, t.base_layer, 1, s.rest);
     }
 }
 

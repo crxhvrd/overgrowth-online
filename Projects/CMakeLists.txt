@@ -1182,6 +1182,38 @@ IF(BUILD_OVERGROWTH)
     target_add_grouped_source(Overgrowth Graphics/Vulkan)
     target_sources(Overgrowth PRIVATE ${LIBDIR}/volk-1.4.350/volk.c ${LIBDIR}/SPIRV-Reflect-1.4.350/spirv_reflect.c)
     target_compile_definitions(Overgrowth PRIVATE VK_NO_PROTOTYPES)
+    # Overgrowth Online (TAA): DLAA/DLSS on the Vulkan renderer through NVIDIA's NGX SDK.
+    # The SDK isn't in this repository (NVIDIA's RTX SDK licence, not ours): DLSS_SDK is a
+    # copy of github.com/NVIDIA/DLSS; without it the game is built without DLSS
+    SET(DLSS_SDK "" CACHE PATH "NVIDIA's DLSS SDK (include/, lib/Windows_x86_64/), for DLAA and DLSS on Vulkan")
+    IF(WIN32 AND NOT DLSS_SDK STREQUAL "" AND EXISTS "${DLSS_SDK}/include/nvsdk_ngx_vk.h")
+        MESSAGE(STATUS "DLSS: NGX SDK in ${DLSS_SDK}")
+        target_include_directories(Overgrowth PRIVATE "${DLSS_SDK}/include")
+        target_link_libraries(Overgrowth "${DLSS_SDK}/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib")  # (the plain signature, as the target's others)
+        target_compile_definitions(Overgrowth PRIVATE OG_DLSS=1)
+        add_custom_command(TARGET Overgrowth POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLSS_SDK}/lib/Windows_x86_64/rel/nvngx_dlss.dll" "$<TARGET_FILE_DIR:Overgrowth>/"
+            # (its licence goes with it: whoever passes the DLL on, under terms as protective)
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLSS_SDK}/LICENSE.txt" "$<TARGET_FILE_DIR:Overgrowth>/nvngx_dlss_LICENSE.txt")
+    ENDIF()
+    # Overgrowth Online (FSR): FSR 3.1 on the Vulkan renderer through AMD's FidelityFX API
+    # (MIT): FIDELITYFX_SDK is a copy of the FidelityFX SDK 1.1 (ffx-api/include, the
+    # signed amd_fidelityfx_vk.dll, loaded at run time); without it the game is built
+    # without FSR
+    SET(FIDELITYFX_SDK "" CACHE PATH "AMD's FidelityFX SDK 1.1 (ffx-api/include, PrebuiltSignedDLL), for FSR on Vulkan")
+    IF(WIN32 AND NOT FIDELITYFX_SDK STREQUAL "" AND EXISTS "${FIDELITYFX_SDK}/ffx-api/include/ffx_api/vk/ffx_api_vk.h")
+        MESSAGE(STATUS "FSR: FidelityFX SDK in ${FIDELITYFX_SDK}")
+        target_include_directories(Overgrowth PRIVATE "${FIDELITYFX_SDK}/ffx-api/include")
+        target_compile_definitions(Overgrowth PRIVATE OG_FSR=1)
+        # (its MIT notice goes with it: at the SDK's top, or in sdk/ as in 1.1.4's release zip)
+        SET(FFX_LICENSE "${FIDELITYFX_SDK}/LICENSE.txt")
+        IF(NOT EXISTS "${FFX_LICENSE}")
+            SET(FFX_LICENSE "${FIDELITYFX_SDK}/sdk/LICENSE.txt")
+        ENDIF()
+        add_custom_command(TARGET Overgrowth POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FIDELITYFX_SDK}/PrebuiltSignedDLL/amd_fidelityfx_vk.dll" "$<TARGET_FILE_DIR:Overgrowth>/"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FFX_LICENSE}" "$<TARGET_FILE_DIR:Overgrowth>/amd_fidelityfx_LICENSE.txt")
+    ENDIF()
     target_add_grouped_source(Overgrowth GUI)
     target_add_grouped_source(Overgrowth GUI/IMUI)
     target_add_grouped_source(Overgrowth GUI/dimgui)

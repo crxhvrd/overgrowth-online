@@ -30,7 +30,7 @@ from .scenarios import join, wait_loaded
 
 # (stage0: before the hue-keeping bloom; stage4a: before the integer noise hash)
 REFS = TEST_DIR + "/references/" + os.environ.get("OGMP_REFS", "stage5")
-OVERHAUL = "D:/OvergrowthAI/mod/overhaul"
+OVERHAUL = os.environ.get("OGMP_OVERHAUL", "D:/OvergrowthAI/mod/overhaul")
 
 # The levels the renderer is judged on: water and grass, a story camp, desert
 # terrain, a village. Views: offsets from the player's start (camera, target)

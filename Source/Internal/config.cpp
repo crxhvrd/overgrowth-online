@@ -438,6 +438,10 @@ void Config::ReloadStaticSettings() {
     Graphics::Instance()->SetTargetMonitor(config["target_monitor"].toNumber<int>());
     Graphics::Instance()->SetResolution(config["screenwidth"].toNumber<int>(), config["screenheight"].toNumber<int>(), false);
     Graphics::Instance()->SetFSAA(config["multisample"].toNumber<int>());
+    Graphics::Instance()->SetTemporalAA(Graphics::TemporalModeFromConfig(config));  // Overgrowth Online (TAA, DLSS)
+    // (Overgrowth Online: the settings menu's frame rate limit, now; it was read at start only)
+    Graphics::Instance()->SetLimitFpsInGame(config["limit_fps_in_game"].toNumber<bool>());
+    Graphics::Instance()->SetMaxFrameRate(config["max_frame_rate"].toNumber<int>());
     if (config["anisotropy"].toNumber<int>() != Graphics::Instance()->config_.anisotropy()) {
         Graphics::Instance()->SetAnisotropy((float)config["anisotropy"].toNumber<int>());
         Textures::Instance()->ApplyAnisotropy();

@@ -17,6 +17,13 @@ Libraries shipped as DLLs, under their own licences (see this folder):
   GameNetworkingSockets (test builds only) BSD licence; protobuf (BSD), OpenSSL
   Microsoft Visual C++ runtime (msvcp140, vcruntime140): Microsoft's
                         redistributable licence
+  NVIDIA DLSS           nvngx_dlss.dll and the NGX SDK compiled in (DLAA and DLSS on
+                        the Vulkan renderer, NVIDIA RTX GPUs): NVIDIA RTX SDKs licence
+                        (licenses/NVIDIA-DLSS.txt). NVIDIA, the NVIDIA logo and DLSS
+                        are trademarks of NVIDIA Corporation. Not open source: it is
+                        not covered by the engine's Apache licence
+  AMD FidelityFX        amd_fidelityfx_vk.dll (FSR 3.1 on the Vulkan renderer):
+                        MIT licence (licenses/AMD-FidelityFX.txt)
 
 Compiled into the game, under their own licences:
   volk                  MIT licence (licenses/volk.txt)

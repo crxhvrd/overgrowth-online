@@ -110,7 +110,10 @@ class GraphicsConfig {
    public:
     bool dynamic_character_cubemap_;
     float anisotropy() const { return anisotropy_; }
-    int FSAA_samples() const { return FSAA_samples_; }
+    // (Overgrowth Online: no MSAA under a temporal mode: it resolves the jittered frames)
+    int FSAA_samples() const { return temporal_aa_ != 0 ? 1 : FSAA_samples_; }
+    int FSAA_setting() const { return FSAA_samples_; }  // (the config's, whatever the mode)
+    int temporal_aa() const { return temporal_aa_; }  // Overgrowth Online: Temporal::Mode
     FullscreenMode::Mode full_screen() const { return full_screen_; }
     int target_monitor() const { return target_monitor_; }
     int screen_width() const { return screen_width_; }
@@ -134,6 +137,7 @@ class GraphicsConfig {
 
     void SetAnisotropy(float val) { anisotropy_ = val; }
     void SetFSAASamples(int val) { FSAA_samples_ = val; }
+    void SetTemporalAA(int val) { temporal_aa_ = val; }
     void SetFullscreen(FullscreenMode::Mode val) { full_screen_ = val; }
     void SetTargetMonitor(int val) { target_monitor_ = val; }
     void SetScreenWidth(int val) { screen_width_ = val; }
@@ -169,6 +173,7 @@ class GraphicsConfig {
     bool detail_object_shadows_;
     float anisotropy_;
     int FSAA_samples_;
+    int temporal_aa_ = 0;
     FullscreenMode::Mode full_screen_;
     int target_monitor_;  // Used when retrieving monitor data from SDL, though not 100% supported. Currently hard-coded to 0
     int screen_width_;
@@ -260,6 +265,7 @@ struct PixelRect {
 struct PostEffects {
     TextureRef temp_screen_tex;
     TextureRef tone_mapped_tex;
+    TextureRef motion_blur_tex;  // Overgrowth Online (DLSS): the motion blur's result under an upscaler
 };
 
 // Overgrowth Online (GL 4.6 stage 2.4): a vertex format. Each attribute names the
@@ -391,6 +397,19 @@ class Graphics {
     TextureRef screen_color_tex;
     TextureRef screen_vel_tex;
     TextureRef screen_depth_tex;
+    // Overgrowth Online (TAA): with a temporal mode on, the scene target's third colour
+    // attachment: what moves writes its motion there (xy: this frame's uv minus last
+    // frame's, w: 1), the rest stays clear (Temporal::Resolve takes its motion from depth)
+    TextureRef screen_mv_tex;
+    int old_temporal_aa = 0;
+    // Overgrowth Online (DLSS): an upscaler draws the scene at scene_dims (its targets
+    // above) and brings it up to render_dims into post_color_tex, where the post effects
+    // start; without one they're the same and the post effects start from screen_color_tex
+    int scene_dims[2] = {0, 0};
+    int old_scene_dims[2] = {0, 0};
+    TextureRef post_color_tex;
+    bool Upscaling() const { return post_color_tex.valid(); }
+    const TextureRef& PostColor() const { return post_color_tex.valid() ? post_color_tex : screen_color_tex; }
     std::string post_shader_name;  // Just used for saving
 
     bool use_sample_alpha_to_coverage;
@@ -560,6 +579,11 @@ class Graphics {
     void SetFullscreen(FullscreenMode::Mode val);
 
     void SetFSAA(int val);
+    void SetTemporalAA(int val);  // Overgrowth Online: Temporal::Mode (TemporalModeFromConfig)
+    // Overgrowth Online: the temporal mode the settings ask for: the upscaler ("upscaler" 1:
+    // DLSS, 2: FSR; "upscaler_quality" 0 native .. 4 ultra performance), else "temporal_aa"
+    // (0 off, 1 TAA; a mode from before the upscaler setting is taken as it is)
+    static int TemporalModeFromConfig(const Config& config);
     void SetVsync(bool val);
     void SetLimitFpsInGame(bool val);
     void SetMaxFrameRate(int val);

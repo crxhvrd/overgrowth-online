@@ -16,7 +16,7 @@ from .combat_suite import _common
 
 
 def _suns(inst):
-    return sum(1 for v, distant in inst.bridge.call("flares")["flares"] if distant and v > 0.0)
+    return sum(1 for f in inst.bridge.call("flares")["flares"] if f[1] and f[0] > 0.0)  # ([visible_mult, distant, ...])
 
 
 def item_flares(ctx, profile="typical"):
