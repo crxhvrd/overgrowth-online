@@ -6,7 +6,8 @@
 //                 host's character starts a level with: every guest gets the
 //                 same ones (copies, in the same hands and sheaths) a moment
 //                 after their character appears, and again after the level
-//                 starts over if theirs are gone.
+//                 starts over if theirs are gone. And the level's knockout
+//                 shield, which guests' characters are made without.
 //-----------------------------------------------------------------------------
 
 const float kCoopArmDelay = 3.0f;  // (a guest's own character choice drops weapons when it applies)
@@ -53,10 +54,6 @@ void CoopStoryUpdate() {
         }
         return;
     }
-    if(coop_start_files.length() == 0) {
-        return;
-    }
-
     // Each guest, a moment after their character appears
     array<PlayerState>@ states = GetPlayerStates();
     for(uint k = 0; k < states.length(); ++k) {
@@ -74,8 +71,28 @@ void CoopStoryUpdate() {
             continue;
         }
         coop_armed_ids.insertLast(id);
+        CoopShield(id);
         CoopArm(id);
     }
+}
+
+// The host's character's "Knockout Shield" (the level's, for its player) on a
+// guest's character. The change reaches the guest's machine as a script param
+// update, where its aschar.as SetParameters fills the shield
+void CoopShield(int id) {
+    ScriptParams@ host_params = ReadObjectFromID(coop_host_char).GetScriptParams();
+    int shield = host_params.HasParam("Knockout Shield") ? host_params.GetInt("Knockout Shield") : 0;
+    Object@ obj = ReadObjectFromID(id);
+    ScriptParams@ params = obj.GetScriptParams();
+    if((params.HasParam("Knockout Shield") ? params.GetInt("Knockout Shield") : 0) == shield) {
+        return;
+    }
+    if(!params.HasParam("Knockout Shield")) {
+        params.AddInt("Knockout Shield", shield);
+    }
+    params.SetInt("Knockout Shield", shield);  // (SetInt is what goes out online)
+    obj.UpdateScriptParams();
+    Log(info, "Overgrowth Online: guest character " + id + " gets the knockout shield " + shield);
 }
 
 // The host's starting weapons for a guest, in the slots that are empty

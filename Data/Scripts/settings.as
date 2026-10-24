@@ -320,10 +320,9 @@ void AddScreenSettingsScreen(){
     array<string> fps_options = {"Off", "30", "60", "120", "144", "165", "240"};
     AddDropDown("Frame rate limit", settings_content, DropdownConfiguration(fps_values, fps_options, fps_config_variables));
 
-    // Overgrowth Online: the renderer (Vulkan for testers for now; a Vulkan start
-    // that fails comes back on OpenGL)
+    // Overgrowth Online: the renderer (a Vulkan start that fails comes back on OpenGL)
     array<string> renderer_values = {"gl", "vulkan"};
-    array<string> renderer_options = {"OpenGL", "Vulkan (test)"};
+    array<string> renderer_options = {"OpenGL", "Vulkan"};
     AddDropDown("Renderer", settings_content, DropdownConfiguration( renderer_values, renderer_options, "renderer", "" ), "*");
 
     // Overgrowth Online: an upscaler, or else the anti-aliasing (TAA or MSAA). The upscalers

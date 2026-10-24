@@ -14,17 +14,19 @@ The renderer is being rebuilt under the original look. Every step is checked aga
 
 | | Original Overgrowth | Overgrowth Online |
 |---|---|---|
-| Graphics API | OpenGL 3.2 | OpenGL 4.6, or Vulkan 1.3 (in testing: Settings > Graphics > Renderer). If Vulkan fails to start, the game goes back to OpenGL |
+| Graphics API | OpenGL 3.2 | OpenGL 4.6, or Vulkan 1.3 (Settings > Screen > Renderer). If Vulkan fails to start, the game goes back to OpenGL |
 | Platforms | Windows, macOS, Linux | Windows |
 | Graphics resources | One shared vertex array, filtering stored on each texture, hundreds of loose uniforms looked up by name | Direct state access, immutable textures, sampler objects, vertex layouts, uniform blocks with fixed bindings, per-frame data in one ring buffer |
 | Shaders | GLSL compiled by the driver; a variant missed at load time compiled during play | The same GLSL, also built to SPIR-V. On Vulkan the game's shaders ship precompiled, mods' shaders compile once and are cached, and pipelines are prepared during the menus and at level load |
 | Character skinning | On the CPU. The optional GPU path was slow on NVIDIA GPUs in big battles (10-12 ms a frame with 96 characters on an RTX 5070 Ti) | On the GPU, the bones read from a buffer filled each frame |
 | Depth buffer | 24-bit | Reversed-Z with 32-bit float depth: more precision in the distance |
+| Anti-aliasing | MSAA (2x to 8x) | MSAA, or TAA on either renderer, with a sharpness slider. Characters and items write their own motion vectors; the rest of the scene is reprojected from the camera |
+| Upscaling | None | On Vulkan: NVIDIA DLSS on GeForce RTX GPUs and AMD FSR 3.1 on any GPU, at native resolution as anti-aliasing (DLAA, FSR Native AA) or in Quality, Balanced, Performance and Ultra Performance modes. They use the same motion vectors as TAA |
 | Bloom | Per colour channel: sunsets and backlit ears glowed pure red | Keeps each pixel's colour |
 | Noise (dithering, grain) | A sine-based hash that comes out differently on each GPU and driver | An integer hash (PCG2D): the same on every GPU, on OpenGL and Vulkan |
 | Errors | OpenGL errors hidden in release builds (an unused display list built for every item) | None on the test levels, checked with an OpenGL debug context and the Vulkan validation layer |
 
-Next: GPU culling with multi-draw indirect and compute particles, then upscalers (DLSS, FSR, XeSS) and ray tracing on Vulkan.
+Next: GPU culling with multi-draw indirect and compute particles, then Intel XeSS and ray tracing on Vulkan.
 
 ## Compared to Wolfire's multiplayer prototype
 

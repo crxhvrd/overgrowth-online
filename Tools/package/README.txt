@@ -45,10 +45,10 @@ PLAYING
   Main menu > Multiplayer. Connecting by IP needs UDP port 25744 open on
   the host, and shares your IP address with them.
 
-VULKAN (TEST)
-  Settings > Graphics > Renderer switches between OpenGL (the default) and
-  Vulkan (restart the game after changing it). Vulkan is new: it needs a
-  graphics card and driver with Vulkan 1.3. If it can't start, or the game
+VULKAN
+  Settings > Screen > Renderer switches between OpenGL (the default) and
+  Vulkan (restart the game after changing it). Vulkan needs a graphics
+  card and driver with Vulkan 1.3. If it can't start, or the game
   dies while it starts, the next start uses OpenGL again. The first time a
   level is loaded with Vulkan its shaders are compiled, which adds a few
   seconds; later loads use the saved results.
