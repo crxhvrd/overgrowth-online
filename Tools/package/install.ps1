@@ -101,10 +101,41 @@ $stock_mods = @(
     @("com-wolfire-machine-translations", "0.0.1"), @("com-wolfire-overgrowth-campaign", "1.0.0"),
     @("com-wolfire-overgrowth-core", "1.0.0"), @("com-wolfire-sandbox-levels", "0.0.1"),
     @("com-wolfire-timbles-therium", "rc"), @("com-wolfire-versus", "0.0.1"), @("crxhvrd-overhaul", $version))
-$rows = ($stock_mods | ForEach-Object { "    <ModInstance id=""$($_[0])"" activated=""true"" modsource=""local"" version=""$($_[1])"" />" }) -join "`n"
+$rows = @($stock_mods | ForEach-Object { "    <ModInstance id=""$($_[0])"" activated=""true"" modsource=""local"" version=""$($_[1])"" />" })
+
+# Steam Workshop mods: a mod the config doesn't list is switched on when the game
+# first sees it, so without these rows every subscription the player has would be
+# active online, where mods must match between players (most Workshop mods aren't
+# made for online play). Kept as the normal game has them (its modconfig.xml), off
+# for any subscription the normal game hasn't recorded yet.
+$workshop = @{}
+$normal_modconfig = Join-Path $docs "Wolfire\Overgrowth\modconfig.xml"
+if (Test-Path $normal_modconfig) {
+    foreach ($line in Get-Content $normal_modconfig) {
+        if ($line -match 'modsource="steamworks"' -and $line -match 'id="([^"]+)"') {  # (the id match last: it fills $Matches)
+            $workshop[$Matches[1]] = $line
+        }
+    }
+}
+$workshop_dir = Join-Path (Split-Path (Split-Path $game)) "workshop\content\25000"  # <library>\steamapps\workshop\content\25000
+if (Test-Path $workshop_dir) {
+    foreach ($item in Get-ChildItem $workshop_dir -Directory) {
+        $xml = Join-Path $item.FullName "mod.xml"
+        if (-not (Test-Path $xml)) { continue }
+        try { $id = ([xml](Get-Content $xml)).Mod.Id; $ver = ([xml](Get-Content $xml)).Mod.Version } catch { continue }
+        if ($id -and -not $workshop.ContainsKey($id)) {
+            $workshop[$id] = "    <ModInstance id=""$id"" activated=""false"" modsource=""steamworks"" version=""$ver"" />"
+        }
+    }
+}
+$rows += @($workshop.Keys | Sort-Object | ForEach-Object { $workshop[$_] })
+$on = @($workshop.Values | Where-Object { $_ -match 'activated="true"' }).Count
 $modconfig = Join-Path $wd "modconfig.xml"
-[IO.File]::WriteAllText($modconfig, "<?xml version=""2.0"" ?>`n<ActiveMods>`n$rows`n</ActiveMods>`n", (New-Object Text.UTF8Encoding $false))
+[IO.File]::WriteAllText($modconfig, "<?xml version=""2.0"" ?>`n<ActiveMods>`n$($rows -join "`n")`n</ActiveMods>`n", (New-Object Text.UTF8Encoding $false))
 Write-Host "  Overgrowth Online $version installed, the Overhaul mod enabled ($wd)"
+if ($workshop.Count -gt 0) {
+    Write-Host "  $($workshop.Count) Workshop mods carried over as in your normal game ($on on). Online, everyone needs the same mods on."
+}
 
 Write-Host ""
 Write-Host "Done. Start Overgrowth from Steam as usual (Steam must be running)." -ForegroundColor Green
