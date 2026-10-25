@@ -24,6 +24,7 @@
 #include <Main/engine.h>
 #include <Internal/config.h>
 #include <Internal/filesystem.h>
+#include <algorithm>
 
 #if ENABLE_STEAMWORKS
 #include <isteamfriends.h>
@@ -101,25 +102,30 @@ static bool CountsOnline(ModInstance* mod) {
     return mod->IsActive() && !mod->IsCore() && mod->id.str() != "com-wolfire-machine-translations";
 }
 
+// The host compares this string with the one a joining client sends, so it must
+// not depend on the order the mods were found in: Steam Workshop mods are added
+// as their UGC callbacks arrive, which differs from one machine to the next
+// (two players with the same subscriptions were turned away). Sorted by id.
 std::string OnlineUtility::GetActiveModsString() {
-    bool active_mods = false;
-    stringstream modlist;
-    vector<ModInstance*> mods = ModLoading::Instance().GetAllMods();
-    for (auto& mod : mods) {
+    vector<std::string> entries;
+    for (ModInstance* mod : ModLoading::Instance().GetAllMods()) {
         if (CountsOnline(mod)) {
-            if (active_mods) {
-                modlist << ", ";
-            }
-            active_mods = true;
-
             if (mod->SupportsOnline()) {
-                modlist << mod->id;
+                entries.push_back(mod->id.str());
             } else {
-                modlist << "[" << mod->id << "]";
+                entries.push_back("[" + mod->id.str() + "]");
             }
         }
     }
+    std::sort(entries.begin(), entries.end());
 
+    stringstream modlist;
+    for (size_t i = 0; i < entries.size(); ++i) {
+        if (i > 0) {
+            modlist << ", ";
+        }
+        modlist << entries[i];
+    }
     return modlist.str();
 }
 
