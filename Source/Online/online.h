@@ -413,6 +413,7 @@ class Online {
     bool SendLevelRequest(const string& msg);  // client: true if it went to the host
     double last_role_message_ms = -1e9;
     bool sent_role = false;
+    bool own_state_missing_logged = false;  // (GetOwnPlayerState: said once while there's none)
     void SendAvatarPaletteChange(const OGPalette& palette, ObjectID object_id);
     bool IsAvatarPossessed(ObjectID avatar_id);
     void PossessAvatar(PlayerID player_id, ObjectID object_id);

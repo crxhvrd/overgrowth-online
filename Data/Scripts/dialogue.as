@@ -38,6 +38,7 @@ uint8 mp_sub_index = 0;
 int start_state = -1;
 int skip_state = -1;
 int next_state = -1;
+int sync_state = -1;  // Overgrowth Online: the host's dialogue and line, for a guest who joined while it played
 
 class NameInfo {
     NameInfo(){}
@@ -81,6 +82,35 @@ void RegisterMPCallBacks() {
     Online_RegisterStateCallback(next_state, "void OnDialogueNextState(array<uint8>& data)");
     Online_RegisterStateCallback(skip_state, "void OnDialogueSkipState(array<uint8>& data)");
     Online_RegisterStateCallback(start_state, "void OnDialogueStartState(array<uint8>& data)");
+    sync_state = Online_RegisterState("dialogueSync");
+    Online_RegisterStateCallback(sync_state, "void OnDialogueSyncState(array<uint8>& data)");
+}
+
+// Overgrowth Online: the dialogue playing on the host and its line (index, two
+// bytes), sent to every client when a guest's character appears during it.
+// A client already there ignores it; one that isn't (it joined after the start
+// went out) starts it and plays up to that line: its own copy of the level
+// then holds its character still and hides it, as in the host's cutscene
+void SendSyncState(const string &in name, int index) {
+    array<uint8> data(2 + name.length());
+    data[0] = index & 255;
+    data[1] = (index >> 8) & 255;
+    for(uint i = 0; i < name.length(); ++i) {
+        data[2 + i] = name[i];
+    }
+    Online_SendState(sync_state, data);
+}
+
+void OnDialogueSyncState(array<uint8>& data) {
+    if(data.length() < 3 || !Online_IsClient()) {
+        return;
+    }
+    string name;
+    name.resize(data.length() - 2);
+    for(uint i = 0; i < name.length(); ++i) {
+        name[i] = data[2 + i];
+    }
+    dialogue.CatchUp(name, data[0] | (int(data[1]) << 8));
 }
 
 void SendSkipState() {
@@ -239,6 +269,11 @@ class Dialogue {
 
     bool queue_skip;
 
+    string online_name = "";           // Overgrowth Online: the dialogue playing (StartDialogue's name)
+    array<int> online_synced_ids;      //   the host's: players' characters that have it
+    array<int> online_seen_ids;        //   characters that appeared during it: when
+    array<float> online_seen_times;
+
     vec3 cam_pos;
     vec3 cam_rot;
     float cam_zoom;
@@ -280,6 +315,16 @@ class Dialogue {
     void StartDialogue(const string &in name){
         if (Online_IsHosting()) {
             SendStart(name);
+        }
+        online_name = name;
+        online_synced_ids.resize(0);
+        online_seen_ids.resize(0);
+        online_seen_times.resize(0);
+        if(Online_IsHosting()) {
+            array<PlayerState>@ states = GetPlayerStates();
+            for(uint k = 0; k < states.length(); ++k) {
+                online_synced_ids.insertLast(states[k].avatar_id);
+            }
         }
 
         index = 0;
@@ -1152,10 +1197,50 @@ class Dialogue {
         }
     }
 
+    // Overgrowth Online, a client: the host's dialogue `name` at its line `target`
+    // (the index the host plays on from). Not playing it yet: start it; behind:
+    // play the lines up to there at once
+    void CatchUp(const string &in name, int target) {
+        if(index == 0 || online_name != name) {
+            Log(info, "Overgrowth Online: joining the host's dialogue \"" + name + "\" at line " + target);
+            StartDialogue(name);
+        }
+        for(int k = 0; k < 1000 && index != 0 && index < target; ++k) {
+            Play();
+        }
+    }
+
+    // Overgrowth Online, the host: a player's character that appears while a
+    // dialogue plays (a guest who joined during it) gets it, a moment later
+    // (their level is up by then)
+    void SyncLateJoiners() {
+        if(!Online_IsHosting() || index == 0 || dialogue_obj_id == -1 || online_name == "") {
+            return;
+        }
+        array<PlayerState>@ states = GetPlayerStates();
+        for(uint k = 0; k < states.length(); ++k) {
+            int id = states[k].avatar_id;
+            if(id < 0 || online_synced_ids.find(id) >= 0) {
+                continue;
+            }
+            int seen = online_seen_ids.find(id);
+            if(seen < 0) {
+                online_seen_ids.insertLast(id);
+                online_seen_times.insertLast(the_time);
+            } else if(the_time - online_seen_times[seen] > 1.0f) {
+                online_synced_ids.insertLast(id);
+                Log(info, "Overgrowth Online: player character " + id + " joined during the dialogue \"" + online_name + "\": sent at line " + index);
+                SendSyncState(online_name, index);
+            }
+        }
+    }
+
     void Update() {
         if(fade_out_end != -1.0){
             return;
         }
+
+        SyncLateJoiners();
 
         if (mp_next == 1) {
         	mp_next = 0;

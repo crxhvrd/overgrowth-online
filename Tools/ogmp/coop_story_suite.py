@@ -3,8 +3,10 @@
 Online::FindSafeSpot, Data/Scripts/coop_story.as).
 
     coop_cutscene    a dialogue hides the guest's character on both machines
-                     (never the host's); when it ends the guest stands beside
-                     the host, on the ground
+                     (never the host's) and holds it still: forward held on the
+                     guest moves it nowhere, in the opening dialogue (playing as
+                     the guest's character appears) and in a later one; when it
+                     ends the guest stands beside the host, on the ground
     coop_checkpoint  a downed player gets up beside the one who reached the
                      goal's checkpoint, both ways (the guest reaching it: the
                      host's copy of the guest must count)
@@ -21,7 +23,7 @@ from .scenarios import PROFILES, join, script_errors, wait_loaded
 from .coop_suite import CAMPAIGN, _messages, _probe, _in_dialogue, _ko, _down, _common, _local
 
 
-def _start(ctx, level_id, profile):
+def _start(ctx, level_id, profile, skip=True):
     host = ctx.instance("host")
     host.bridge.call("net_sim", **PROFILES[profile])
     host.bridge.call("host", level=f"load_campaign_level {level_id}", campaign=CAMPAIGN)
@@ -30,7 +32,8 @@ def _start(ctx, level_id, profile):
     client.bridge.call("net_sim", **PROFILES[profile])
     join(ctx, host, client)
     time.sleep(3.0)
-    _skip_dialogues(host)
+    if skip:
+        _skip_dialogues(host)
     return host, client
 
 
@@ -78,12 +81,34 @@ def _apart(a, b):
 
 # ---- Cutscenes -----------------------------------------------------------------
 
+def _held_still(host, client, guest_on_host, tag, m, fails):
+    """Forward held on the guest for 2 s in a dialogue: how far its character went."""
+    me = client.bridge.me()["id"]
+    before = [_char(host, guest_on_host)["pos"], _char(client, me)["pos"]]
+    client.bridge.hold(steps=240, up=1.0)
+    time.sleep(3.0)
+    after = [_char(host, guest_on_host)["pos"], _char(client, me)["pos"]]
+    moved = [round(math.dist(a, b), 2) for a, b in zip(before, after)]
+    m[f"guest_moved_in_{tag}_host_client_m"] = moved
+    if max(moved) > 0.5:
+        fails.append(f"in the {tag} the guest's hidden character moved {moved} m (host, client) on forward input")
+
+
 def coop_cutscene(ctx, profile="typical"):
     m, fails = {}, []
-    host, client = _start(ctx, "river_village_intro", profile)
+    host, client = _start(ctx, "river_village_intro", profile, skip=False)
     hme, cme = host.bridge.me(), client.bridge.me()
     guest_on_host = _local(host, _common(client, cme["id"]))
     host_on_client = _local(client, _common(host, hme["id"]))
+
+    # The level's opening dialogue, already playing when the guest's character appeared
+    m["opening_dialogue_host_client"] = [_in_dialogue(host), _in_dialogue(client)]
+    if m["opening_dialogue_host_client"] == [True, True]:
+        _held_still(host, client, guest_on_host, "opening dialogue", m, fails)
+    else:
+        fails.append(f"no opening dialogue on both after the join: {m['opening_dialogue_host_client']}")
+    _skip_dialogues(host)
+    time.sleep(2.0)
 
     # The guest away from the host first: at the second checkpoint (walkable ground)
     far = _vec(host, "ReadObjectFromID(85).GetTranslation()", "probe_far")
@@ -102,6 +127,8 @@ def coop_cutscene(ctx, profile="typical"):
         fails.append(f"the guest's character shows in the cutscene (host, client): {m['guest_visible_on_host_client']}")
     if m["host_visible_on_host_client"] != [True, True]:
         fails.append(f"the host's character is hidden in the cutscene (host, client): {m['host_visible_on_host_client']}")
+    if m["in_dialogue_host_client"] == [True, True]:
+        _held_still(host, client, guest_on_host, "later dialogue", m, fails)
 
     _skip_dialogues(host)
     time.sleep(3.0)

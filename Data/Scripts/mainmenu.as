@@ -24,7 +24,7 @@
 
 #include "music_load.as"
 #include "menu_common.as"
-#include "campaign_common.as"
+// (Overgrowth Online: no campaign_common.as include: the file never shipped, every start logged it missing)
 
 MusicLoad ml("Data/Music/menu.xml");
 

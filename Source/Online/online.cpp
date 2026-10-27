@@ -2209,11 +2209,19 @@ PlayerState Online::GetOwnPlayerState() {
 
     auto it = online_session->player_states.find(online_session->local_player_id);
     if (it != online_session->player_states.end()) {
+        own_state_missing_logged = false;
         return it->second;
     }
 
-    LOGW << "Tried to get own players state, but there is no state registered for player id: " << std::to_string(online_session->local_player_id) << std::endl;
+    // Overgrowth Online: a joining client has none until the host assigns it,
+    // and the per-frame callers ask meanwhile: said once, not every frame. No
+    // character (a default PlayerState's object_id is 1, a real object)
+    if (!own_state_missing_logged) {
+        own_state_missing_logged = true;
+        LOGW << "Tried to get own players state, but there is no state registered for player id: " << std::to_string(online_session->local_player_id) << std::endl;
+    }
     PlayerState fallback;
+    fallback.object_id = -1;
     return fallback;
 }
 
@@ -3177,11 +3185,12 @@ void Online::ReviveAvatar(MovementObject* mo, const vec3& pos, const vec3& facin
     mo->net_revive_grace_ms = OnlineClockMs() + 1500.0;
     std::string spot = "vec3(" + to_string(pos.x()) + ", " + to_string(pos.y()) + ", " + to_string(pos.z()) + ")";
     mo->Execute("Recover();");
-    if (mo->position[1] < -90.0f) {
-        // A body that fell out of the world: dialogue control's end runs one
-        // update where it lies (standing up from the ragdoll puts it there),
-        // and down there that kills it again (aschar's y < -99). The whole
-        // ragdoll goes up to the spot first
+    if (mo->position[1] < -90.0f || distance(mo->position, pos) > 2.0f) {
+        // A body away from the spot: dialogue control's end runs one update
+        // where it lies (standing up from the ragdoll puts it there). Out of
+        // the world that kills it again (aschar's y < -99), and a body still
+        // falling (a kill zone over a drop) or through the floor takes the
+        // guest down with it. The whole ragdoll goes to the spot first
         vec3 offset = pos - mo->position;
         for (PhysicsBone& b : mo->rigged_object()->skeleton_.physics_bones) {
             if (b.bullet_object != nullptr) {

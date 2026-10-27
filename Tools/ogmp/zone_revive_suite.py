@@ -149,7 +149,9 @@ def zone_respawn(ctx, profile="typical"):
     guest dies where nobody can reach the body; with the host up it must get up
     beside the host on its own (no checkpoint, no drag), and live on: (a) a fall
     death zone's death (aschar fall_death), then a 2.5 m drop that the stale flag
-    would make lethal; (b) out of the world (y < -99).
+    would make lethal; (b) out of the world (y < -99); (c) a kill zone over a drop
+    (zone_killed, Garden Duel's): the body falls on while the respawn waits, and
+    standing up where it lies would drop the guest out of the world again.
 
         python -I Tools/ogmp.py run zone_respawn
     """
@@ -190,7 +192,9 @@ def zone_respawn(ctx, profile="typical"):
         return got[-1].split()[2:] if got else None  # fall_death, zone_killed, knocked_out
 
     KILLS = {"fall": 'ReceiveMessage("fall_death"); this_mo.position += vec3(0.0f, 3.0f, 0.0f); this_mo.velocity = vec3(0.0f, -2.0f, 0.0f);',
-             "void": "this_mo.position = vec3(this_mo.position.x, -120.0f, this_mo.position.z); this_mo.velocity = vec3(0.0f);"}
+             "void": "this_mo.position = vec3(this_mo.position.x, -120.0f, this_mo.position.z); this_mo.velocity = vec3(0.0f);",
+             "zone_drop": "this_mo.position = vec3(this_mo.position.x, -40.0f, this_mo.position.z); this_mo.velocity = vec3(0.0f); "
+                          "zone_killed = 1; SetKnockedOut(_dead); Ragdoll(_RGDL_LIMP);"}
     for name, code in KILLS.items():
         g.bridge.call("exec", target=gme["id"], code=code)
         t0 = time.time()

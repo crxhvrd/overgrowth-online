@@ -1,5 +1,5 @@
 #include "save/linear.as"
-#include "campaign_common.as"
+// (Overgrowth Online: no campaign_common.as include: the file never shipped, every start logged it missing)
 
 bool disable_progress = false;
 
