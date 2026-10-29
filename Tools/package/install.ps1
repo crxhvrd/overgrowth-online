@@ -69,10 +69,24 @@ if (-not $WriteDir -and -not (Test-Path $wd) -and (Test-Path $old_wd)) {
     Write-Host "  moved your settings and mods from Wolfire\OverhaulOnline"
 }
 $mods = Join-Path $wd "Data\Mods"
-New-Item -ItemType Directory -Force $mods | Out-Null
 $mod = Join-Path $mods "overhaul"
-if (Test-Path $mod) { Remove-Item $mod -Recurse -Force }
-Copy-Item (Join-Path $here "mod\overhaul") $mod -Recurse
+try {
+    New-Item -ItemType Directory -Force $mods | Out-Null
+    if (Test-Path $mod) { Remove-Item $mod -Recurse -Force }
+    Copy-Item (Join-Path $here "mod\overhaul") $mod -Recurse
+} catch {
+    # Windows' ransomware protection (Controlled folder access) refuses writes to Documents from
+    # anything it doesn't know, this script and the game alike; a OneDrive Documents folder shows
+    # the same "Access to the path is denied"
+    Write-Host ""
+    Write-Host "Could not write to $wd" -ForegroundColor Yellow
+    Write-Host "  ($($_.Exception.Message))" -ForegroundColor Yellow
+    Write-Host "  Windows is most likely blocking writes to your Documents folder (Windows Security >" -ForegroundColor Yellow
+    Write-Host "  Virus & threat protection > Ransomware protection > Controlled folder access)." -ForegroundColor Yellow
+    Write-Host "  Switch it off, or allow this script and the game, then run install.bat again." -ForegroundColor Yellow
+    Write-Host "  The game folder part of the install is done; only the settings and the mod are missing." -ForegroundColor Yellow
+    exit 1
+}
 $version = ([xml](Get-Content (Join-Path $mod "mod.xml"))).Mod.Version
 
 # Terrain maps earlier versions generated broken (striped normal maps: dark bands
