@@ -483,13 +483,44 @@ void DrawTeam(int t) {
 void DrawRulesColumn() {
     Title("You");
     ImGui_PushItemWidth(-140.0f);
+    bool horde = setup.horde;
+
+    if(ImGui_Checkbox("Horde: rounds against everyone", horde)) {
+        setup.horde = horde;
+    }
+
+    Tip("Co-op survival. Every player fights on one team against the Horde, which comes in rounds:\n" +
+        "one more enemy each round, tougher and better armed, rabbits then cats, dogs, rats and wolves,\n" +
+        "armoured brutes every fifth round. A cleared round stands every player up again.\n" +
+        "The teams' own settings are not used.");
+
+    if(setup.horde) {
+        int start = setup.horde_start;
+
+        if(ImGui_SliderInt("Enemies in round 1", start, 1, 8)) {
+            setup.horde_start = start;
+        }
+    }
+
+    bool host = setup.host_online;
+
+    if(ImGui_Checkbox("Host online (friends can join)", host)) {
+        setup.host_online = host;
+    }
+
+    Tip("Starts hosting like the Multiplayer menu does. At the map's loading screen press a key:\n" +
+        "then friends see you hosting and join from Steam or Multiplayer > Join a friend.\n" +
+        "The lobby waits until you press Start.");
+    ImGui_Spacing();
     int mode = setup.player_mode;
 
-    if(ImGui_Combo("Your role", mode, kPlayerModes)) {
+    if(!setup.horde && ImGui_Combo("Your role", mode, kPlayerModes)) {
         setup.player_mode = mode;
     }
 
-    if(setup.player_mode == 1) {
+    if(setup.horde) {
+        ImGui_TextColored(kDimColor, "You fight with the Survivors. Knocked out: you stay down until the round is cleared.");
+    } else if(setup.player_mode == 1) {
         array<string> names;
 
         for(int t = 0; t < setup.num_teams; ++t) {
@@ -667,6 +698,11 @@ void StartBattle() {
     setup.level_title = map.title;
     setup.Save();
     SetConfigValueBool("aiob_pending", true);
+
+    // Overgrowth Online: host this map, as the Multiplayer menu would
+    if(setup.host_online) {
+        Online_Host();
+    }
 
     // Large Battles stays offline for now (Overgrowth Online is campaign co-op):
     // no "host the next map" left over from an earlier version
