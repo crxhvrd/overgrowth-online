@@ -60,6 +60,9 @@ class BattleSettings {
     bool keep_level_npcs = false;
     bool manual_place = false;  // place each team on the map yourself
     bool show_all_maps = false; // also list maps that keep their own scenario
+    bool horde = false;         // co-op rounds: every player on team 0, team 1 grows each round
+    int horde_start = 1;        // enemies in round 1
+    bool host_online = false;   // start hosting (Overgrowth Online) before the map loads
 
     BattleSettings() {
         teams.resize(kMaxTeams);
@@ -101,6 +104,9 @@ class BattleSettings {
         keep_level_npcs = BCfgBool("keep_level_npcs", keep_level_npcs);
         manual_place = BCfgBool("manual_place", manual_place);
         show_all_maps = BCfgBool("show_all_maps", show_all_maps);
+        horde = BCfgBool("horde", horde);
+        horde_start = max(1, min(8, BCfgInt("horde_start", horde_start)));
+        host_online = BCfgBool("host_online", host_online);
 
         for(int i = 0; i < kMaxTeams; ++i) {
             string t = "t" + i + "_";
@@ -140,6 +146,9 @@ class BattleSettings {
         SetConfigValueBool("aiob_keep_level_npcs", keep_level_npcs);
         SetConfigValueBool("aiob_manual_place", manual_place);
         SetConfigValueBool("aiob_show_all_maps", show_all_maps);
+        SetConfigValueBool("aiob_horde", horde);
+        SetConfigValueInt("aiob_horde_start", horde_start);
+        SetConfigValueBool("aiob_host_online", host_online);
 
         for(int i = 0; i < kMaxTeams; ++i) {
             string t = "aiob_t" + i + "_";
