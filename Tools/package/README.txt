@@ -57,7 +57,8 @@ MODS
   Other mods are not guaranteed to work online. The Multiplayer menu opens
   only when every enabled mod declares online support; most Workshop mods
   don't, so disable them to play online. Everyone in a game needs the same
-  mods, in the same versions. Mods that replace the character scripts
+  mods, in the same versions: the server browser shows each game's mods and
+  what you'd have to change to join. Mods that replace the character scripts
   (aschar.as, enemycontrol.as) break online play. The Overhaul mod that
   comes with it is not required, but everyone must have it on or off alike.
 

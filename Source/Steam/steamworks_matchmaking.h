@@ -62,6 +62,7 @@ class SteamworksMatchmaking {
     std::string presence_game;       // what friends see of our game (set when changed)
     std::string presence_players;
     std::string presence_mods;
+    std::string presence_mod_list;   // (the mods by name, for the server browser)
     uint64_t last_presence_request_ms = 0;
 
     // Server browser: our lobby is public (config "oo_public_game", on unless
@@ -91,7 +92,7 @@ class SteamworksMatchmaking {
     void OpenToFriends(bool overlay);
 
     // Overgrowth Online (host): what friends see in Join a friend
-    void SetHostPresence(const std::string &game, int players, const std::string &mods);
+    void SetHostPresence(const std::string &game, int players, const std::string &mods, const std::string &mod_list);
 
     // Overgrowth Online: friends in this game, a line each, tab separated: Steam id,
     // name, state (host | playing | game: the normal game), what they host,
@@ -106,7 +107,7 @@ class SteamworksMatchmaking {
     // "none", then a line each, tab separated: lobby id, host, game, players,
     // version, mods ("same" | "other" against `mods`), ping ms (-1 unknown)
     void RequestPublicGames();
-    std::string PublicGames(const std::string &mods, const std::string &version);
+    std::string PublicGames(const std::string &mods);
 
     void OpenInviteDialog();
 

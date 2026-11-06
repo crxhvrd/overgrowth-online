@@ -5960,6 +5960,10 @@ std::string AS_Online_PublicGames() {
     return Online::Instance()->PublicGames();
 }
 
+std::string AS_Online_GetVersion() {
+    return OnlineUtility::GetOvergrowthOnlineVersion();
+}
+
 bool AS_Online_JoinPublicGame(const std::string& lobby) {
     return Online::Instance()->JoinPublicGame(lobby);
 }
@@ -6050,6 +6054,7 @@ void AttachOnline(ASContext* context) {
     context->RegisterGlobalFunction("bool Online_JoinFriend(const string &in steam_id)", asFUNCTION(AS_Online_JoinFriend), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_RequestPublicGames()", asFUNCTION(AS_Online_RequestPublicGames), asCALL_CDECL);
     context->RegisterGlobalFunction("string Online_PublicGames()", asFUNCTION(AS_Online_PublicGames), asCALL_CDECL);
+    context->RegisterGlobalFunction("string Online_GetVersion()", asFUNCTION(AS_Online_GetVersion), asCALL_CDECL);
     context->RegisterGlobalFunction("bool Online_JoinPublicGame(const string &in lobby)", asFUNCTION(AS_Online_JoinPublicGame), asCALL_CDECL);
 }
 

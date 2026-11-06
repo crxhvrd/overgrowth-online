@@ -10,6 +10,7 @@
 //-----------------------------------------------------------------------------
 #include "menu_common.as"
 #include "music_load.as"
+#include "multiplayer_mods.as"
 
 MusicLoad ml("Data/Music/menu.xml");
 
@@ -25,7 +26,7 @@ class FriendGame {
     string state;    // host | playing | game (see SteamworksMatchmaking::FriendGames)
     string game;
     string players;
-    string mods;     // same | other | "" (unknown)
+    GameMods@ mods;
 }
 
 array<FriendGame@> friend_games;
@@ -58,7 +59,7 @@ void Refresh() {
         f.state = fields[2];
         f.game = fields[3];
         f.players = fields[4];
-        f.mods = fields[5];
+        @f.mods = ReadGameMods(fields, 7, fields[5], fields.length() > 6 ? fields[6] : "");
 
         // Hosts first, then friends in someone's game, then the rest
         uint at = 0;
@@ -144,6 +145,7 @@ void DrawFriends() {
         ImGui_TextWrapped("None of your Steam friends is in Overgrowth right now.");
     } else {
         ImGui_BeginChild("friend_games", vec2(0.0f, min(sh * 0.5f, 520.0f)), false);
+        ImGui_PushTextWrapPos(0.0f);  // (each window has its own)
 
         for(uint i = 0; i < friend_games.length(); ++i) {
             FriendGame@ f = friend_games[i];
@@ -156,10 +158,9 @@ void DrawFriends() {
 
             if(f.state == "host") {
                 ImGui_Text("Hosting " + (f.game == "" ? "a game" : f.game) + PlayersText(f.players));
+                DrawGameMods(f.mods);
 
-                if(f.mods == "other") {
-                    ImGui_TextColored(kWarnColor, "Different mods or version: their game would turn you away.");
-                } else if(ImGui_Button("Join##" + f.id, vec2(160.0f, 36.0f))) {
+                if(CanJoin(f.mods) && ImGui_Button("Join##" + f.id, vec2(160.0f, 36.0f))) {
                     if(Online_JoinFriend(f.id)) {
                         this_ui.SendCallback("multiplayer_menu_connecting.as");
                     } else {
@@ -174,6 +175,7 @@ void DrawFriends() {
             }
         }
 
+        ImGui_PopTextWrapPos();
         ImGui_EndChild();
     }
 

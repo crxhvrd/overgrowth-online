@@ -125,7 +125,7 @@ void SteamworksMatchmaking::OpenToFriends(bool overlay) {
     }
 }
 
-void SteamworksMatchmaking::SetHostPresence(const std::string &game, int players, const std::string &mods) {
+void SteamworksMatchmaking::SetHostPresence(const std::string &game, int players, const std::string &mods, const std::string &mod_list) {
     ISteamFriends *friends = SteamFriends();
     std::string count = std::to_string(players);
 
@@ -150,6 +150,11 @@ void SteamworksMatchmaking::SetHostPresence(const std::string &game, int players
     SteamMatchmaking()->SetLobbyData(lobby, "oo_game", presence_game.c_str());
     SteamMatchmaking()->SetLobbyData(lobby, "oo_players", presence_players.c_str());
     SteamMatchmaking()->SetLobbyData(lobby, "oo_mods", presence_mods.c_str());
+    bool listed = SteamMatchmaking()->SetLobbyData(lobby, "oo_modlist", mod_list.c_str());  // (Steam sends it only when it changed)
+    if (mod_list != presence_mod_list) {
+        presence_mod_list = mod_list;
+        LOGI << "Steam: our game's mods: \"" << mod_list << "\"" << (listed ? "" : " (Steam refused them)") << std::endl;
+    }
     if (WantPublic() != lobby_public) {
         lobby_public = WantPublic();
         SteamMatchmaking()->SetLobbyType(lobby, lobby_public ? k_ELobbyTypePublic : k_ELobbyTypeFriendsOnly);
@@ -161,6 +166,13 @@ void SteamworksMatchmaking::SetHostPresence(const std::string &game, int players
 }
 
 static std::string FriendField(const char *text);  // (below)
+
+// The end of a listed game's row: its mods (oo_modlist), and what stands between
+// this player and them (see OnlineUtility::CompareMods; fields of names joined by '|')
+static std::string ModFields(const char *list, const std::vector<OnlineUtility::LocalMod> &mine) {
+    OnlineUtility::ModDifference difference = OnlineUtility::CompareMods(list, mine);
+    return difference.theirs + "\t" + difference.install + "\t" + difference.enable + "\t" + difference.disable;
+}
 
 bool SteamworksMatchmaking::WantPublic() {
     return !config.HasKey("oo_public_game") || config["oo_public_game"].toNumber<bool>();
@@ -213,13 +225,14 @@ void SteamworksMatchmaking::OnLobbyList(LobbyMatchList_t *data, bool io_failure)
     LOGI << "Steam: " << browse_lobbies.size() << " public games" << std::endl;
 }
 
-std::string SteamworksMatchmaking::PublicGames(const std::string &mods, const std::string &version) {
+std::string SteamworksMatchmaking::PublicGames(const std::string &mods) {
     static const char *kStates[] = {"none", "busy", "ready", "failed"};
     std::string rows = kStates[browse_state];
     ISteamMatchmaking *mm = SteamMatchmaking();
     if (mm == nullptr) {
         return "failed";
     }
+    std::vector<OnlineUtility::LocalMod> mine = OnlineUtility::GetLocalMods();
     for (uint64_t id : browse_lobbies) {
         CSteamID lobby(id);
         if (lobbies.count(lobby) != 0) {
@@ -235,9 +248,8 @@ std::string SteamworksMatchmaking::PublicGames(const std::string &mods, const st
         rows += "\n" + std::to_string(id) + "\t" + FriendField(mm->GetLobbyData(lobby, "oo_host")) + "\t" +
                 FriendField(mm->GetLobbyData(lobby, "oo_game")) + "\t" + FriendField(mm->GetLobbyData(lobby, "oo_players")) + "\t" +
                 FriendField(mm->GetLobbyData(lobby, "oo_version")) + "\t" + (their_mods.empty() ? "" : (their_mods == mods ? "same" : "other")) +
-                "\t" + std::to_string(ping);
+                "\t" + std::to_string(ping) + "\t" + ModFields(mm->GetLobbyData(lobby, "oo_modlist"), mine);
     }
-    (void)version;
     return rows;
 }
 
@@ -271,6 +283,8 @@ std::string SteamworksMatchmaking::FriendGames(const std::string &mods) {
 
     const AppId_t app = SteamUtils()->GetAppID();
     const int count = friends->GetFriendCount(k_EFriendFlagImmediate);
+    ISteamMatchmaking *mm = SteamMatchmaking();
+    std::vector<OnlineUtility::LocalMod> mine = OnlineUtility::GetLocalMods();
 
     for (int i = 0; i < count; ++i) {
         CSteamID id = friends->GetFriendByIndex(i, k_EFriendFlagImmediate);
@@ -291,9 +305,25 @@ std::string SteamworksMatchmaking::FriendGames(const std::string &mods) {
                                                                                   : "game";
         std::string match = their_mods.empty() ? "" : their_mods == mods ? "same" : "other";
 
+        // A host's lobby holds its version and mods (asked for, like the presence: here once Steam answers)
+        std::string version;
+        std::string mod_fields = "\t\t\t";
+        const std::string key = "+connect_lobby ";
+        size_t at = connect.find(key);
+        if (at != std::string::npos && mm != nullptr) {
+            CSteamID lobby((uint64)strtoull(connect.c_str() + at + key.size(), nullptr, 10));
+            if (request) {
+                mm->RequestLobbyData(lobby);
+            }
+            version = FriendField(mm->GetLobbyData(lobby, "oo_version"));
+            if (!version.empty()) {
+                mod_fields = ModFields(mm->GetLobbyData(lobby, "oo_modlist"), mine);
+            }
+        }
+
         rows += std::to_string(id.ConvertToUint64()) + "\t" + FriendField(GetSteamNickname(id).c_str()) + "\t" + state + "\t" +
                 FriendField(friends->GetFriendRichPresence(id, "oh_game")) + "\t" +
-                FriendField(friends->GetFriendRichPresence(id, "oh_players")) + "\t" + match + "\n";
+                FriendField(friends->GetFriendRichPresence(id, "oh_players")) + "\t" + match + "\t" + version + "\t" + mod_fields + "\n";
     }
 
     return rows;

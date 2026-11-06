@@ -4,13 +4,14 @@
 //    Description: Overgrowth Online: the server browser. The public games of
 //                 Overgrowth Online anywhere (Steam lobbies: Online_PublicGames),
 //                 nearest first, with who hosts, what, how many play, the
-//                 version and the ping; Join. Hosts choose public or friends
-//                 only on the Multiplayer screen.
+//                 ping, the mods, and what a player must change to join; Join.
+//                 Hosts choose public or friends only on the Multiplayer screen.
 //        License: Apache-2.0
 //-----------------------------------------------------------------------------
 
 #include "menu_common.as"
 #include "music_load.as"
+#include "multiplayer_mods.as"
 
 MusicLoad ml("Data/Music/menu.xml");
 
@@ -21,20 +22,21 @@ const vec4 kDimColor = vec4(0.65f, 0.65f, 0.65f, 1.0f);
 const vec4 kWarnColor = vec4(1.0f, 0.45f, 0.35f, 1.0f);
 const vec4 kGoodColor = vec4(0.55f, 0.85f, 0.45f, 1.0f);
 const float kRefreshSeconds = 15.0f;
+const float kReadSeconds = 0.5f;  // (each read compares every game's mods with ours)
 
 class PublicGame {
     string lobby;
     string host;
     string game;
     string players;
-    string version;
-    string mods;     // same | other | "" (unknown)
+    GameMods@ mods;
     int ping;        // ms, -1 unknown
 }
 
 array<PublicGame@> games;
 string state = "none";   // busy | ready | failed | none (no Steam)
 float refresh_timer = 0.0f;
+float read_timer = 0.0f;
 string notice;
 
 bool HasFocus() {
@@ -61,8 +63,7 @@ void Read() {
         g.host = f[1];
         g.game = f[2];
         g.players = f[3];
-        g.version = f[4];
-        g.mods = f[5];
+        @g.mods = ReadGameMods(f, 7, f[5], f[4]);
         g.ping = atoi(f[6]);
 
         // Nearest first (unknown pings last)
@@ -109,7 +110,11 @@ void Update() {
     if(refresh_timer > kRefreshSeconds) {
         Ask();
     }
-    Read();
+    read_timer += time_step;
+    if(read_timer > kReadSeconds) {
+        read_timer = 0.0f;
+        Read();
+    }
 }
 
 void Resize() {
@@ -160,13 +165,16 @@ void DrawBrowser() {
     } else if(games.length() == 0) {
         ImGui_TextWrapped(state == "busy" ? "Looking for games..." : "No public games right now. Host one: pick a story or the arena on the Multiplayer screen.");
     } else {
-        // Columns: host, game, players, ping, join
+        // Columns: host, game and its mods, players, ping, join (scrolling: there
+        // may be more games than fit, and Refresh and Back stay below them)
         float row_h = 40.0f * scale;
+        ImGui_BeginChild("games", vec2(0.0f, min(sh * 0.55f, 620.0f)), false);
+        ImGui_PushTextWrapPos(0.0f);  // (each window has its own: here at each column's edge)
         ImGui_Columns(5, false);
-        ImGui_SetColumnWidth(0, w * 0.22f);
-        ImGui_SetColumnWidth(1, w * 0.40f);
-        ImGui_SetColumnWidth(2, w * 0.11f);
-        ImGui_SetColumnWidth(3, w * 0.11f);
+        ImGui_SetColumnWidth(0, w * 0.20f);
+        ImGui_SetColumnWidth(1, w * 0.44f);
+        ImGui_SetColumnWidth(2, w * 0.09f);
+        ImGui_SetColumnWidth(3, w * 0.10f);
         ImGui_TextColored(kDimColor, "Host");
         ImGui_NextColumn();
         ImGui_TextColored(kDimColor, "Game");
@@ -180,19 +188,20 @@ void DrawBrowser() {
 
         for(uint i = 0; i < games.length(); ++i) {
             PublicGame@ g = games[i];
+            if(i > 0) {
+                ImGui_Separator();
+            }
             ImGui_TextColored(kTitleColor, g.host == "" ? "Someone" : g.host);
             ImGui_NextColumn();
             ImGui_Text(g.game == "" ? "Choosing a level" : g.game);
+            DrawGameMods(g.mods);
             ImGui_NextColumn();
             ImGui_Text(g.players == "" ? "1" : g.players);
             ImGui_NextColumn();
             ImGui_TextColored(PingColor(g.ping), PingText(g.ping));
             ImGui_NextColumn();
-            if(g.mods == "other") {
-                ImGui_TextColored(kWarnColor, g.version != "" ? "v" + g.version : "Other mods");
-                if(ImGui_IsItemHovered()) {
-                    ImGui_SetTooltip("Different mods or version (theirs " + (g.version == "" ? "unknown" : g.version) + "): their game would turn you away.");
-                }
+            if(!CanJoin(g.mods)) {
+                ImGui_TextColored(kDimColor, "Can't join");
             } else if(ImGui_Button("Join##" + g.lobby, vec2(130.0f * scale, row_h * 0.8f))) {
                 if(Online_JoinPublicGame(g.lobby)) {
                     this_ui.SendCallback("multiplayer_menu_connecting.as");
@@ -203,6 +212,8 @@ void DrawBrowser() {
             ImGui_NextColumn();
         }
         ImGui_Columns(1);
+        ImGui_PopTextWrapPos();
+        ImGui_EndChild();
         ImGui_Separator();
     }
 
@@ -211,8 +222,9 @@ void DrawBrowser() {
     }
 
     ImGui_Spacing();
-    ImGui_TextColored(kDimColor, "Public games of Overgrowth Online anywhere, nearest first. Others find yours here while your "
-                      "hosting is public (the Multiplayer screen).");
+    ImGui_TextColored(kDimColor, "Public games of Overgrowth Online anywhere, nearest first. Everyone in a game needs the same "
+                      "mods on: change yours in Mods on the main menu. Others find your game here while your hosting is public "
+                      "(the Multiplayer screen).");
     ImGui_Separator();
 
     if(ImGui_Button(state == "busy" ? "Refreshing..." : "Refresh", vec2(220.0f, 36.0f)) && state != "busy") {

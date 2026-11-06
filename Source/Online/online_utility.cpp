@@ -25,6 +25,8 @@
 #include <Internal/config.h>
 #include <Internal/filesystem.h>
 #include <algorithm>
+#include <map>
+#include <set>
 
 #if ENABLE_STEAMWORKS
 #include <isteamfriends.h>
@@ -127,6 +129,116 @@ std::string OnlineUtility::GetActiveModsString() {
         modlist << entries[i];
     }
     return modlist.str();
+}
+
+// A field of a mods list: no line breaks or tabs (the browser's rows use them),
+// no '|' (the list's), not too long, and not cut inside a UTF-8 character
+static std::string ModsListField(const std::string& text) {
+    const size_t kMaxBytes = 48;
+    std::string field;
+    for (unsigned char c : text) {
+        field += c < 0x20 || c == 0x7f || c == '|' ? ' ' : (char)c;
+    }
+    if (field.size() > kMaxBytes) {
+        size_t end = kMaxBytes;
+        while (end > 0 && ((unsigned char)field[end] & 0xC0) == 0x80) {
+            --end;
+        }
+        field.resize(end);
+    }
+    return field;
+}
+
+static void AddModName(std::string* names, const std::string& name) {
+    *names += (names->empty() ? "" : "|") + name;
+}
+
+std::vector<OnlineUtility::LocalMod> OnlineUtility::GetLocalMods() {
+    vector<LocalMod> mods;
+    for (ModInstance* mod : ModLoading::Instance().GetAllMods()) {
+        if (!mod->IsCore() && mod->id.str() != "com-wolfire-machine-translations") {
+            mods.push_back({mod->id.str(), mod->name.str(), CountsOnline(mod)});
+        }
+    }
+    return mods;
+}
+
+std::string OnlineUtility::MakeModsList(vector<LocalMod> mods, size_t max_bytes) {
+    mods.erase(std::remove_if(mods.begin(), mods.end(), [](const LocalMod& m) { return !m.active; }), mods.end());
+    std::sort(mods.begin(), mods.end(), [](const LocalMod& a, const LocalMod& b) { return a.id < b.id; });
+
+    std::string list;
+    for (size_t i = 0; i < mods.size(); ++i) {
+        std::string entry = ModsListField(mods[i].id) + "=" + ModsListField(mods[i].name);
+        if (list.size() + entry.size() + 8 > max_bytes) {  // (and room for what didn't fit)
+            AddModName(&list, "+" + std::to_string(mods.size() - i));
+            break;
+        }
+        AddModName(&list, entry);
+    }
+    return list;
+}
+
+std::string OnlineUtility::GetActiveModsList() {
+    return MakeModsList(GetLocalMods());
+}
+
+OnlineUtility::ModDifference OnlineUtility::CompareMods(const std::string& list, const vector<LocalMod>& mine) {
+    ModDifference difference;
+
+    // By id (a mod found twice, say local and from the Workshop: the copy that's on)
+    std::map<std::string, const LocalMod*> here;
+    for (const LocalMod& mod : mine) {
+        auto it = here.find(mod.id);
+        if (it == here.end() || mod.active) {
+            here[mod.id] = &mod;
+        }
+    }
+
+    std::set<std::string> listed;
+    int more = 0;
+    size_t start = 0;
+    while (start < list.size()) {
+        size_t end = std::min(list.find('|', start), list.size());
+        std::string entry = list.substr(start, end - start);
+        start = end + 1;
+        if (entry.empty()) {
+            continue;
+        }
+        if (entry[0] == '+') {
+            more = atoi(entry.c_str() + 1);
+            continue;
+        }
+        size_t equals = entry.find('=');
+        std::string id = ModsListField(entry.substr(0, equals));
+        std::string name = equals == std::string::npos ? "" : ModsListField(entry.substr(equals + 1));
+        if (id.empty()) {
+            continue;
+        }
+        if (name.empty()) {
+            name = id;
+        }
+        listed.insert(id);
+        AddModName(&difference.theirs, name);
+
+        auto it = here.find(id);
+        if (it == here.end()) {
+            AddModName(&difference.install, name);
+        } else if (!it->second->active) {
+            AddModName(&difference.enable, it->second->name.empty() ? name : ModsListField(it->second->name));
+        }
+    }
+
+    if (more > 0) {
+        AddModName(&difference.theirs, "+" + std::to_string(more) + " more");
+    } else {  // (else what's on here may be among those that didn't fit)
+        for (const auto& it : here) {
+            if (it.second->active && listed.count(it.first) == 0) {
+                AddModName(&difference.disable, ModsListField(it.second->name.empty() ? it.first : it.second->name));
+            }
+        }
+    }
+    return difference;
 }
 
 // Overgrowth Online: the version of the package, which every package gives

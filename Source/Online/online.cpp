@@ -3528,7 +3528,7 @@ void Online::UpdateFriendPresence(SceneGraph* scenegraph) {
     if (game.empty() && scenegraph != nullptr) {
         game = scenegraph->level_name_;
     }
-    matchmaking->SetHostPresence(game, GetPlayerCount(), OnlineUtility::GetActiveModsDigest());
+    matchmaking->SetHostPresence(game, GetPlayerCount(), OnlineUtility::GetActiveModsDigest(), OnlineUtility::GetActiveModsList());
 #endif
 }
 
@@ -3566,7 +3566,7 @@ string Online::PublicGames() {
 #if ENABLE_STEAMWORKS
     SteamworksMatchmaking* matchmaking = Steamworks::Instance()->GetMatchmaking();
     if (matchmaking != nullptr) {
-        return matchmaking->PublicGames(OnlineUtility::GetActiveModsDigest(), OnlineUtility::GetOvergrowthOnlineVersion());
+        return matchmaking->PublicGames(OnlineUtility::GetActiveModsDigest());
     }
 #endif
     return "none";
