@@ -149,7 +149,7 @@ bool AIOTryOpeningStrike(MovementObject@ t, float dist) {
     SetSubGoal(_rush_and_attack);
     sub_goal_pick_time = time + RangedRandomFloat(0.6f, 1.0f);
     ai_attacking = true;
-    AIOLog("open_strike " + AIOOpenNames() + " d=" + dist);
+    if(aio_log) AIOLog("open_strike " + AIOOpenNames() + " d=" + dist);
     return true;
 }
 
@@ -181,7 +181,7 @@ bool AIOPinning(MovementObject@ t, float dist) {
         if(AIOCantBlockFrom(t, ally.position)) {
             if(time > aio_pin_log_next) {
                 aio_pin_log_next = time + 2.0f;
-                AIOLog("pin for=" + id);
+                if(aio_log) AIOLog("pin for=" + id);
             }
 
             return true;
@@ -255,7 +255,7 @@ bool AIOTryChaserKick(MovementObject@ t, const string &in kind) {
     }
 
     aio_chaser_kick_next = time + RangedRandomFloat(3.0f, 5.0f);
-    AIOLog(kind + " dist=" + dist + " closing=" + closing);
+    if(aio_log) AIOLog(kind + " dist=" + dist + " closing=" + closing);
     return true;
 }
 
@@ -301,7 +301,7 @@ void AIOUpdateDisengage(MovementObject@ t) {
         if(dir != vec3(0.0f) && dot(dir, to_me) > 0.3f && AIOHopSafe(dir, dist < 6.0f)) {
             AIORequestHop(dist < 6.0f);
             aio_disengage_hop_next = time + 0.4f;
-            AIOLog("hop_away dist=" + dist);
+            if(aio_log) AIOLog("hop_away dist=" + dist);
         }
     }
 }
@@ -421,7 +421,7 @@ void AIOSmartAttack(string &inout attack_str) {
           (open ? "open" : (finish ? "finish" : (aio_guard_up ? "guard" : "even"))))));
 
     if(best != attack_str || why != "even") {
-        AIOLog("smart_attack " + best + " why=" + why);
+        if(aio_log) AIOLog("smart_attack " + best + " why=" + why);
     }
 
     attack_str = best;
@@ -449,7 +449,7 @@ void AIOAttackVeto(string &inout attack_str) {
         AIOAtk@ b = AIOAtkFor(classes[i], close);
 
         if(!((b.height == _high && ducking) || (b.height == _low && airborne))) {
-            AIOLog("attack_veto " + attack_str + " -> " + classes[i]);
+            if(aio_log) AIOLog("attack_veto " + attack_str + " -> " + classes[i]);
             attack_str = classes[i];
             return;
         }
@@ -576,7 +576,7 @@ int AIOPickWeapon(float range) {
 
     if(best != -1 && best != aio_weapon_logged) {
         aio_weapon_logged = best;
-        AIOLog("weapon_pick item=" + best + " label=" + ReadItemID(best).GetLabel() + " score=" + best_score);
+        if(aio_log) AIOLog("weapon_pick item=" + best + " label=" + ReadItemID(best).GetLabel() + " score=" + best_score);
     }
 
     return best;

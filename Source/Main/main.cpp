@@ -23,6 +23,7 @@
 //-----------------------------------------------------------------------------
 #ifndef __PS4__
 #include <Testing/test_bridge.h>
+#include <Testing/sampler.h>
 #include <Internal/config.h>
 #include <Internal/crashreport.h>
 #include <Internal/error.h>
@@ -41,6 +42,8 @@
 
 #include <Threading/rand.h>
 #include <Threading/thread_sanity.h>
+#include <Threading/job_system.h>
+#include <Physics/bullet_jobs.h>
 
 #include <Graphics/graphics.h>
 #include <Memory/allocation.h>
@@ -206,13 +209,17 @@ int GameMain(int argc, char* argv[]) {
     PROFILER_ENTER(&profiler_context, "Engine initialize");
     // Engine* engine = (Engine*)alloc.stack.Alloc(sizeof(Engine));
     // new(engine) Engine;
+    BulletJobs::ClaimMainThread();  // (Overgrowth Online: before the engine starts other threads)
     Engine* engine = new Engine();
     engine->Initialize();
+    Jobs::Init();  // (Overgrowth Online: the job system's workers, config "jobs")
+    BulletJobs::Install();  // (Bullet's parallel loops on those workers, config "physics_jobs")
     Dialog::Initialize();
     CrashReportInstall();  // (again: Steam or a driver may have set its own filter)
     PROFILER_LEAVE(&profiler_context);
 
     if (test_bridge_port > 0) {
+        Sampler::Init();  // (the bridge's "profile" samples this thread)
         TestBridge::Instance()->Start(test_bridge_port);
     }
 
@@ -294,6 +301,7 @@ int GameMain(int argc, char* argv[]) {
     TestBridge::Instance()->Stop();
 
     LOGI << "Cleanly disposing of loaded assets..." << std::endl;
+    Jobs::Shutdown();
     engine->Dispose();
     // engine->~Engine();
     delete engine;

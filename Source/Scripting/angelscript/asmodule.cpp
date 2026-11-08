@@ -180,6 +180,7 @@ std::string CorrectASError(const std::string& input_error,
 int ASModule::CompileScriptFromText(const std::string& text) {
     func_map_.clear();
     fast_var_ptr_map.clear();
+    var_ptr_by_name.clear();
     bool retry = true;
     while (retry) {
         const std::string& script = text;
@@ -263,6 +264,7 @@ const uint32_t script_bytecode_program_build_length = 512;
 
 int ASModule::CompileScript(const Path& path) {
     fast_var_ptr_map.clear();
+    var_ptr_by_name.clear();
     func_map_.clear();
     bool retry = true;
     while (retry) {
@@ -1282,9 +1284,25 @@ void ASModule::LogGlobalVars() {
     }
 }
 
+// Overgrowth Online: a global variable's address by its name, cached (misses too).
+// Scripts read other characters' variables by name many times a step, and
+// AngelScript's own lookup builds a key string and walks a tree of names each time.
+// Cleared wherever the globals can move (compiles, ResetGlobals)
 void* ASModule::GetVarPtr(const char* name) {
+    uint64_t hash = 14695981039346656037ull;
+    for (const char* c = name; *c; ++c) {
+        hash = (hash ^ (unsigned char)*c) * 1099511628211ull;
+    }
+    auto found = var_ptr_by_name.find(hash);
+    if (found != var_ptr_by_name.end() && found->second.name == name) {
+        return found->second.ptr;
+    }
     int index = module_->GetGlobalVarIndexByName(name);
-    return module_->GetAddressOfGlobalVar(index);
+    void* addr = module_->GetAddressOfGlobalVar(index);
+    if (found == var_ptr_by_name.end()) {  // (another name with this hash: looked up each time)
+        var_ptr_by_name[hash] = VarPtrByName{name, addr};
+    }
+    return addr;
 }
 
 void* ASModule::GetVarPtrCache(const char* name) {
@@ -1701,6 +1719,7 @@ LineFile ASModule::GetCorrectedLine(int line) {
 void ASModule::ResetGlobals() {
     module_->ResetGlobalVars();
     fast_var_ptr_map.clear();
+    var_ptr_by_name.clear();
 }
 
 asIScriptFunction* ASModule::GetFunctionID(const std::string& function_name) {

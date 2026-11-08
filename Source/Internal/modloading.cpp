@@ -2625,6 +2625,7 @@ void ModLoading::SetMods(std::vector<std::string> modpaths) {
 }
 
 void ModLoading::TriggerModActivationCallback(ModInstance* mod) {
+    ClearFileLookups();  // (Overgrowth Online: mods' files come and go)
     std::vector<ModLoadingCallback*>::iterator callbackit;
 
     for (callbackit = callbacks.begin();

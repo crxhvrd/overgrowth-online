@@ -59,6 +59,11 @@ bool CheckFileAccess(const char* path);
 bool FileExists(const Path& path);
 bool FileExists(const char* path, PathFlagsBitfield flags);
 bool FileExists(const std::string& path, PathFlagsBitfield flags);
+// Overgrowth Online: FileExists for checks repeated during play (each sound played, a
+// voice line's lipsync, an animation set): remembered, misses too, until mods change or a
+// level loads (ClearFileLookups). Not for files the game writes
+bool FileExistsCached(const std::string& path, PathFlagsBitfield flags);
+void ClearFileLookups();
 void CreateDirsFromPath(const std::string& base, const std::string& path);
 void CreateParentDirs(const char* abs_path);
 void CreateParentDirs(const std::string& abs_path);

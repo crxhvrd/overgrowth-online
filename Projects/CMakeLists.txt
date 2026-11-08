@@ -298,6 +298,11 @@ IF(BUILD_OVERGROWTH)
     # enable USE_MSVC_RUNTIME_LIBRARY_DLL
     SET(USE_MSVC_RUNTIME_LIBRARY_DLL ON CACHE BOOL "Use MSVC Runtime Library DLL (/MD or /MDd)")
     SET(USE_GLUT OFF CACHE BOOL "Use Glut")
+    # Overgrowth Online: Bullet built thread-safe, for the level's multithreaded world
+    # (Source/Physics/bullet_jobs.cpp). BT_THREADSAFE for every target here too: Bullet's
+    # headers have inline code that changes with it, and both sides must agree
+    SET(BULLET2_MULTITHREADING ON CACHE BOOL "" FORCE)
+    ADD_DEFINITIONS(-DBT_THREADSAFE=1)
     ADD_SUBDIRECTORY(bullet3-2.89 bullet3-2.89)
     ADD_SUBDIRECTORY(angelscript_2_32_0_sdk/angelscript/projects/cmake angelscript_2_32_0_sdk)
 

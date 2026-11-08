@@ -844,6 +844,20 @@ def _coop_weapons(ctx):
 SCENARIOS["coop_weapons"] = _coop_weapons
 
 
+def _perf_scenes(ctx):
+    from .perf_suite import perf_scenes
+    return perf_scenes(ctx)
+
+
+def _perf_profile(ctx):
+    from .perf_suite import perf_profile
+    return perf_profile(ctx)
+
+
+SCENARIOS["perf_scenes"] = _perf_scenes
+SCENARIOS["perf_profile"] = _perf_profile
+
+
 def _arena_stress(ctx):
     from .arena_stress_suite import arena_stress
     return arena_stress(ctx)

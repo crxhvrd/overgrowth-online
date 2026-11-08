@@ -195,12 +195,14 @@ int Models::AddModel() {
     return the_id;
 }
 
+// (Overgrowth Online: find, not operator[], which inserts: a lookup that only reads,
+// safe from several threads while nothing loads or frees models)
 Model& Models::GetModel(int id) {
-    return id_map[id]->model;
+    return id_map.find(id)->second->model;
 }
 
 ModelData& Models::GetModelData(int id) {
-    return *id_map[id];
+    return *id_map.find(id)->second;
 }
 
 int Models::loadFlippedModel(const std::string& name, char flags /*= 0*/) {

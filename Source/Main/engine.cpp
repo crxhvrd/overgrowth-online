@@ -5549,7 +5549,7 @@ void Engine::LoadLevelData(const Path& level_path) {
 
     LOG_ASSERT(scenegraph_->bullet_world_ == NULL);
     scenegraph_->bullet_world_ = new BulletWorld();
-    scenegraph_->bullet_world_->Init();
+    scenegraph_->bullet_world_->Init(true);  // (Overgrowth Online: multithreaded, perf B3)
     scenegraph_->bullet_world_->SetGravity(Physics::Instance()->gravity);
     scenegraph_->bullet_world_->CreatePlane(vec3(0.0f, 1.0f, 0.0f), -100.0f);
 
@@ -5736,6 +5736,7 @@ void Engine::LoadLevel(Path queued_level) {
 
             started_loading_time = SDL_TS_GetTicks();
             load_screen_tip[0] = '\0';
+            ClearFileLookups();  // (Overgrowth Online: a new level; files may have changed since the last)
             LoadScreenLoop(true);
 
             interrupt_loading = false;

@@ -152,7 +152,7 @@ void AIOPickStyle() {
     }
 
     AIOApplyStyle(style == -1 ? AIORollStyle() : style);
-    AIOLog("style " + kStyleNames[aio_style] + (style == -1 ? " (rolled)" : " (set)"));
+    if(aio_log) AIOLog("style " + kStyleNames[aio_style] + (style == -1 ? " (rolled)" : " (set)"));
 }
 
 // The style's multipliers on the menu's scales (all 1 when personalities are off)
@@ -294,7 +294,7 @@ void AIOMindOnThrown() {
         f.rev_low += 1.0f;
     }
 
-    AIOLog("reversed_by=" + aio_last_attack_target + " attack=" + aio_last_attack_kind + " times=" + f.reversed);
+    if(aio_log) AIOLog("reversed_by=" + aio_last_attack_target + " attack=" + aio_last_attack_kind + " times=" + f.reversed);
 }
 
 // Ground attack choice against this opponent: away from what it reverses,
@@ -315,13 +315,13 @@ void AIOAdaptAttack(string &inout attack_str) {
         float rb = b == "stationary" ? f.rev_stationary : (b == "moving" ? f.rev_moving : f.rev_low);
         string was = attack_str;
         attack_str = ra <= rb ? a : b;
-        AIOLog("adapt_attack avoid=" + was + " use=" + attack_str);
+        if(aio_log) AIOLog("adapt_attack avoid=" + was + " use=" + attack_str);
         return;
     }
 
     if(AIOBlockRate(chase_target_id) > 0.5f && attack_str != "low" && RangedRandomFloat(0.0f, 1.0f) < 0.35f) {
         attack_str = "low";
-        AIOLog("adapt_attack blocker_low");
+        if(aio_log) AIOLog("adapt_attack blocker_low");
     }
 }
 
@@ -365,7 +365,7 @@ bool AIOWantsThrowBlocker() {
     }
 
     aio_grab_until = time + 1.0f;
-    AIOLog(blocker ? "throw_blocker rate=" + AIOBlockRate(chase_target_id) : "throw_guard");
+    if(aio_log) AIOLog(blocker ? "throw_blocker rate=" + AIOBlockRate(chase_target_id) : "throw_guard");
     return true;
 }
 
@@ -389,7 +389,7 @@ void AIOUpdateTempo(MovementObject@ target, float dist) {
             // A beat of stillness that invites a move, then all at once
             aio_tempo_pause_until = time + RangedRandomFloat(0.4f, 0.9f);
             aio_tempo_burst_until = aio_tempo_pause_until + RangedRandomFloat(0.8f, 1.4f);
-            AIOLog("tempo_pause");
+            if(aio_log) AIOLog("tempo_pause");
         }
     }
 
@@ -442,7 +442,7 @@ void AIOUpdateBreath(MovementObject@ target, float dist) {
 
     if(RangedRandomFloat(0.0f, 1.0f) < 0.5f * AIOTrait(aio_tr_breath)) {
         aio_breath_until = time + RangedRandomFloat(2.0f, 3.5f);
-        AIOLog("catch_breath temp=" + temp_health + " perm=" + permanent_health);
+        if(aio_log) AIOLog("catch_breath temp=" + temp_health + " perm=" + permanent_health);
     }
 }
 
@@ -527,7 +527,7 @@ void AIOUpdateMatchup(MovementObject@ target, float dist) {
 
     if(name != aio_match_logged) {
         aio_match_logged = name;
-        AIOLog("matchup " + name + " reach=" + aio_my_reach + "/" + aio_their_reach);
+        if(aio_log) AIOLog("matchup " + name + " reach=" + aio_my_reach + "/" + aio_their_reach);
     }
 
     int my_id = this_mo.GetID();
@@ -562,7 +562,7 @@ void AIOUpdateMatchup(MovementObject@ target, float dist) {
 
         if(why != "") {
             if(aio_blade_hold_since >= 0.0f) {
-                AIOLog("blade_opening why=" + why);
+                if(aio_log) AIOLog("blade_opening why=" + why);
             }
 
             aio_blade_hold_since = -1.0f;
@@ -604,7 +604,7 @@ bool AIOMatchupVeto(MovementObject@ target, const string &in kind) {
     float dist = xz_distance(this_mo.position, target.position);
 
     if(aio_match == -1 && time >= aio_blade_opening_until && dist < aio_their_reach + 1.2f) {
-        AIOLog("blade_veto kind=" + kind);
+        if(aio_log) AIOLog("blade_veto kind=" + kind);
         return true;  // into a blade from close range, with no opening
     }
 
@@ -706,7 +706,7 @@ float AIOKnockbackBonus(MovementObject@ t) {
 // Called when a flying kick launches: say why it was worth it
 void AIOLogKnockbackKick(const string &in kind) {
     if(aio_momentum && time - aio_kb_time < 1.0f && aio_kb_bonus > 1.3f) {
-        AIOLog("knockback_kick kind=" + kind + " bonus=" + aio_kb_bonus + aio_kb_why);
+        if(aio_log) AIOLog("knockback_kick kind=" + kind + " bonus=" + aio_kb_bonus + aio_kb_why);
     }
 }
 
@@ -736,7 +736,7 @@ vec3 AIONoBackpedal(const vec3 &in move) {
 
     if(time >= aio_sidestep_until) {
         aio_sidestep_side = rand() % 2 == 0 ? 1.0f : -1.0f;
-        AIOLog("sidestep");
+        if(aio_log) AIOLog("sidestep");
     }
 
     aio_sidestep_until = time + 0.6f;
@@ -858,7 +858,7 @@ void AIOPickFootwork(MovementObject@ t, float dist) {
     }
 
     if(pick != kFootStraight) {
-        AIOLog("footwork " + kFootNames[pick] + " dist=" + int(dist));
+        if(aio_log) AIOLog("footwork " + kFootNames[pick] + " dist=" + int(dist));
     }
 }
 
@@ -876,7 +876,7 @@ void AIOUpdateFootwork(MovementObject@ t, float dist) {
     // A swing at us that missed: its recovery is ours (blades: see matchups)
     if(aio_foe_was_swinging && !swinging_at_me && state == _movement_state && aio_match != -1) {
         aio_whiff_until = time + 0.7f;
-        AIOLog("punish_whiff");
+        if(aio_log) AIOLog("punish_whiff");
     }
 
     aio_foe_was_swinging = swinging_at_me;

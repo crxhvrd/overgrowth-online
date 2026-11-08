@@ -197,6 +197,7 @@ void AssetManager::ReallocAssetInstanceCounter(size_t new_size) {
 }
 
 void AssetManager::IncrementAsset(uint32_t asset_id) {
+    Jobs::CheckNotInJob("an asset reference");  // (Overgrowth Online: plain counters, no locks)
     for (size_t i = 0; i < asset_list_count; i++) {
         if (asset_list[i].id == asset_id) {
             asset_list[i].deallocate_attempts = 0;
@@ -208,6 +209,7 @@ void AssetManager::IncrementAsset(uint32_t asset_id) {
 }
 
 void AssetManager::DecrementAsset(uint32_t asset_id) {
+    Jobs::CheckNotInJob("an asset reference");
     for (size_t i = 0; i < asset_list_count; i++) {
         if (asset_list[i].id == asset_id) {
             asset_list[i].count--;

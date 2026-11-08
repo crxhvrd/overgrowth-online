@@ -98,7 +98,9 @@ class BulletWorld {
     BulletWorld();
     ~BulletWorld();
 
-    void Init();
+    // parallel (Overgrowth Online): Bullet's multithreaded world on the job system, when
+    // BulletJobs::Active(). For the level's world, stepped on the main thread
+    void Init(bool parallel = false);
     void Dispose();
 
     void Update(float timestep);

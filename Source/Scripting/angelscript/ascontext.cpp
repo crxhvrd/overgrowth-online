@@ -21,6 +21,8 @@
 //
 //-----------------------------------------------------------------------------
 #include "ascontext.h"
+#include <Testing/sampler.h>
+#include <Threading/job_system.h>
 
 #include <Scripting/angelscript/asfuncs.h>
 #include <Scripting/angelscript/scriptstdstring_extend.h>
@@ -191,7 +193,10 @@ void ASContext::run(asIScriptFunction *func, const ASArglist *args_ptr, ASArg *r
         }
     }
 
+    Jobs::CheckNotInJob("a script call");  // (Overgrowth Online: scripts stay out of the job system)
+    Sampler::PushScript(ctx);  // (Overgrowth Online: what the test bridge's profiler sees running)
     r = ctx->Execute();
+    Sampler::PopScript();
     if (r != asEXECUTION_FINISHED) {
         // The execution didn't finish as we had planned. Determine why.
         if (r == asEXECUTION_ABORTED) {

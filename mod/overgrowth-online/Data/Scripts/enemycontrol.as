@@ -778,7 +778,7 @@ void NotifySound(int created_by_id, vec3 pos, SoundType type) {
                 SetGoal(_investigate);
                 SetSubGoal(_investigate_urgent);
                 investigate_target_id = created_by_id;
-                AIOLog("heard_ally_down ally=" + created_by_id);
+                if(aio_log) AIOLog("heard_ally_down ally=" + created_by_id);
                 return;
             }
         }
@@ -1060,7 +1060,6 @@ void MindReceiveMessage(string msg) {
             combat_allowed = false;
         }
     } else if(token == "notice") {
-        Log(info, "Received notice message");
         token_iter.FindNextToken(msg);
         int id = atoi(token_iter.GetToken(msg));
         situation.Notice(id);
@@ -1340,7 +1339,7 @@ void CheckForNearbyWeapons() {
                 old_goal = goal;
                 old_sub_goal = sub_goal;
                 SetGoal(_get_weapon);
-                AIOLog("get_weapon item=" + weapon_target_id);
+                if(aio_log) AIOLog("get_weapon item=" + weapon_target_id);
             }
         } else {
             get_weapon_delay = kGetWeaponDelay;

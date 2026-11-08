@@ -83,6 +83,7 @@ void AIOReadConfig() {
     }
 }
 
+// (Overgrowth Online: callers check aio_log first too, so the message isn't built while the log is off)
 void AIOLog(const string &in msg) {
     if(aio_log) {
         Log(info, "[AIO] " + msg + " id=" + this_mo.GetID());
@@ -164,7 +165,7 @@ void AIOUpdate(const Timestep &in ts) {
     aio_jk_lessons = max(0.0f, aio_jk_lessons - 0.033f * ts.step());  // forget a quiet kicker in ~3 min
 
     if(got_hit_by_leg_cannon_count > aio_last_leg_cannon_hits) {
-        AIOLog("jumpkick_hit_taken");
+        if(aio_log) AIOLog("jumpkick_hit_taken");
         AIOJumpKickLesson();
     }
 
@@ -351,7 +352,7 @@ bool AIOSafeDrop(const vec3 &in edge, const vec3 &in bottom) {
     bool safe = drop < safe_height && nav != vec3(0.0f) && xz_distance(nav, bottom) < 2.0f && abs(nav.y - bottom.y) < 2.0f;
 
     if(!safe) {
-        AIOLog("drop_refused drop=" + drop);
+        if(aio_log) AIOLog("drop_refused drop=" + drop);
     }
 
     return safe;
@@ -382,7 +383,7 @@ bool AIOLandingCrowded(const vec3 &in land) {
                 char.GetIntVar("state") != _ragdoll_state) {
             if(!aio_crowd_logged) {
                 aio_crowd_logged = true;
-                AIOLog("landing_crowded by=" + around[i]);
+                if(aio_log) AIOLog("landing_crowded by=" + around[i]);
             }
 
             return true;
@@ -407,7 +408,7 @@ void AIOLaunchAir(const vec3 &in vel, const string &in kind) {
     aio_air_kind = kind;
     aio_jk_struck = false;
     aio_jk_launch_time = time;
-    AIOLog(kind + "_launch");
+    if(aio_log) AIOLog(kind + "_launch");
 }
 
 // A deliberate jump is queued but not yet off the ground: a ground attack
@@ -524,7 +525,7 @@ void AIOUpdateAir(MovementObject@ target) {
         // attack_getter is empty until the first attack is chosen; curr_attack is safe to read
         if(!aio_jk_struck && state == _attack_state && attack_animation_set && curr_attack == "air") {
             aio_jk_struck = true;
-            AIOLog(aio_air_kind + "_strike");
+            if(aio_log) AIOLog(aio_air_kind + "_strike");
         }
 
         bool landed = on_ground && !has_jump_target && time - aio_jk_launch_time > 0.3f;
@@ -533,9 +534,9 @@ void AIOUpdateAir(MovementObject@ target) {
         if(landed || stale || time - aio_jk_launch_time > 3.0f) {
             if(stale) {
                 has_jump_target = false;
-                AIOLog(aio_air_kind + "_aborted");
+                if(aio_log) AIOLog(aio_air_kind + "_aborted");
             } else if(!aio_jk_struck && aio_air_kind != "evade" && aio_air_kind != "escape_jump") {
-                AIOLog(aio_air_kind + "_miss");
+                if(aio_log) AIOLog(aio_air_kind + "_miss");
             }
 
             if(landed && (aio_air_kind == "evade" || (aio_air_kind == "evade_over" && !aio_jk_struck))) {
@@ -670,11 +671,11 @@ bool AIOTryCloseAntiAir(MovementObject@ target, bool just_jumped) {
         aio_land_spot = target.position;
         aio_land_set_time = time;
         aio_land_until = time + max(0.4f, t_land) + 0.8f;
-        AIOLog("close_kick_read_roll");
+        if(aio_log) AIOLog("close_kick_read_roll");
         return true;
     }
 
-    AIOLog("close_kick_read_block");
+    if(aio_log) AIOLog("close_kick_read_block");
     return false;  // hold ground: the stock active block handles leg cannons
 }
 
@@ -700,7 +701,7 @@ bool AIOTryCounter() {
         ai_attacking = true;
         dont_attack_before = 0.0f;
         aio_counter_until = 0.0f;
-        AIOLog("counter_rush");
+        if(aio_log) AIOLog("counter_rush");
         return true;
     }
 
@@ -913,9 +914,9 @@ bool AIOTryAntiAir(MovementObject@ target, bool just_jumped) {
             return true;
         }
 
-        AIOLog("intercept_infeasible");
+        if(aio_log) AIOLog("intercept_infeasible");
     } else {
-        AIOLog("intercept_skipped can_jump=" + AIOCanJumpKick() + " can_leave=" + AIOCanLeaveGround() + " dist=" + dist + " state=" + state);
+        if(aio_log) AIOLog("intercept_skipped can_jump=" + AIOCanJumpKick() + " can_leave=" + AIOCanLeaveGround() + " dist=" + dist + " state=" + state);
     }
 
     float t_land;
@@ -926,7 +927,7 @@ bool AIOTryAntiAir(MovementObject@ target, bool just_jumped) {
         aio_land_spot = land + (length_squared(offset) > 0.01f ? normalize(offset) : vec3(0.0f)) * 1.0f;
         aio_land_set_time = time;
         aio_land_until = time + t_land + 0.6f;
-        AIOLog("antiair_landing t=" + t_land);
+        if(aio_log) AIOLog("antiair_landing t=" + t_land);
         return true;
     }
 
@@ -947,7 +948,7 @@ void AIOUpdateLandingPunish(MovementObject@ target) {
             sub_goal_pick_time = time + 1.0f;
             ai_attacking = true;
             dont_attack_before = 0.0f;
-            AIOLog("landing_punish");
+            if(aio_log) AIOLog("landing_punish");
         }
     }
 }
@@ -1020,7 +1021,7 @@ void AIOTryJumpKick(MovementObject@ target) {
                 RangedRandomFloat(0.0f, 1.0f) < aio_jk * mix(0.08f, 0.3f, game_difficulty)) {
             aio_jk_setup_until = time + RangedRandomFloat(1.2f, 2.2f);
             aio_jk_next_setup = aio_jk_setup_until + RangedRandomFloat(3.0f, 6.0f);
-            AIOLog("jumpkick_setup dist=" + dist);
+            if(aio_log) AIOLog("jumpkick_setup dist=" + dist);
         }
 
         return;
@@ -1107,7 +1108,7 @@ void AIOObserveKick(int enemy_id) {
         }
     }
 
-    AIOLog("kick_seen lessons=" + aio_jk_lessons);
+    if(aio_log) AIOLog("kick_seen lessons=" + aio_jk_lessons);
 }
 
 // How exposed we are to `enemy` launching a flying kick at us right now
@@ -1271,7 +1272,7 @@ bool AIOTryReadIncomingKick() {
             }
         }
 
-        AIOLog("kick_read_roll tca=" + tca);
+        if(aio_log) AIOLog("kick_read_roll tca=" + tca);
         return true;
     }
 
@@ -1327,17 +1328,17 @@ void AIOUpdateKickLane(MovementObject@ target) {
         aio_lane_dir = side;
         aio_lane_until = time + RangedRandomFloat(0.6f, 1.1f);
         ai_attacking = false;
-        AIOLog("kick_lane_strafe threat=" + threat);
+        if(aio_log) AIOLog("kick_lane_strafe threat=" + threat);
     } else if(pick < 0.85f && combat_allowed) {
         SetSubGoal(_rush_and_attack);  // inside 2 m a flying kick has no room
         sub_goal_pick_time = time + RangedRandomFloat(0.8f, 1.4f);
         ai_attacking = true;
-        AIOLog("kick_lane_close threat=" + threat);
+        if(aio_log) AIOLog("kick_lane_close threat=" + threat);
     } else {
         aio_lane_dir = from_enemy;
         aio_lane_until = time + RangedRandomFloat(0.6f, 1.0f);
         ai_attacking = false;
-        AIOLog("kick_lane_back threat=" + threat);
+        if(aio_log) AIOLog("kick_lane_back threat=" + threat);
     }
 }
 
@@ -1357,7 +1358,7 @@ bool AIOUpdateBait(MovementObject@ target) {
             // It runs instead of following: a fake retreat only grows the gap
             aio_bait_until = 0.0f;
             aio_bait_spring_until = 0.0f;
-            AIOLog("bait_cancel");
+            if(aio_log) AIOLog("bait_cancel");
             return false;
         }
 
@@ -1394,7 +1395,7 @@ bool AIOUpdateBait(MovementObject@ target) {
     aio_bait_spring_until = aio_bait_until + 0.6f;
     aio_bait_next = aio_bait_spring_until + RangedRandomFloat(8.0f, 15.0f);
     ai_attacking = false;
-    AIOLog("bait_start dist=" + dist);
+    if(aio_log) AIOLog("bait_start dist=" + dist);
     return true;
 }
 
@@ -1446,7 +1447,7 @@ bool AIOLaunchEscapeJump(const vec3 &in threat, const string &in reason) {
         }
 
         AIOLaunchAir(vel, "escape_jump");
-        AIOLog("escape_jump reason=" + reason);
+        if(aio_log) AIOLog("escape_jump reason=" + reason);
         aio_escape_jump_next = time + RangedRandomFloat(4.0f, 8.0f);
         return true;
     }
@@ -1637,7 +1638,7 @@ void AIOUpdateHopState() {
     if(aio_hop_in_air) {
         if(!aio_hop_struck && state == _attack_state && attack_animation_set && curr_attack == "air") {
             aio_hop_struck = true;
-            AIOLog("hop_kick_strike");
+            if(aio_log) AIOLog("hop_kick_strike");
         }
 
         if(on_ground && time - aio_hop_takeoff > 0.2f) {
@@ -1780,14 +1781,14 @@ void AIOUpdatePursuit(MovementObject@ target) {
             if(!chasing) {
                 aio_pursuit_hops = RangedRandomFloat(0.0f, 1.0f) < AIOPursuitHopChance(target, flee_speed, target_hopping);
                 aio_pursuit_reroll = time + 1.0f;
-                AIOLog("chase_start dist=" + dist + " flee_speed=" + flee_speed + " hops=" + aio_pursuit_hops);
+                if(aio_log) AIOLog("chase_start dist=" + dist + " flee_speed=" + flee_speed + " hops=" + aio_pursuit_hops);
             } else if(!aio_pursuit_hops && time > aio_pursuit_reroll) {
                 // Still running after it on foot: reconsider hopping
                 aio_pursuit_reroll = time + 1.0f;
                 aio_pursuit_hops = RangedRandomFloat(0.0f, 1.0f) < AIOPursuitHopChance(target, flee_speed, target_hopping);
 
                 if(aio_pursuit_hops) {
-                    AIOLog("chase_hops dist=" + dist + " flee_speed=" + flee_speed);
+                    if(aio_log) AIOLog("chase_hops dist=" + dist + " flee_speed=" + flee_speed);
                 }
             }
 
@@ -1838,7 +1839,7 @@ void AIOUpdatePursuit(MovementObject@ target) {
 
     AIORequestHop(hop_height > 0.0f);
     aio_hop_boost_height = hop_height;
-    AIOLog((dist < 5.0f ? "hop_attack" : "hop_chase") + " dist=" + dist + " height=" + hop_height);
+    if(aio_log) AIOLog((dist < 5.0f ? "hop_attack" : "hop_chase") + " dist=" + dist + " height=" + hop_height);
 }
 
 // Fleeing: hop away along the escape route; leap if the pursuer is close
@@ -1857,7 +1858,7 @@ void AIOUpdateFleeHops() {
 
     if(dir != vec3(0.0f) && AIOHopSafe(dir, dist < 6.0f)) {
         AIORequestHop(dist < 6.0f);
-        AIOLog("hop_flee dist=" + dist);
+        if(aio_log) AIOLog("hop_flee dist=" + dist);
     }
 }
 
@@ -1995,7 +1996,7 @@ bool AIOStartRoll(vec3 dir, const string &in kind) {
     aio_dodge_until = time + 0.45f;
     wants_to_roll = true;
     ai_attacking = false;
-    AIOLog(kind);
+    if(aio_log) AIOLog(kind);
     return true;
 }
 
@@ -2048,7 +2049,7 @@ float aio_air_recover_delay = 0.3f;
 bool AIORollUpNow(const string &in why) {
     if(!aio_rollup_logged) {
         aio_rollup_logged = true;
-        AIOLog("rollup " + why + " after=" + ragdoll_time);
+        if(aio_log) AIOLog("rollup " + why + " after=" + ragdoll_time);
     }
 
     return true;
@@ -2390,7 +2391,7 @@ void AIOUpdatePosition(MovementObject@ target) {
     aio_post_pos = best_spot;
     aio_post_until = time + min(5.0f, best_walk / 6.0f + 1.5f);
     aio_hold_until = 0.0f;
-    AIOLog("terrain_move dy=" + (best_spot.y - target_ground.y) + " gain=" + (best - here) + " walk=" + best_walk);
+    if(aio_log) AIOLog("terrain_move dy=" + (best_spot.y - target_ground.y) + " gain=" + (best - here) + " walk=" + best_walk);
 }
 
 // Walk to the chosen spot; hold it only if it is real high ground, briefly,
@@ -2425,14 +2426,14 @@ bool AIOTerrainMovement(vec3 &out move) {
             aio_hold_until = time + RangedRandomFloat(1.2f, 2.5f);
             aio_hold_side = rand() % 2 == 0 ? 1.0f : -1.0f;
             aio_hold_switch = time + 0.7f;
-            AIOLog("terrain_hold");
+            if(aio_log) AIOLog("terrain_hold");
         }
     }
 
     if(time < aio_hold_until) {
         if(!AIOHoldWorthIt(target)) {
             aio_hold_until = 0.0f;
-            AIOLog("terrain_hold_end");
+            if(aio_log) AIOLog("terrain_hold_end");
             return false;
         }
 
@@ -2484,7 +2485,7 @@ void AIOUnstick(MovementObject@ target) {
         return;
     }
 
-    AIOLog("unstick dist=" + dist + " sub_goal=" + int(sub_goal) + " post=" + (time < aio_post_until) +
+    if(aio_log) AIOLog("unstick dist=" + dist + " sub_goal=" + int(sub_goal) + " post=" + (time < aio_post_until) +
         " escape=" + (time < aio_escape_until) + " wall=" + aio_wall_state + " pft=" + int(path_find_type) +
         " range=" + target_attack_range + " attacking=" + ai_attacking);
     aio_post_until = 0.0f;
@@ -2538,7 +2539,7 @@ void AIOBuildHighAttackTable() {
     }
 
     if(aio_high_anims.length() > 0) {
-        AIOLog("duck_table n=" + aio_high_anims.length() + " first=" + aio_high_anims[0]);
+        if(aio_log) AIOLog("duck_table n=" + aio_high_anims.length() + " first=" + aio_high_anims[0]);
     }
 }
 
@@ -2604,7 +2605,7 @@ bool AIOTryDuck() {
         aio_duck_until = time + t_imp + 0.25f;
         aio_duck_next = time + RangedRandomFloat(mix(3.0f, 1.0f, game_difficulty), mix(5.0f, 2.0f, game_difficulty));
         ai_attacking = false;
-        AIOLog("duck_high t=" + t_imp);
+        if(aio_log) AIOLog("duck_high t=" + t_imp);
         return true;
     }
 
@@ -2624,7 +2625,7 @@ void AIOUpdateDuckCounter() {
         sub_goal_pick_time = time + 1.0f;
         ai_attacking = true;
         dont_attack_before = 0.0f;
-        AIOLog("duck_counter");
+        if(aio_log) AIOLog("duck_counter");
     }
 
     aio_duck_attacker = -1;
@@ -2677,7 +2678,7 @@ void AIOUpdateWalls(MovementObject@ target) {
             if(!on_ground && jump_info.hit_wall) {
                 AIOSetWallState(2);
             } else if(in_state > 0.9f) {
-                AIOLog("wall_missed");
+                if(aio_log) AIOLog("wall_missed");
                 AIOSetWallState(0);
             }
         } else if(aio_wall_state == 2) {
@@ -2719,7 +2720,7 @@ void AIOUpdateWalls(MovementObject@ target) {
     aio_wall_next = time + RangedRandomFloat(4.0f, 8.0f);
     AIOSetWallState(1);
     AIORequestHop(false);  // a normal hop, so air control keeps us on the wall and steers after
-    AIOLog(aio_wall_flip ? "wall_flip_start" : "wall_kick_start");
+    if(aio_log) AIOLog(aio_wall_flip ? "wall_flip_start" : "wall_kick_start");
 }
 
 int AIONearbyEnemies(float range) {
@@ -2746,7 +2747,7 @@ int AIONearbyEnemies(float range) {
 bool AIOWantsWallJump() {
     if(aio_on && aio_wall_state == 2 && !aio_wall_flip && time - aio_wall_state_time > 0.05f) {
         AIOSetWallState(3);
-        AIOLog("wall_kick");
+        if(aio_log) AIOLog("wall_kick");
         return true;
     }
 
@@ -2756,7 +2757,7 @@ bool AIOWantsWallJump() {
 bool AIOWantsWallFlip() {
     if(aio_on && aio_wall_state == 2 && aio_wall_flip && time - aio_wall_state_time > 0.05f) {
         AIOSetWallState(3);
-        AIOLog("wall_flip");
+        if(aio_log) AIOLog("wall_flip");
         return true;
     }
 
@@ -2852,7 +2853,7 @@ void AIOUpdateClimb(MovementObject@ target) {
     vec3 base, into_wall;
 
     if(!AIOFindClimbSpot(target, base, into_wall)) {
-        AIOLog("climb_none dy=" + dy);
+        if(aio_log) AIOLog("climb_none dy=" + dy);
         aio_climb_next = time + 3.0f;
         return;
     }
@@ -2863,15 +2864,15 @@ void AIOUpdateClimb(MovementObject@ target) {
     climb_dir = into_wall;
     path_find_give_up_time = 2.0f + xz_distance(this_mo.position, base) / 5.0f;
     aio_climb_next = time + 4.0f;
-    AIOLog("climb_start dy=" + dy);
+    if(aio_log) AIOLog("climb_start dy=" + dy);
 }
 
 // HandleAIEvent: climbing milestones for the log
 void AIOOnParkourEvent(AIEvent event) {
     if(event == _grabbed_ledge) {
-        AIOLog("ledge_grab");
+        if(aio_log) AIOLog("ledge_grab");
     } else if(event == _climbed_up) {
-        AIOLog("climbed_up");
+        if(aio_log) AIOLog("climbed_up");
     }
 }
 
@@ -3035,7 +3036,7 @@ void AIOReadBattle() {
 
     if(new_state != aio_team_state && confirmed) {
         aio_team_state = new_state;
-        AIOLog("team_state " + AIOTeamStateName(new_state) + " ratio=" + aio_team_ratio + " allies=" + allies +
+        if(aio_log) AIOLog("team_state " + AIOTeamStateName(new_state) + " ratio=" + aio_team_ratio + " allies=" + allies +
             " enemies=" + enemies + " morale=" + aio_morale + " ally_ids=" + ally_ids);
     }
 }
@@ -3199,7 +3200,7 @@ int AIOChooseTarget(int closest) {
     }
 
     if(best != chase_target_id && chase_target_id != -1) {
-        AIOLog("target_switch why=" + best_why + " to=" + best);
+        if(aio_log) AIOLog("target_switch why=" + best_why + " to=" + best);
     }
 
     return best;
@@ -3234,7 +3235,7 @@ void AIOUpdateTeam(MovementObject@ target) {
 
         if(called > 0) {
             this_mo.PlaySoundGroupVoice("engage", 0.0f);
-            AIOLog("call_help allies=" + called);
+            if(aio_log) AIOLog("call_help allies=" + called);
         }
     }
 
@@ -3256,7 +3257,7 @@ void AIOUpdateTeam(MovementObject@ target) {
         if(behind > 0 && RangedRandomFloat(0.0f, 1.0f) < 0.6f) {
             aio_wait_allies_until = time + RangedRandomFloat(1.2f, 2.0f);
             aio_wait_allies_next = aio_wait_allies_until + RangedRandomFloat(5.0f, 8.0f);
-            AIOLog("wait_allies behind=" + behind);
+            if(aio_log) AIOLog("wait_allies behind=" + behind);
         }
     }
 
@@ -3273,7 +3274,7 @@ void AIOUpdateTeam(MovementObject@ target) {
     if(aio_hitrun_pending && state == _movement_state) {
         aio_hitrun_pending = false;
         aio_hitrun_until = time + RangedRandomFloat(1.2f, 2.2f);
-        AIOLog("hit_and_run");
+        if(aio_log) AIOLog("hit_and_run");
     }
 
     if(time < aio_hitrun_until) {
@@ -3298,7 +3299,7 @@ void AIOUpdateTeam(MovementObject@ target) {
     if(time >= aio_fallback_until && aio_fallback_until > 0.0f) {
         aio_fallback_until = 0.0f;
         aio_morale = min(1.0f, aio_morale + 0.25f);  // regrouped
-        AIOLog("regrouped morale=" + aio_morale);
+        if(aio_log) AIOLog("regrouped morale=" + aio_morale);
     }
 }
 
@@ -3310,7 +3311,7 @@ void AIOStartFallBack(MovementObject@ target) {
         vec3 away = AIOFlat(aio_group_center - target.position);
         away = length_squared(away) > 0.01f ? normalize(away) : this_mo.GetFacing() * -1.0f;
         aio_fallback_pos = aio_group_center + away * 2.5f;
-        AIOLog("fall_back to_group=" + aio_group_size + " morale=" + aio_morale);
+        if(aio_log) AIOLog("fall_back to_group=" + aio_group_size + " morale=" + aio_morale);
         aio_fallback_until = time + RangedRandomFloat(3.0f, 5.0f);
         aio_fallback_next = aio_fallback_until + 10.0f;
         ai_attacking = false;
@@ -3341,7 +3342,7 @@ void AIOStartFallBack(MovementObject@ target) {
     }
 
     aio_fallback_pos = ReadCharacterID(best).position;
-    AIOLog("fall_back to_ally=" + best + " morale=" + aio_morale);
+    if(aio_log) AIOLog("fall_back to_ally=" + best + " morale=" + aio_morale);
 
     aio_fallback_until = time + RangedRandomFloat(3.0f, 5.0f);
     aio_fallback_next = aio_fallback_until + 10.0f;
@@ -3368,7 +3369,7 @@ AISubGoal AIOTeamSubGoal(AISubGoal picked, int strikers) {
 
     // Majority: a hurt striker steps out and lets a fresh ally take the turn
     if(aio_team_state >= 1 && attacking && temp_health < 0.4f && strikers > 0) {
-        AIOLog("tag_out");
+        if(aio_log) AIOLog("tag_out");
         return _surround_target;
     }
 
@@ -3462,7 +3463,7 @@ void AIOStartRegroup(const vec3 &in point, const string &in why, float min_s, fl
     aio_regroup_until = time + RangedRandomFloat(min_s, max_s);
     aio_regroup_next = aio_regroup_until + RangedRandomFloat(2.0f, 3.5f);
     ai_attacking = false;
-    AIOLog(why + " group=" + aio_group_size + " ally_dist=" + int(aio_nearest_ally) + " center_dist=" +
+    if(aio_log) AIOLog(why + " group=" + aio_group_size + " ally_dist=" + int(aio_nearest_ally) + " center_dist=" +
         int(xz_distance(this_mo.position, aio_group_center)));
 }
 
@@ -3500,7 +3501,7 @@ void AIOUpdateCohesion(MovementObject@ target) {
         // The chase drags us away from everyone: let it go, stop here (no run back)
         aio_advance_until = time + RangedRandomFloat(1.5f, 2.5f);
         aio_advance_next = aio_advance_until + 1.0f;
-        AIOLog("leash center_dist=" + int(to_center));
+        if(aio_log) AIOLog("leash center_dist=" + int(to_center));
     }
 
     if(!engaged && !chasing && time >= aio_regroup_until && time > aio_regroup_next) {
@@ -3525,7 +3526,7 @@ void AIOUpdateCohesion(MovementObject@ target) {
             dist < target_to_center - 5.0f && time >= aio_advance_until) {
         aio_advance_next = time + 1.0f;
         aio_advance_until = time + RangedRandomFloat(1.0f, 1.6f);
-        AIOLog("advance_wait ahead=" + int(target_to_center - dist));
+        if(aio_log) AIOLog("advance_wait ahead=" + int(target_to_center - dist));
     }
 
     if(time < aio_advance_until) {
@@ -3613,13 +3614,13 @@ void AIOTrackThrownItem() {
     }
 
     if(outcome != "") {
-        AIOLog(outcome);
+        if(aio_log) AIOLog(outcome);
 
         if(outcome == "throw_caught" && aio_flying_target != -1) {
             AIOFoeFor(aio_flying_target).caught += 1.0f;  // it catches: throw at it less
         } else if(outcome == "throw_hit" && aio_flying_target == chase_target_id && aio_weapon_sense) {
             aio_throw_followup_until = time + 1.5f;  // it is staggered: punish it now
-            AIOLog("throw_followup");
+            if(aio_log) AIOLog("throw_followup");
         }
 
         aio_flying_item = -1;
@@ -3729,7 +3730,7 @@ bool AIORespectThrower(MovementObject@ target, const string &in kind) {
 
     if(threat > 0.0f && RangedRandomFloat(0.0f, 1.0f) < 0.7f * threat) {
         aio_respect_thrower_until = time + RangedRandomFloat(1.2f, 2.0f);
-        AIOLog("respect_thrower kind=" + kind);
+        if(aio_log) AIOLog("respect_thrower kind=" + kind);
         return true;
     }
 
@@ -3743,7 +3744,7 @@ float aio_throw_next_setup = 0.0f;
 void AIOUpdateThrow(MovementObject@ target) {
     if(aio_thrown_weapon_id != -1) {
         if(weapon_slots[primary_weapon_slot] != aio_thrown_weapon_id) {
-            AIOLog("throw_release");
+            if(aio_log) AIOLog("throw_release");
             aio_flying_item = aio_thrown_weapon_id;
             aio_flying_target = aio_throw_target_id;
             aio_flying_since = time;
@@ -3840,7 +3841,7 @@ void AIOUpdateThrow(MovementObject@ target) {
                 RangedRandomFloat(0.0f, 1.0f) < aio_throw * mix(0.05f, 0.2f, game_difficulty)) {
             aio_throw_setup_until = time + RangedRandomFloat(1.2f, 2.0f);
             aio_throw_next_setup = aio_throw_setup_until + RangedRandomFloat(5.0f, 9.0f);
-            AIOLog("throw_setup dist=" + dist);
+            if(aio_log) AIOLog("throw_setup dist=" + dist);
         }
 
         return;
@@ -3922,7 +3923,7 @@ void AIOUpdateThrow(MovementObject@ target) {
     aio_throw_decided_time = time;
     aio_thrown_weapon_id = weap;
     aio_throw_cooldown_until = time + RangedRandomFloat(2.5f, 5.0f);
-    AIOLog("throw_decide weapon=" + label + " dist=" + dist + " spare=" + spare + " fleeing=" + fleeing + " unreachable=" + unreachable +
+    if(aio_log) AIOLog("throw_decide weapon=" + label + " dist=" + dist + " spare=" + spare + " fleeing=" + fleeing + " unreachable=" + unreachable +
         " sure_air=" + sure_air);
 }
 
@@ -3971,7 +3972,7 @@ bool AIOWantsToFeint() {
     if(target_blocking || time - aio_attack_start_time > 0.12f) {
         aio_feint_this_attack = false;
         dont_attack_before = 0.0f;
-        AIOLog("feint target_blocking=" + target_blocking);
+        if(aio_log) AIOLog("feint target_blocking=" + target_blocking);
         return true;
     }
 
@@ -4125,7 +4126,7 @@ void AIOUpdateFlanking(MovementObject@ target) {
         aio_flank_total = AIOCountFlankersOn(chase_target_id);
 
         if(!aio_was_flanking) {
-            AIOLog("surround slot=" + aio_flank_slot + " strikers=" + strikers);
+            if(aio_log) AIOLog("surround slot=" + aio_flank_slot + " strikers=" + strikers);
         }
     }
 
@@ -4152,7 +4153,7 @@ void AIOUpdateFlanking(MovementObject@ target) {
             sub_goal_pick_time = time + RangedRandomFloat(0.8f, 1.4f);
             ai_attacking = true;
             aio_flanking_target = -1;
-            AIOLog("flank_strike behind=" + behind + " busy=" + busy);
+            if(aio_log) AIOLog("flank_strike behind=" + behind + " busy=" + busy);
         }
     }
 }
@@ -4274,7 +4275,7 @@ void AIOCheckSurrounded() {
         wants_to_roll = true;
     }
 
-    AIOLog("escape_surround enemies=" + dirs.size());
+    if(aio_log) AIOLog("escape_surround enemies=" + dirs.size());
 }
 
 vec3 AIOEscapeMovement() {

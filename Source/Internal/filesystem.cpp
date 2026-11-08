@@ -45,6 +45,8 @@
 #include <iterator>
 #include <set>
 #include <algorithm>
+#include <unordered_map>
+#include <mutex>
 #include <cerrno>
 
 using std::endl;
@@ -586,6 +588,31 @@ void CreateDirsFromPath(const string& base, const string& path) {
         CreateParentDirs(writtenPath + it + string("/"));
         writtenPath += it + string("/");
     }
+}
+
+namespace {
+std::mutex file_lookups_mutex;
+std::unordered_map<std::string, bool> file_lookups;  // (flags|path -> exists)
+}  // namespace
+
+bool FileExistsCached(const std::string& path, PathFlagsBitfield flags) {
+    std::string key = std::to_string(flags) + "|" + path;
+    {
+        std::lock_guard<std::mutex> lock(file_lookups_mutex);
+        auto found = file_lookups.find(key);
+        if (found != file_lookups.end()) {
+            return found->second;
+        }
+    }
+    bool exists = FileExists(path, flags);
+    std::lock_guard<std::mutex> lock(file_lookups_mutex);
+    file_lookups[key] = exists;
+    return exists;
+}
+
+void ClearFileLookups() {
+    std::lock_guard<std::mutex> lock(file_lookups_mutex);
+    file_lookups.clear();
 }
 
 bool FileExists(const char* path, PathFlagsBitfield flags) {

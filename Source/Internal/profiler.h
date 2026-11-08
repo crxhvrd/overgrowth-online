@@ -179,19 +179,35 @@ struct FrameTimerZone {
     ~FrameTimerZone();
 };
 
+// ... and the CPU zones (the game update above all) are timed on the CPU only.
+// Enter/leave pairs and idle/stall zones stay off (unbalanced, or waits). While
+// they're off a zone is one flag test: its name's arguments aren't even evaluated
+extern bool g_frame_timer_cpu_zones;  // (Graphics/frame_timers.cpp: timers on, CPU zones on)
+void FrameTimerEndCpuZone(int depth);
+struct FrameTimerCpuZone {
+    int depth;  // the timers' stack depth it opened (0: not timed)
+    explicit FrameTimerCpuZone(int opened) : depth(opened) {}
+    ~FrameTimerCpuZone() {
+        if (depth > 0) {
+            FrameTimerEndCpuZone(depth);
+        }
+    }
+    static int Open(const char* fmt, ...);
+};
+
 #define MERGE_HELPER(a, b) a##b
 #define MERGE(a, b) MERGE_HELPER(a, b)
 
 #define PROFILER_ENTER(ctx, ...)
 #define PROFILER_LEAVE(ctx)
-#define PROFILER_ZONE(ctx, ...)
+#define PROFILER_ZONE(ctx, ...) FrameTimerCpuZone MERGE(p, __LINE__)(g_frame_timer_cpu_zones ? FrameTimerCpuZone::Open(__VA_ARGS__) : 0);
 #define PROFILER_ZONE_STALL(ctx, str)
 #define PROFILER_ZONE_IDLE(ctx, str)
 #define PROFILER_GPU_ZONE(ctx, ...) FrameTimerZone MERGE(p, __LINE__)(__VA_ARGS__);
 #define PROFILER_ENTER_STALL_THRESHOLD(ctx, match_id_ptr, u_sec, str)
 #define PROFILER_LEAVE_THRESHOLD(ctx, match_id)
 #define PROFILER_ENTER_DYNAMIC_STRING(ctx, str)
-#define PROFILER_ZONE_DYNAMIC_STRING(ctx, str)
+#define PROFILER_ZONE_DYNAMIC_STRING(ctx, str) FrameTimerCpuZone MERGE(p, __LINE__)(g_frame_timer_cpu_zones ? FrameTimerCpuZone::Open("%s", (str)) : 0);
 #define PROFILER_NAME_TIMELINE(ctx, str)
 #define PROFILER_NAME_THREAD(ctx, str)
 #define PROFILER_TICK(ctx)

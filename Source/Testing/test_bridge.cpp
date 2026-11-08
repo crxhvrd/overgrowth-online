@@ -32,6 +32,8 @@
 #include <Graphics/shaders.h>
 #include <Graphics/camera.h>
 #include <Graphics/frame_timers.h>
+#include <Testing/sampler.h>
+#include <Threading/job_system.h>
 #include <Graphics/render_backend.h>
 #include <Graphics/Vulkan/vk_backend.h>
 #include <Graphics/Vulkan/vk_gl.h>
@@ -534,11 +536,26 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         }
 
         out["started"] = ready;
+    } else if (cmd == "profile") {
+        // Overgrowth Online: the sampling profiler (Testing/sampler.h). {"seconds": s,
+        // "interval_ms": ms} starts it; {"top": n} (or nothing) asks: "running" until done,
+        // then the hottest native and script functions
+        if (req.isMember("seconds")) {
+            out["started"] = Sampler::Start(req["seconds"].asDouble(), req.get("interval_ms", 1.0).asDouble());
+        } else {
+            Json::Value result = Sampler::Result(req.get("top", 40).asInt());
+            for (const std::string& key : result.getMemberNames()) {
+                out[key] = result[key];
+            }
+        }
     } else if (cmd == "perf") {
         // Overgrowth Online: the frame timers (Graphics/frame_timers.h): {"enable": bool},
         // and the last one-second window, every zone's GPU and CPU time per frame
         if (req.isMember("enable")) {
             FrameTimers::SetEnabled(req["enable"].asBool());
+        }
+        if (req.isMember("cpu_zones")) {
+            FrameTimers::SetCpuZones(req["cpu_zones"].asBool());
         }
         FrameTimers::Snapshot snap = FrameTimers::Last();
         out["on"] = FrameTimers::g_on;
@@ -546,6 +563,17 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         out["frames"] = snap.frames;
         out["frame_ms"] = snap.frame_ms;
         out["frame_ms_max"] = snap.frame_ms_max;
+        out["frame_ms_p99"] = snap.frame_ms_p99;
+        out["worker_busy_ms"] = snap.worker_busy_ms;  // (the job system: its workers' time per frame)
+        out["workers"] = Jobs::WorkerCount();
+        out["job_violations"] = Jobs::Violations();
+        if (req.get("frame_list", false).asBool()) {
+            Json::Value list(Json::arrayValue);
+            for (float ms : snap.frame_list) {
+                list.append(ms);
+            }
+            out["frame_list"] = list;
+        }
         Json::Value zones(Json::arrayValue);
         for (const FrameTimers::Zone& z : snap.zones) {
             Json::Value v;
@@ -554,6 +582,7 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
             v["gpu_ms"] = z.gpu_ms;
             v["cpu_ms"] = z.cpu_ms;
             v["calls"] = z.calls;
+            v["cpu_only"] = z.cpu_only;
             zones.append(v);
         }
         out["zones"] = zones;

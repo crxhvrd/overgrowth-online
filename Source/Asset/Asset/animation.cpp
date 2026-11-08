@@ -52,6 +52,7 @@
 #include <cmath>
 #include <cassert>
 #include <sstream>
+#include <unordered_map>
 
 using std::endl;
 using std::map;
@@ -360,16 +361,23 @@ void Animation::Center() {
     RecalcCaches();
 }
 
+// Overgrowth Online: a skeleton by its path, loaded once. Every pose evaluation
+// retargets, and LoadSync scans the whole asset list by name (and counts references)
+// each time; the few skeletons stay loaded for the session (never freed: at exit
+// the asset manager is gone before statics would let go of their references)
+static const SkeletonFileData& RetargetSkeleton(const string& path) {
+    static std::unordered_map<string, SkeletonAssetRef>& skeletons = *new std::unordered_map<string, SkeletonAssetRef>();
+    auto found = skeletons.find(path);
+    if (found == skeletons.end()) {
+        found = skeletons.emplace(path, Engine::Instance()->GetAssetManager()->LoadSync<SkeletonAsset>(path)).first;
+    }
+    return found->second->GetData();
+}
+
 void Retarget(const AnimInput& anim_input, AnimOutput& anim_output, const string& old_path) {
     PROFILER_ZONE(g_profiler_ctx, "Retargeting");
-    PROFILER_ENTER(g_profiler_ctx, "Get SkeletonAssetRefs");
-    SkeletonAssetRef old_sar = Engine::Instance()->GetAssetManager()->LoadSync<SkeletonAsset>(old_path);
-    SkeletonAssetRef new_sar = Engine::Instance()->GetAssetManager()->LoadSync<SkeletonAsset>(anim_input.retarget_new);
-    PROFILER_LEAVE(g_profiler_ctx);
-    PROFILER_ENTER(g_profiler_ctx, "Get SkeletonFileData");
-    const SkeletonFileData& old_data = old_sar->GetData();
-    const SkeletonFileData& new_data = new_sar->GetData();
-    PROFILER_LEAVE(g_profiler_ctx);
+    const SkeletonFileData& old_data = RetargetSkeleton(old_path);
+    const SkeletonFileData& new_data = RetargetSkeleton(anim_input.retarget_new);
     // Add bones that don't exist in original skeleton
     anim_output.matrices.resize(new_data.bone_mats.size());
     anim_output.physics_weights.resize(new_data.bone_mats.size());
@@ -501,10 +509,7 @@ void Retarget(const AnimInput& anim_input, AnimOutput& anim_output, const string
 
     if (anim_input.mirrored) {
         PROFILER_ZONE(g_profiler_ctx, "Mirror animation");
-        SkeletonAssetRef sar = Engine::Instance()->GetAssetManager()->LoadSync<SkeletonAsset>(AnimationRetargeter::Instance()->GetSkeletonFile(anim_input.retarget_new));
-        // SkeletonAssets::Instance()->ReturnRef(AnimationRetargeter::Instance()->GetSkeletonFile(anim_input.retarget_new));
-
-        const SkeletonFileData& skeleton_file_data = sar->GetData();
+        const SkeletonFileData& skeleton_file_data = RetargetSkeleton(AnimationRetargeter::Instance()->GetSkeletonFile(anim_input.retarget_new));
         const vector<int>& symmetry = skeleton_file_data.symmetry;
 
         // Mirror all rotations

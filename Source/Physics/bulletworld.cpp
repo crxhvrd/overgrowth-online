@@ -22,6 +22,7 @@
 //-----------------------------------------------------------------------------
 
 #include <Physics/bulletworld.h>
+#include <Physics/bullet_jobs.h>
 #include <Physics/physics.h>
 #include <Physics/bulletobject.h>
 #include <Physics/bulletcollision.h>
@@ -64,6 +65,8 @@
 #include <BulletCollision/Gimpact/btGImpactShape.h>
 #include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 #include <BulletCollision/NarrowPhaseCollision/btRaycastCallback.h>
+#include <BulletCollision/CollisionDispatch/btCollisionDispatcherMt.h>
+#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorldMt.h>
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
@@ -112,14 +115,39 @@ static bool CustomMaterialCombinerCallback(btManifoldPoint &cp, const btCollisio
 }
 
 extern ContactAddedCallback gContactAddedCallback;
-void BulletWorld::Init() {
+void BulletWorld::Init(bool parallel) {
     Dispose();
+    // (runs on the workers when parallel: it only reads the two objects and writes the contact)
     gContactAddedCallback = CustomMaterialCombinerCallback;
     // collision_configuration_ = new btDefaultCollisionConfiguration(); // 4 mb ram
 #ifdef ALLOW_SOFTBODY
     collision_configuration_ = new btSoftBodyRigidBodyCollisionConfiguration();
 #else
     collision_configuration_ = new btDefaultCollisionConfiguration();
+#endif
+#ifndef ALLOW_SOFTBODY
+    // Overgrowth Online (perf B3): the level's world on all cores. The collision tests
+    // pair by pair (most of the step: characters' compound shapes), the islands (each
+    // with the same sequential solver as before) and the integration go to the job
+    // system; the broadphase and everything that calls scripts stay on this thread
+    parallel = parallel && BulletJobs::Active();
+    if (parallel) {
+        collision_dispatcher_ = new btCollisionDispatcherMt(collision_configuration_, 16);  // (16 pairs a chunk)
+        btGImpactCollisionAlgorithm::registerAlgorithm(collision_dispatcher_);
+        broadphase_interface_ = new btDbvtBroadphase();
+        btConstraintSolverPoolMt* solver_pool = new btConstraintSolverPoolMt(btGetTaskScheduler()->getNumThreads());
+        constraint_solver_ = solver_pool;
+        dynamics_world_ = new btDiscreteDynamicsWorldMt(collision_dispatcher_,
+                                                        broadphase_interface_,
+                                                        solver_pool,
+                                                        NULL,  // (no parallel solver for one big island: islands in parallel, each as before)
+                                                        collision_configuration_);
+        dynamics_world_->setForceUpdateAllAabbs(false);
+        soft_body_world_info_.m_dispatcher = collision_dispatcher_;
+        soft_body_world_info_.m_broadphase = broadphase_interface_;
+        soft_body_world_info_.m_sparsesdf.Initialize();
+        return;
+    }
 #endif
     collision_dispatcher_ = new btCollisionDispatcher(collision_configuration_);
     btGImpactCollisionAlgorithm::registerAlgorithm(collision_dispatcher_);
@@ -220,9 +248,18 @@ void BulletWorld::Dispose() {
 
 void BulletWorld::Update(float timestep) {
     if (dynamics_world_) {
-        dynamics_world_->stepSimulation(1.0f, 1, timestep);
-        HandleCollisionEffects();
-        UpdateBulletObjectTransforms();
+        {
+            PROFILER_ZONE(g_profiler_ctx, "stepSimulation");
+            dynamics_world_->stepSimulation(1.0f, 1, timestep);
+        }
+        {
+            PROFILER_ZONE(g_profiler_ctx, "Collision effects");  // (scripts: Contact, Collided per contact point)
+            HandleCollisionEffects();
+        }
+        {
+            PROFILER_ZONE(g_profiler_ctx, "Object transforms");
+            UpdateBulletObjectTransforms();
+        }
         RemoveTempConstraints();
     }
 }
@@ -530,7 +567,7 @@ void BulletWorld::GetSweptShapeCollisions(const vec3 &start,
                                          end_transform,
                                          callback);
     } else {
-        LOGW << "Tried to do an invalid sweep collision check with a zero distance between start and end" << std::endl;
+        LOGW_ONCE("Tried to do an invalid sweep collision check with a zero distance between start and end");  // (Overgrowth Online: once: scripts do it every step)
     }
 }
 

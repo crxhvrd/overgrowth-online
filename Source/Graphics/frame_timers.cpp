@@ -12,6 +12,7 @@
 #include <Internal/profiler.h>
 #include <Internal/config.h>
 #include <Logging/logdata.h>
+#include <Threading/job_system.h>
 
 #include <glad/glad.h>
 #include <imgui.h>
@@ -21,12 +22,16 @@
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 #include <thread>
 #include <unordered_map>
+
+bool g_frame_timer_cpu_zones = false;  // (Internal/profiler.h: g_on && g_cpu_zones, for PROFILER_ZONE)
 
 namespace FrameTimers {
 
 bool g_on = false;
+bool g_cpu_zones = false;
 bool g_debug_groups = false;
 
 namespace {
@@ -47,6 +52,7 @@ struct Open {
     GLuint q_begin;
     Clock::time_point t0;
     bool group;
+    bool cpu_only;
 };
 
 struct FrameSlot {
@@ -60,6 +66,8 @@ struct Acc {
     double gpu_ns = 0.0;
     double cpu_ms = 0.0;
     double calls = 0.0;
+    double cpu_only_ms = 0.0;  // (counted at once, per frame begun: no GPU results to wait for)
+    double cpu_only_calls = 0.0;
 };
 
 FrameSlot slots[kFrames];
@@ -69,6 +77,7 @@ std::unordered_map<std::string, int> zone_ids;
 std::vector<std::string> zone_paths;
 std::vector<int> zone_depths;
 std::vector<Acc> acc;
+std::unordered_map<uint64_t, int> cpu_zone_keys;  // (parent zone, literal name's address or formatted name's hash) -> zone
 
 std::thread::id render_thread;
 bool have_thread = false;
@@ -81,6 +90,8 @@ bool have_last_frame = false;
 double frame_sum_ms = 0.0;
 double frame_max_ms = 0.0;
 int wall_frames = 0;
+int cpu_frames = 0;  // frames begun in the window (the CPU-only zones' divisor)
+std::vector<float> frame_list;
 int windows_since_log = 0;
 Snapshot last;
 
@@ -125,14 +136,17 @@ std::string Collapse(const char* name) {
     return out;
 }
 
-int ZoneId(const std::string& name) {
-    int parent = -1;
+int ParentZone() {
     for (auto it = stack.rbegin(); it != stack.rend(); ++it) {
         if (it->zone >= 0) {
-            parent = it->zone;
-            break;
+            return it->zone;
         }
     }
+    return -1;
+}
+
+int ZoneId(const std::string& name) {
+    int parent = ParentZone();
 
     std::string path = parent < 0 ? name : zone_paths[parent] + "/" + name;
     auto found = zone_ids.find(path);
@@ -181,10 +195,18 @@ void CloseWindow(Clock::time_point now) {
     snap.frames = window_frames;
     snap.frame_ms = wall_frames > 0 ? frame_sum_ms / wall_frames : 0.0;
     snap.frame_ms_max = frame_max_ms;
+    snap.frame_list = frame_list;
+    snap.worker_busy_ms = wall_frames > 0 ? Jobs::TakeWorkerBusyMs() / wall_frames : 0.0;
+    if (!frame_list.empty()) {
+        std::vector<float> sorted = frame_list;
+        size_t at = std::min(sorted.size() - 1, (size_t)(sorted.size() * 0.99));
+        std::nth_element(sorted.begin(), sorted.begin() + at, sorted.end());
+        snap.frame_ms_p99 = sorted[at];
+    }
 
     std::vector<int> order;
     for (int i = 0; i < (int)acc.size(); ++i) {
-        if (acc[i].calls > 0.0) {
+        if (acc[i].calls > 0.0 || acc[i].cpu_only_calls > 0.0) {
             order.push_back(i);
         }
     }
@@ -197,6 +219,11 @@ void CloseWindow(Clock::time_point now) {
         z.gpu_ms = acc[i].gpu_ns / 1.0e6 / window_frames;
         z.cpu_ms = acc[i].cpu_ms / window_frames;
         z.calls = acc[i].calls / window_frames;
+        if (acc[i].cpu_only_calls > 0.0 && cpu_frames > 0) {
+            z.cpu_ms += acc[i].cpu_only_ms / cpu_frames;
+            z.calls += acc[i].cpu_only_calls / cpu_frames;
+            z.cpu_only = acc[i].calls == 0.0;
+        }
         snap.zones.push_back(z);
     }
     last = snap;
@@ -206,6 +233,8 @@ void CloseWindow(Clock::time_point now) {
     }
     window_frames = 0;
     wall_frames = 0;
+    cpu_frames = 0;
+    frame_list.clear();
     frame_sum_ms = 0.0;
     frame_max_ms = 0.0;
     window_start = now;
@@ -235,6 +264,7 @@ void Init() {
     render_thread = std::this_thread::get_id();
     have_thread = true;
     g_debug_groups = config["gl_debug_groups"].toNumber<bool>() && (UseVulkan() || GLAD_GL_KHR_debug);  // (Vulkan: labels)
+    SetCpuZones(config["frame_timers_cpu"].toNumber<bool>());
     SetEnabled(config["frame_timers"].toNumber<bool>());
 }
 
@@ -253,7 +283,13 @@ void SetEnabled(bool on) {
         }
     }
     g_on = on;
+    g_frame_timer_cpu_zones = g_on && g_cpu_zones;
     LOGI << "Frame timers " << (on ? "on" : "off") << std::endl;
+}
+
+void SetCpuZones(bool on) {
+    g_cpu_zones = on;
+    g_frame_timer_cpu_zones = g_on && g_cpu_zones;
 }
 
 void BeginFrame() {
@@ -266,6 +302,7 @@ void BeginFrame() {
         double ms = Ms(now - last_frame);
         frame_sum_ms += ms;
         frame_max_ms = std::max(frame_max_ms, ms);
+        frame_list.push_back((float)ms);
         ++wall_frames;
     }
     last_frame = now;
@@ -286,6 +323,7 @@ void BeginFrame() {
     } else if (std::chrono::duration<double>(now - window_start).count() >= 1.0 && window_frames > 0) {
         CloseWindow(now);
     }
+    ++cpu_frames;  // (this frame's update comes after its draw: counted in this window)
 }
 
 void Begin(const char* name) {
@@ -294,6 +332,7 @@ void Begin(const char* name) {
     o.zone = -1;
     o.q_begin = 0;
     o.group = g_debug_groups;
+    o.cpu_only = false;
 
     if (o.group) {
         Graphics::Instance()->PushDebugGroup(collapsed.c_str());
@@ -323,6 +362,67 @@ void End() {
     }
     if (o.group) {
         Graphics::Instance()->PopDebugGroup();
+    }
+}
+
+int BeginCpu(const char* key, const char* name) {
+    int parent = ParentZone();
+    int zone;
+    uint64_t k;
+    if (key != nullptr) {
+        k = ((uint64_t)(uintptr_t)key) ^ ((uint64_t)(uint32_t)(parent + 1) << 48);
+    } else {
+        // A formatted name, its digit runs collapsed in place, by its hash (FNV-1a)
+        char collapsed[192];
+        size_t n = 0;
+        bool digits = false;
+        for (const char* c = name; *c && n + 1 < sizeof(collapsed); ++c) {
+            if (isdigit((unsigned char)*c)) {
+                if (!digits) {
+                    collapsed[n++] = '#';
+                }
+                digits = true;
+            } else {
+                collapsed[n++] = *c;
+                digits = false;
+            }
+        }
+        collapsed[n] = 0;
+        k = 14695981039346656037ull;
+        for (size_t i = 0; i < n; ++i) {
+            k = (k ^ (unsigned char)collapsed[i]) * 1099511628211ull;
+        }
+        k = (k ^ (uint64_t)(uint32_t)(parent + 1)) * 1099511628211ull;
+    }
+    auto found = cpu_zone_keys.find(k);
+    if (found != cpu_zone_keys.end()) {
+        zone = found->second;
+    } else {
+        zone = ZoneId(Collapse(name));
+        cpu_zone_keys[k] = zone;
+    }
+
+    Open o;
+    o.zone = zone;
+    o.q_begin = 0;
+    o.group = false;
+    o.cpu_only = true;
+    o.t0 = Clock::now();
+    stack.push_back(o);
+    return (int)stack.size();
+}
+
+void EndCpu(int depth) {
+    // (only the zone this one opened: a frame's start in between dropped it)
+    if ((int)stack.size() != depth || !stack.back().cpu_only) {
+        return;
+    }
+    Open o = stack.back();
+    stack.pop_back();
+    if (g_on) {
+        Acc& z = acc[o.zone];
+        z.cpu_only_ms += Ms(Clock::now() - o.t0);
+        z.cpu_only_calls += 1.0;
     }
 }
 
@@ -385,4 +485,26 @@ FrameTimerZone::~FrameTimerZone() {
     if (active) {
         FrameTimers::End();
     }
+}
+
+// PROFILER_ZONE: a CPU-only zone (the game update), on the render thread while
+// the timers and their CPU zones are on. A name without arguments is looked up by
+// its address. Returns the stack depth (0: not timed)
+int FrameTimerCpuZone::Open(const char* fmt, ...) {
+    if (!FrameTimers::OnRenderThread()) {
+        return 0;
+    }
+    if (strchr(fmt, '%') == nullptr) {
+        return FrameTimers::BeginCpu(fmt, fmt);
+    }
+    char name[192];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(name, sizeof(name), fmt, args);
+    va_end(args);
+    return FrameTimers::BeginCpu(nullptr, name);
+}
+
+void FrameTimerEndCpuZone(int depth) {
+    FrameTimers::EndCpu(depth);
 }

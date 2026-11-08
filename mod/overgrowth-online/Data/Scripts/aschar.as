@@ -14321,13 +14321,11 @@ void PreDrawCameraNoCull(float curr_game_time) {
     if(queue_fix_discontinuity) {
         Update(1);
 
-        Log(info, "FixDiscontinuity");
         queue_reset_secondary_animation = 4;
         this_mo.FixDiscontinuity();
         FinalAnimationMatrixUpdate(1);
 
         if(this_mo.controlled && !dialogue_control) {
-            Log(info, "*****ApplyCameraControls");
             Timestep ts(time_step, 100);
             ApplyCameraControls(ts);
             Timestep ts2(time_step, 1);

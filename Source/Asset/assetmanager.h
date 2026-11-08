@@ -35,6 +35,7 @@
 #include <Internal/error.h>
 
 #include <Logging/logdata.h>
+#include <Threading/job_system.h>
 #include <Utility/timing.h>
 #include <Threading/sdl_wrapper.h>
 #include <Utility/simple_vector.h>
@@ -270,6 +271,7 @@ class AssetManager {
     // Load flags are specifically used by texture loading.
     template <typename TAsset>
     AssetRef<TAsset> LoadSync(const std::string& instr, uint32_t load_flags, uint32_t hold_load_mask) {
+        Jobs::CheckNotInJob("AssetManager::LoadSync");  // (Overgrowth Online: the asset list has no locks)
         std::string str = SanitizePath(instr);
 
         uint32_t internal_id = AllocateAsset<TAsset>(str, load_flags);

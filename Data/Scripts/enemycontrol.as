@@ -1051,7 +1051,6 @@ void MindReceiveMessage(string msg) {
             combat_allowed = false;
         }
     } else if(token == "notice") {
-        Log(info, "Received notice message");
         token_iter.FindNextToken(msg);
         int id = atoi(token_iter.GetToken(msg));
         situation.Notice(id);

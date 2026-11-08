@@ -144,8 +144,8 @@ unsigned long Sound::CreateHandle() {
 }
 
 void Sound::Play(const unsigned long &handle, SoundPlayInfo spi) {
-    char abs_path[kPathSize];
-    if (FindFilePath(spi.path.c_str(), abs_path, kPathSize, kDataPaths | kModPaths) == -1) {
+    // (Overgrowth Online: only the check, remembered: the audio finds the file itself)
+    if (!FileExistsCached(spi.path, kDataPaths | kModPaths)) {
         std::string error_text = "Could not find sound file: " + std::string(spi.path);
         DisplayError("Error", error_text.c_str());
     }

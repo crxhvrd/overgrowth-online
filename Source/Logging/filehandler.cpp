@@ -24,6 +24,8 @@
 
 #include <Compat/fileio.h>
 
+#include <chrono>
+#include <cstring>
 #include <ctime>
 #include <iomanip>
 #include <vector>
@@ -113,6 +115,7 @@ FileHandler::FileHandler(string path, size_t _startup_file_size, size_t _max_fil
     }
 
     m_file << "START" << endl;
+    written = (size_t)std::max<std::streamoff>(0, m_file.tellp());
 }
 
 FileHandler::~FileHandler() {
@@ -122,7 +125,7 @@ FileHandler::~FileHandler() {
 
 void FileHandler::Log(LogSystem::LogType type, int row, const char* filename, const char* cat, const char* message_prefix, const char* message) {
     if (m_file.is_open()) {
-        if (m_file.tellg() > (long)max_file_size) {
+        if (written > max_file_size) {
             m_file << "STOPPED WRITING BECAUSE FILE REACHED MAX LIMIT" << endl;
             m_file.close();
             cerr << "Shut down writing to log file because max file limit was reached." << endl;
@@ -141,9 +144,17 @@ void FileHandler::Log(LogSystem::LogType type, int row, const char* filename, co
                    << " ";
             m_file << message_prefix;
             m_file << message;
-            // Overgrowth Online: hand each line to the OS at once, so a crash
-            // (which kills the process with this buffer in it) keeps the log's end
-            m_file.flush();
+            written += 20 + strlen(message_prefix) + strlen(message);
+            // Overgrowth Online: warnings and errors go to the OS at once, so a crash (which
+            // kills the process with this buffer in it) keeps them; other lines at least
+            // every quarter second (a flush for every line cost the game in fights)
+            uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+                                  std::chrono::steady_clock::now().time_since_epoch())
+                                  .count();
+            if (type >= LogSystem::warning || now_ms - last_flush_ms >= 250) {
+                m_file.flush();
+                last_flush_ms = now_ms;
+            }
         }
     }
 }

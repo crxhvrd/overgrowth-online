@@ -101,8 +101,7 @@ void AnimationClient::SetAnimation(const std::string &path,
     if (animation_config.kForceIdleAnim) {
         new_ref = ReturnAnimationAssetRef("Data/Animations/r_actionidle.xml");
     } else {
-        Path new_path = FindFilePath(path);
-        if (new_path.isValid()) {
+        if (FileExistsCached(path, kAnyPath)) {  // (Overgrowth Online: remembered; every animation change asked the disk)
             new_ref = ReturnAnimationAssetRef(path);
             if (new_ref.valid() == false) {
                 new_ref = ReturnAnimationAssetRef("Data/Animations/r_actionidle.xml");

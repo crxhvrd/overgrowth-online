@@ -83,6 +83,7 @@
 #include <cassert>
 #include <algorithm>
 #include <cstring>
+#include <unordered_set>
 
 extern const bool kUseShadowCache;
 static const bool _draw_collision_shapes = false;
@@ -932,7 +933,10 @@ void SceneGraph::Update(float timestep, float curr_game_time) {
         bullet_world_->Update(timestep);
     }
     // uint64_t end_count = SDL_GetPerformanceCounter();
-    plant_bullet_world_->Update(timestep);
+    {
+        PROFILER_ZONE(g_profiler_ctx, "Plant world update");
+        plant_bullet_world_->Update(timestep);
+    }
 
     {
         PROFILER_ZONE(g_profiler_ctx, "Abstract world collisions");
@@ -1162,7 +1166,11 @@ Object* SceneGraph::GetObjectFromID(int object_id) {
     if (object_at_id != NULL) {
         return object_at_id;
     } else {
-        LOGW << "Requested an object with id " << object_id << " but found none. Last info known of this id is: " << GetDestroyedObjectInfo(object_id) << std::endl;
+        // (Overgrowth Online: once per id: scripts asking about a removed object every step flooded the log)
+        static std::unordered_set<int>& warned = *new std::unordered_set<int>();
+        if (warned.insert(object_id).second) {
+            LOGW << "Requested an object with id " << object_id << " but found none. Last info known of this id is: " << GetDestroyedObjectInfo(object_id) << std::endl;
+        }
     }
     return NULL;
 }

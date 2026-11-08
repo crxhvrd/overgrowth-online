@@ -34,6 +34,7 @@
 #include <Internal/common.h>
 #include <Internal/timer.h>
 #include <Internal/profiler.h>
+#include <Threading/job_system.h>
 
 #include <Objects/movementobject.h>
 #include <Objects/decalobject.h>
@@ -733,6 +734,7 @@ void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_ti
                 color[3] = 0.0f;
             }
             if (!particle_type->collision_decal.empty() && !collided) {
+                PROFILER_ZONE(g_profiler_ctx, "Particle decal");  // (an entity file loaded per hit)
                 // Create decal at collision point
                 EntityDescriptionList desc_list;
                 std::string file_type;
@@ -829,6 +831,7 @@ void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_ti
                 */
             }
             if (!particle_type->collision_event.empty() && !collided) {
+                PROFILER_ZONE(g_profiler_ctx, "Particle sound");
                 const MaterialEvent* me = scenegraph->GetMaterialEvent(particle_type->collision_event, point);
                 if (me && !me->soundgroup.empty()) {
                     // SoundGroupRef sgr = SoundGroups::Instance()->ReturnRef(me->soundgroup);
@@ -846,6 +849,7 @@ void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_ti
                 color[3] = 0.0f;
             }
             if (!particle_type->collision_event.empty() && !collided) {
+                PROFILER_ZONE(g_profiler_ctx, "Particle sound");
                 Object* o = scenegraph->GetObjectFromID(char_id);
                 const MaterialEvent& me = o->GetMaterialEvent(particle_type->collision_event, point);
                 if (!me.soundgroup.empty()) {
@@ -859,6 +863,7 @@ void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_ti
                 }
             }
             if (particle_type->character_add_blood && !collided) {
+                PROFILER_ZONE(g_profiler_ctx, "Particle blood");
                 MovementObject* mo = (MovementObject*)scenegraph->GetObjectFromID(char_id);
                 mo->rigged_object()->AddBloodAtPoint(point);
             }
@@ -1286,6 +1291,7 @@ unsigned ParticleSystem::CreateID() {
 }
 
 unsigned ParticleSystem::MakeParticle(SceneGraph* scenegraph, const std::string& path, const vec3& pos, const vec3& vel, const vec3& tint) {
+    Jobs::CheckNotInJob("MakeParticle");  // (Overgrowth Online: the particle list is the update's)
     // ParticleTypeRef particle_type_ref = particle_types->ReturnRef(path);
     ParticleTypeRef particle_type_ref = Engine::Instance()->GetAssetManager()->LoadSync<ParticleType>(path);
     Particle* particle = new Particle();

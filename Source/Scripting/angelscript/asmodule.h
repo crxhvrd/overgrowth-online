@@ -33,6 +33,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <unordered_map>
 #include <map>
 
 class asIScriptModule;
@@ -210,6 +211,12 @@ class ASModule {
     const ScriptFile* script_file_ptr_;
 
     std::map<void*, void*> fast_var_ptr_map;
+    // Overgrowth Online: GetVarPtr's cache, by the name's hash (the name kept to check it)
+    struct VarPtrByName {
+        std::string name;
+        void* ptr;
+    };
+    std::unordered_map<uint64_t, VarPtrByName> var_ptr_by_name;
     std::map<std::string, asIScriptFunction*> func_map_;
     Path script_path_;
     std::list<VarStorage> saved_vars_;

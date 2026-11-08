@@ -52,4 +52,6 @@ class FileHandler : public LogHandler {
     std::fstream m_file;
     size_t startup_file_size;
     size_t max_file_size;
+    size_t written = 0;               // (Overgrowth Online: the file's size, counted; a seek per line cost fights)
+    uint64_t last_flush_ms = 0;
 };

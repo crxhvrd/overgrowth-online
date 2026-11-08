@@ -1199,7 +1199,7 @@ void MovementObject::Update(float timestep) {
             // printf("%s\n",snd_path.c_str());
             std::string lpsnc_path = snd_path.substr(0, snd_path.size() - 4) + ".txt";
             // printf("%s\n",lpsnc_path.c_str());
-            if (FileExists(lpsnc_path.c_str(), kDataPaths | kModPaths)) {
+            if (FileExistsCached(lpsnc_path, kDataPaths | kModPaths)) {  // (Overgrowth Online: remembered)
                 // LipSyncFileRef lsf_ref = LipSyncFiles::Instance()->ReturnRef(lpsnc_path.c_str());
                 LipSyncFileRef lsf_ref = Engine::Instance()->GetAssetManager()->LoadSync<LipSyncFile>(lpsnc_path.c_str());
                 rigged_object_->lipsync_reader.AttachTo(lsf_ref);
@@ -1893,15 +1893,16 @@ void DefineMovementObjectTypePublic(ASContext* as_context) {
     as_context->RegisterObjectMethod("MovementObject", "bool HasFunction(const string &in function_definition)", asMETHOD(MovementObject, HasFunction), asCALL_THISCALL);
     as_context->RegisterObjectMethod("MovementObject", "int QueryIntFunction(string function)", asMETHOD(MovementObject, QueryIntFunction), asCALL_THISCALL);
     as_context->RegisterObjectMethod("MovementObject", "void Execute(string code)", asMETHOD(MovementObject, Execute), asCALL_THISCALL);
-    as_context->RegisterObjectMethod("MovementObject", "bool HasVar(string var_name)", asMETHOD(MovementObject, ASHasVar), asCALL_THISCALL);
-    as_context->RegisterObjectMethod("MovementObject", "int GetIntVar(string var_name)", asMETHOD(MovementObject, ASGetIntVar), asCALL_THISCALL);
+    // (Overgrowth Online: names by reference, not copied: scripts call these many times a step)
+    as_context->RegisterObjectMethod("MovementObject", "bool HasVar(const string &in var_name)", asMETHOD(MovementObject, ASHasVar), asCALL_THISCALL);
+    as_context->RegisterObjectMethod("MovementObject", "int GetIntVar(const string &in var_name)", asMETHOD(MovementObject, ASGetIntVar), asCALL_THISCALL);
     as_context->RegisterObjectMethod("MovementObject", "int GetArrayIntVar(const string &in var_name, int index)", asMETHOD(MovementObject, ASGetArrayIntVar), asCALL_THISCALL);
-    as_context->RegisterObjectMethod("MovementObject", "float GetFloatVar(string var_name)", asMETHOD(MovementObject, ASGetFloatVar), asCALL_THISCALL);
-    as_context->RegisterObjectMethod("MovementObject", "bool GetBoolVar(string var_name)", asMETHOD(MovementObject, ASGetBoolVar), asCALL_THISCALL);
-    as_context->RegisterObjectMethod("MovementObject", "void SetIntVar(string var_name, int value)", asMETHOD(MovementObject, ASSetIntVar), asCALL_THISCALL);
+    as_context->RegisterObjectMethod("MovementObject", "float GetFloatVar(const string &in var_name)", asMETHOD(MovementObject, ASGetFloatVar), asCALL_THISCALL);
+    as_context->RegisterObjectMethod("MovementObject", "bool GetBoolVar(const string &in var_name)", asMETHOD(MovementObject, ASGetBoolVar), asCALL_THISCALL);
+    as_context->RegisterObjectMethod("MovementObject", "void SetIntVar(const string &in var_name, int value)", asMETHOD(MovementObject, ASSetIntVar), asCALL_THISCALL);
     as_context->RegisterObjectMethod("MovementObject", "void SetArrayIntVar(const string &in var_name, int index, int value)", asMETHOD(MovementObject, ASSetArrayIntVar), asCALL_THISCALL);
-    as_context->RegisterObjectMethod("MovementObject", "void SetFloatVar(string var_name, float value)", asMETHOD(MovementObject, ASSetFloatVar), asCALL_THISCALL);
-    as_context->RegisterObjectMethod("MovementObject", "void SetBoolVar(string var_name, bool value)", asMETHOD(MovementObject, ASSetBoolVar), asCALL_THISCALL);
+    as_context->RegisterObjectMethod("MovementObject", "void SetFloatVar(const string &in var_name, float value)", asMETHOD(MovementObject, ASSetFloatVar), asCALL_THISCALL);
+    as_context->RegisterObjectMethod("MovementObject", "void SetBoolVar(const string &in var_name, bool value)", asMETHOD(MovementObject, ASSetBoolVar), asCALL_THISCALL);
     as_context->RegisterObjectMethod("MovementObject", "bool OnSameTeam(MovementObject@ other)", asMETHOD(MovementObject, ASOnSameTeam), asCALL_THISCALL);
     // Keeping ReceiveMessage for compatibility
     as_context->RegisterObjectMethod("MovementObject", "void ReceiveMessage(const string &in)", asMETHOD(MovementObject, ReceiveScriptMessage), asCALL_THISCALL);
@@ -4964,39 +4965,39 @@ void MovementObject::Execute(std::string string) {
     as_context->Execute(string);
 }
 
-bool MovementObject::ASHasVar(std::string name) {
+bool MovementObject::ASHasVar(const std::string& name) {
     return as_context->GetVarPtr(name.c_str()) != NULL;
 }
 
-int MovementObject::ASGetIntVar(std::string name) {
+int MovementObject::ASGetIntVar(const std::string& name) {
     return *((int*)as_context->GetVarPtr(name.c_str()));
 }
 
-int MovementObject::ASGetArrayIntVar(std::string name, int index) {
+int MovementObject::ASGetArrayIntVar(const std::string& name, int index) {
     return *((int*)as_context->GetArrayVarPtr(name, index));
 }
 
-float MovementObject::ASGetFloatVar(std::string name) {
+float MovementObject::ASGetFloatVar(const std::string& name) {
     return *((float*)as_context->GetVarPtr(name.c_str()));
 }
 
-bool MovementObject::ASGetBoolVar(std::string name) {
+bool MovementObject::ASGetBoolVar(const std::string& name) {
     return *((bool*)as_context->GetVarPtr(name.c_str()));
 }
 
-void MovementObject::ASSetIntVar(std::string name, int value) {
+void MovementObject::ASSetIntVar(const std::string& name, int value) {
     *(int*)as_context->GetVarPtr(name.c_str()) = value;
 }
 
-void MovementObject::ASSetArrayIntVar(std::string name, int index, int value) {
+void MovementObject::ASSetArrayIntVar(const std::string& name, int index, int value) {
     *(int*)as_context->GetArrayVarPtr(name, index) = value;
 }
 
-void MovementObject::ASSetFloatVar(std::string name, float value) {
+void MovementObject::ASSetFloatVar(const std::string& name, float value) {
     *(float*)as_context->GetVarPtr(name.c_str()) = value;
 }
 
-void MovementObject::ASSetBoolVar(std::string name, bool value) {
+void MovementObject::ASSetBoolVar(const std::string& name, bool value) {
     *(bool*)as_context->GetVarPtr(name.c_str()) = value;
 }
 
