@@ -22,6 +22,7 @@
 //-----------------------------------------------------------------------------
 #include "asfuncs.h"
 
+#include <unordered_map>
 #include <Objects/hotspot.h>
 #include <Objects/decalobject.h>
 #include <Objects/dynamiclightobject.h>
@@ -6428,12 +6429,45 @@ static CScriptArray* AS_GetConfigValueOptions(std::string string) {
     return array;
 }
 
-float AS_GetConfigValueFloat(std::string string) {
-    return config[string].toNumber<float>();
+// Overgrowth Online (perf C4): scripts read config values every update of every character, and
+// each read parsed the text through a string stream. The parse is kept per thread with the text it
+// came from, so a changed value is parsed again
+namespace {
+struct ParsedConfigValue {
+    std::string text;
+    float number = 0.0f;
+    bool flag = false;
+    bool have_number = false, have_flag = false;
+};
+ParsedConfigValue& ParsedConfig(const std::string& key, const std::string& text) {
+    thread_local std::unordered_map<std::string, ParsedConfigValue> parsed;
+    ParsedConfigValue& value = parsed[key];
+    if (value.text != text) {
+        value.text = text;
+        value.have_number = value.have_flag = false;
+    }
+    return value;
+}
+}  // namespace
+
+float AS_GetConfigValueFloat(const std::string& string) {
+    const StringVariant& variant = config[string];
+    ParsedConfigValue& value = ParsedConfig(string, variant.raw());
+    if (!value.have_number) {
+        value.number = variant.toNumber<float>();
+        value.have_number = true;
+    }
+    return value.number;
 }
 
-bool AS_GetConfigValueBool(std::string string) {
-    return config[string].toBool();
+bool AS_GetConfigValueBool(const std::string& string) {
+    const StringVariant& variant = config[string];
+    ParsedConfigValue& value = ParsedConfig(string, variant.raw());
+    if (!value.have_flag) {
+        value.flag = variant.toBool();
+        value.have_flag = true;
+    }
+    return value.flag;
 }
 
 void AS_SetConfigValueString(std::string key, std::string value) {
@@ -6585,13 +6619,13 @@ void AttachConfig(ASContext* context) {
     context->RegisterGlobalFunction("array<string>@ GetConfigValueOptions(string index)",
                                     asFUNCTION(AS_GetConfigValueOptions),
                                     asCALL_CDECL);
-    context->RegisterGlobalFunction("float GetConfigValueFloat(string index)",
+    context->RegisterGlobalFunction("float GetConfigValueFloat(const string &in index)",  // (by reference: Overgrowth Online)
                                     asFUNCTION(AS_GetConfigValueFloat),
                                     asCALL_CDECL);
     context->RegisterGlobalFunction("void SetConfigValueFloat(string key, float value)",
                                     asFUNCTION(AS_SetConfigValueFloat),
                                     asCALL_CDECL);
-    context->RegisterGlobalFunction("bool GetConfigValueBool(string index)",
+    context->RegisterGlobalFunction("bool GetConfigValueBool(const string &in index)",  // (by reference: Overgrowth Online)
                                     asFUNCTION(AS_GetConfigValueBool),
                                     asCALL_CDECL);
     context->RegisterGlobalFunction("void SetConfigValueString(string key, string value)",

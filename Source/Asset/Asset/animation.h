@@ -247,5 +247,7 @@ typedef AssetRef<AnimationAsset> AnimationAssetRef;
 float GetAnimationEventTime(const string& anim_path, const string& event_str);
 AnimationAssetRef ReturnAnimationAssetRef(const string& path);
 string extension(const string& path);
+// Overgrowth Online (perf B5): the skeletons pose retargeting reads, loaded now (main thread)
+void PrepareRetargetSkeletons(const std::string& retarget_new);
 string filename(const string& path);
 void Retarget(const AnimInput& anim_input, AnimOutput& anim_output, const string& old_path);

@@ -53,6 +53,7 @@
 #include <cassert>
 #include <sstream>
 #include <unordered_map>
+#include <shared_mutex>
 
 using std::endl;
 using std::map;
@@ -365,13 +366,43 @@ void Animation::Center() {
 // retargets, and LoadSync scans the whole asset list by name (and counts references)
 // each time; the few skeletons stay loaded for the session (never freed: at exit
 // the asset manager is gone before statics would let go of their references)
+// (perf B5: poses are computed on workers, so the cache has a lock: shared to read, and only
+// a first sight writes, which PrepareRetargetSkeletons does ahead on the main thread; a worker
+// that still misses one is logged by LoadSync's job guard)
+static std::shared_timed_mutex& RetargetSkeletonsMutex() {
+    static std::shared_timed_mutex& mutex = *new std::shared_timed_mutex();
+    return mutex;
+}
+
 static const SkeletonFileData& RetargetSkeleton(const string& path) {
     static std::unordered_map<string, SkeletonAssetRef>& skeletons = *new std::unordered_map<string, SkeletonAssetRef>();
+    {
+        std::shared_lock<std::shared_timed_mutex> lock(RetargetSkeletonsMutex());
+        auto found = skeletons.find(path);
+        if (found != skeletons.end()) {
+            return found->second->GetData();
+        }
+    }
+    std::unique_lock<std::shared_timed_mutex> lock(RetargetSkeletonsMutex());
     auto found = skeletons.find(path);
     if (found == skeletons.end()) {
         found = skeletons.emplace(path, Engine::Instance()->GetAssetManager()->LoadSync<SkeletonAsset>(path)).first;
     }
     return found->second->GetData();
+}
+
+void PrepareRetargetSkeletons(const string& retarget_new) {
+    static bool all_known = false;
+    if (!all_known) {  // (every animation's skeleton file: the "old" side of each retarget)
+        all_known = true;
+        for (const string& file : AnimationRetargeter::Instance()->SkeletonFiles()) {
+            RetargetSkeleton(file);
+        }
+    }
+    if (!retarget_new.empty()) {
+        RetargetSkeleton(retarget_new);
+        RetargetSkeleton(AnimationRetargeter::Instance()->GetSkeletonFile(retarget_new));
+    }
 }
 
 void Retarget(const AnimInput& anim_input, AnimOutput& anim_output, const string& old_path) {

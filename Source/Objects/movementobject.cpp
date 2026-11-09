@@ -1161,7 +1161,27 @@ void MovementObject::Moved(Object::MoveType type) {
     }
 }
 
+namespace {
+// Overgrowth Online: sounds our characters' scripts play are shared while this lives
+struct OwnedScriptScope {
+    bool on;
+    explicit OwnedScriptScope(bool on) : on(on) {
+        if (on) ++Online::Instance()->owned_script_depth;
+    }
+    ~OwnedScriptScope() {
+        if (on) --Online::Instance()->owned_script_depth;
+    }
+};
+}  // namespace
+
 void MovementObject::Update(float timestep) {
+    if (UpdateBeforePose(timestep)) {
+        rigged_object_->ComputePose();
+        UpdateAfterPose(timestep);
+    }
+}
+
+bool MovementObject::UpdateBeforePose(float timestep) {
     // GridTest(position, scenegraph_->bullet_world_, 0.45f);
     ThreadedSound* si = Engine::Instance()->GetSound();
     Online* online = Online::Instance();
@@ -1171,15 +1191,7 @@ void MovementObject::Update(float timestep) {
     SetNetworkProxy(online->IsActive() && !online->IsLocalAvatar(GetID()));
 
     // Overgrowth Online: sounds our characters' scripts play are shared
-    struct OwnedScope {
-        bool on;
-        explicit OwnedScope(bool on) : on(on) {
-            if (on) ++Online::Instance()->owned_script_depth;
-        }
-        ~OwnedScope() {
-            if (on) --Online::Instance()->owned_script_depth;
-        }
-    } owned_scope(online->IsActive() && !network_proxy);
+    OwnedScriptScope owned_scope(online->IsActive() && !network_proxy);
 
     while (message_queue.empty() == false) {
         ReceiveMessage(message_queue.front());
@@ -1326,6 +1338,7 @@ void MovementObject::Update(float timestep) {
         if (game_timer.game_time < rigged_object_->blood_surface.sleep_time) {
             rigged_object_->blood_surface.Update(Engine::Instance()->GetSceneGraph(), timestep);
         }
+        return false;
     } else {
         ActiveCameras::Set(0);
 
@@ -1342,7 +1355,23 @@ void MovementObject::Update(float timestep) {
         vec3 ground_pos = position - vec3(0.0f, _leg_sphere_size + rigged_object_->floor_height, 0.0f);
         rigged_object_->SetTranslation(ground_pos);
         rigged_object_->static_char = static_char;
-        rigged_object_->Update(timestep);
+        {
+            PROFILER_ZONE(g_profiler_ctx, "RiggedObject Update()");
+            rigged_object_->UpdateBeforePose(timestep);
+        }
+        return true;
+    }
+}
+
+void MovementObject::UpdateAfterPose(float timestep) {
+    Online* online = Online::Instance();
+    OwnedScriptScope owned_scope(online->IsActive() && !network_proxy);
+    ActiveCameras::Set(0);  // (as before the pose: other characters' updates ran in between)
+    {
+        PROFILER_ZONE(g_profiler_ctx, "RiggedObject Update() after pose");
+        rigged_object_->UpdateAfterPose(timestep);
+    }
+    {
 
         position += rigged_object_->FetchCenterOffset();
         float rot = rigged_object_->FetchRotation();
@@ -1564,7 +1593,7 @@ bool MovementObject::HasFunction(const std::string& function_definition) {
     return result;
 }
 
-int MovementObject::QueryIntFunction(std::string func) {
+int MovementObject::QueryIntFunction(const std::string& func) {
     ASArglist args;
     int val;
     ASArg return_val;
@@ -1811,10 +1840,7 @@ void MovementObject::Reset() {
 
 bool MovementObject::ASOnSameTeam(MovementObject* other) {
     if (other) {
-        CSLIterator iter(sp.GetStringVal("Teams"));
-        std::string team;
-
-        while (iter.GetNext(&team)) {
+        for (const std::string& team : Teams()) {
             if (other->OnTeam(team)) {
                 return true;
             }
@@ -1826,15 +1852,28 @@ bool MovementObject::ASOnSameTeam(MovementObject* other) {
 }
 
 bool MovementObject::OnTeam(const std::string& other_team) {
-    CSLIterator iter(sp.GetStringVal("Teams"));
-    std::string team;
-
-    while (iter.GetNext(&team)) {
+    for (const std::string& team : Teams()) {
         if (team == other_team) {
             return true;
         }
     }
     return false;
+}
+
+// Overgrowth Online (perf C4): split again only when the text changed (an empty list splits to
+// nothing, so the empty start is right)
+const std::vector<std::string>& MovementObject::Teams() {
+    const std::string& source = sp.GetStringVal("Teams");
+    if (source != teams_source_) {
+        teams_source_ = source;
+        teams_.clear();
+        CSLIterator iter(source);
+        std::string team;
+        while (iter.GetNext(&team)) {
+            teams_.push_back(team);
+        }
+    }
+    return teams_;
 }
 
 static void FixDiscontinuity(MovementObject* mo) {
@@ -1891,7 +1930,7 @@ void DefineMovementObjectTypePublic(ASContext* as_context) {
     as_context->RegisterObjectMethod("MovementObject", "RiggedObject@ rigged_object()", asMETHOD(MovementObject, rigged_object), asCALL_THISCALL);
     as_context->RegisterObjectMethod("MovementObject", "void SetScriptUpdatePeriod(int steps)", asMETHOD(MovementObject, ASSetScriptUpdatePeriod), asCALL_THISCALL, "Script update() is called every X engine timesteps");
     as_context->RegisterObjectMethod("MovementObject", "bool HasFunction(const string &in function_definition)", asMETHOD(MovementObject, HasFunction), asCALL_THISCALL);
-    as_context->RegisterObjectMethod("MovementObject", "int QueryIntFunction(string function)", asMETHOD(MovementObject, QueryIntFunction), asCALL_THISCALL);
+    as_context->RegisterObjectMethod("MovementObject", "int QueryIntFunction(const string &in function)", asMETHOD(MovementObject, QueryIntFunction), asCALL_THISCALL);  // (by reference: Overgrowth Online)
     as_context->RegisterObjectMethod("MovementObject", "void Execute(string code)", asMETHOD(MovementObject, Execute), asCALL_THISCALL);
     // (Overgrowth Online: names by reference, not copied: scripts call these many times a step)
     as_context->RegisterObjectMethod("MovementObject", "bool HasVar(const string &in var_name)", asMETHOD(MovementObject, ASHasVar), asCALL_THISCALL);

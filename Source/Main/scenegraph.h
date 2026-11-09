@@ -71,6 +71,9 @@ struct ShadowCacheObjectLightBounds {
     bool is_ignored;
 };
 
+class MovementObject;
+class RiggedObject;
+
 class SceneGraph {
    public:
     enum SceneDrawType { kStaticOnly,
@@ -118,6 +121,14 @@ class SceneGraph {
     std::vector<ShadowCacheObjectLightBounds> terrain_objects_shadow_cache_bounds_;
     object_list decal_objects_;
     object_list movement_objects_;
+    // Overgrowth Online (perf B5): the characters whose pose comes after the first pass
+    struct PosingCharacter {
+        MovementObject *mo;
+        int id;
+        RiggedObject *rigged;
+    };
+    std::vector<PosingCharacter> posing_;
+    std::vector<RiggedObject *> twisting_;  // (ragdolls whose twist bones go ahead, on the job system)
     object_list item_objects_;
     object_list hotspots_;
     object_list navmesh_hints_;

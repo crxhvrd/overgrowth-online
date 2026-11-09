@@ -1399,17 +1399,24 @@ void AllyInfo() {
 
     if(goal == _attack && knocked_out == _awake) {
         if(group_leader == -1 && followers.size() == 0) {
+            // (Overgrowth Online: the same first match, the cheapest tests first: the distance to
+            // the target, read once, before the call into the other character's script)
+            bool target_known = MovementObjectExists(chase_target_id);
+            vec3 target_pos = target_known ? ReadCharacterID(chase_target_id).position : vec3(0.0f);
+            int my_id = this_mo.GetID();
+
             for(int i = 0, len=GetNumCharacters(); i < len; ++i) {
                 MovementObject@ char = ReadCharacter(i);
 
-                if(char.GetID() != this_mo.GetID() &&
+                if(char.GetID() != my_id &&
                         !char.controlled &&
+                        (!target_known || distance_squared(char.position, target_pos) < 9.0) &&
                         this_mo.OnSameTeam(char) &&
-                        char.QueryIntFunction("int IsAggro()") == 1 &&
                         char.GetIntVar("knocked_out") == _awake &&
                         char.GetIntVar("state") != _ragdoll_state &&
                         char.GetIntVar("group_leader") == -1 &&
-                        distance_squared(char.position, ReadCharacterID(chase_target_id).position) < 9.0) {
+                        char.QueryIntFunction("int IsAggro()") == 1 &&
+                        (target_known || distance_squared(char.position, ReadCharacterID(chase_target_id).position) < 9.0)) {
                     char.Execute("AddFollower(" + this_mo.GetID() + ");");
                     group_leader = char.GetID();
                     break;

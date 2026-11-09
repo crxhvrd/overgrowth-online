@@ -668,6 +668,13 @@ void Particle::Draw(SceneGraph* scenegraph, DrawType draw_type, const mat4& proj
 
 // Update particle
 void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_time) {
+    Step(scenegraph, timestep, curr_game_time);
+    ApplyHits(scenegraph);
+}
+
+// (Overgrowth Online, perf B4: see particles.h. Nothing here may touch another particle, the
+// scene's objects, assets or sounds: it runs on the job system's workers)
+void Particle::Step(SceneGraph* scenegraph, float timestep, float curr_game_time) {
     old_position = position;
     old_color = color;
     old_size = size;
@@ -704,13 +711,7 @@ void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_ti
     }
     rotation += timestep * rotate_speed * 0.3f / (size / initial_size);
 
-    if (!connected.empty()) {
-        has_last_connected = true;
-        last_connected_pos = (*connected.begin())->position;
-    }
-
     if (particle_type->collision) {
-        SimpleRayResultCallbackInfo cb;
         vec3 point, normal;
         bool hit = (scenegraph->bullet_world_->CheckRayCollision(
                         old_position,
@@ -728,12 +729,49 @@ void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_ti
                 NULL);
         }
         if (hit && char_id == -1) {
-            // SDL.position = point;
-            // SDL.velocity = reflect(SDL.velocity, normal);
             if (particle_type->collision_destroy) {
                 color[3] = 0.0f;
             }
-            if (!particle_type->collision_decal.empty() && !collided) {
+            hit_kind = kHitSurface;
+            hit_first = !collided;
+            hit_point = point;
+            hit_normal = normal;
+            collided = true;
+        } else if (char_id != -1) {
+            if (particle_type->collision_destroy) {
+                color[3] = 0.0f;
+            }
+            hit_kind = kHitCharacter;
+            hit_first = !collided;
+            hit_char = char_id;
+            hit_point = point;
+            hit_normal = normal;
+            collided = true;
+        }
+    }
+
+    if (alive_time == timestep) {
+        old_position = position;
+        old_color = color;
+        old_size = size;
+        old_rotation = rotation;
+    }
+}
+
+// (Overgrowth Online, perf B4: the main thread's part. The connected particle's position is read
+// here, after every particle has moved: before, it depended on the two's order in the list)
+void Particle::ApplyHits(SceneGraph* scenegraph) {
+    if (!connected.empty()) {
+        has_last_connected = true;
+        last_connected_pos = (*connected.begin())->position;
+    }
+
+    if (hit_kind != kHitNone && hit_first) {
+        const vec3 point = hit_point;
+        const vec3 normal = hit_normal;
+        const int char_id = hit_char;
+        if (hit_kind == kHitSurface) {
+            if (!particle_type->collision_decal.empty()) {
                 PROFILER_ZONE(g_profiler_ctx, "Particle decal");  // (an entity file loaded per hit)
                 // Create decal at collision point
                 EntityDescriptionList desc_list;
@@ -830,7 +868,7 @@ void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_ti
                 }
                 */
             }
-            if (!particle_type->collision_event.empty() && !collided) {
+            if (!particle_type->collision_event.empty()) {
                 PROFILER_ZONE(g_profiler_ctx, "Particle sound");
                 const MaterialEvent* me = scenegraph->GetMaterialEvent(particle_type->collision_event, point);
                 if (me && !me->soundgroup.empty()) {
@@ -843,12 +881,8 @@ void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_ti
                     Engine::Instance()->GetSound()->PlayGroup(handle, sgpi);
                 }
             }
-            collided = true;
-        } else if (char_id != -1) {
-            if (particle_type->collision_destroy) {
-                color[3] = 0.0f;
-            }
-            if (!particle_type->collision_event.empty() && !collided) {
+        } else {
+            if (!particle_type->collision_event.empty()) {
                 PROFILER_ZONE(g_profiler_ctx, "Particle sound");
                 Object* o = scenegraph->GetObjectFromID(char_id);
                 const MaterialEvent& me = o->GetMaterialEvent(particle_type->collision_event, point);
@@ -862,21 +896,14 @@ void Particle::Update(SceneGraph* scenegraph, float timestep, float curr_game_ti
                     Engine::Instance()->GetSound()->PlayGroup(handle, sgpi);
                 }
             }
-            if (particle_type->character_add_blood && !collided) {
+            if (particle_type->character_add_blood) {
                 PROFILER_ZONE(g_profiler_ctx, "Particle blood");
                 MovementObject* mo = (MovementObject*)scenegraph->GetObjectFromID(char_id);
                 mo->rigged_object()->AddBloodAtPoint(point);
             }
-            collided = true;
         }
     }
-
-    if (alive_time == timestep) {
-        old_position = position;
-        old_color = color;
-        old_size = size;
-        old_rotation = rotation;
-    }
+    hit_kind = kHitNone;
 }
 
 UniformRingBuffer particle_uniform_buffer;
@@ -1251,8 +1278,23 @@ void ParticleSystem::Update(SceneGraph* scenegraph, float timestep, float curr_g
     }
     {
         PROFILER_ZONE(g_profiler_ctx, "Looping through all particles");
-        for (int i = (int)particles.size() - 1; i >= 0; i--) {
-            particles[i]->Update(scenegraph, timestep, curr_game_time);
+        // Overgrowth Online (perf B4): every particle's movement and ray tests on the job system,
+        // then, on this thread and in the old order, hits' decals, sounds and blood, and removals.
+        // A video particle (one at most: its reader isn't known to be thread-safe) goes whole here
+        int count = (int)particles.size();
+        Jobs::ParallelFor(count, 4, [&](int begin, int end) {  // (4 a chunk: costly ones come in runs)
+            for (int i = begin; i < end; ++i) {
+                if (!particles[i]->ae_reader.valid()) {
+                    particles[i]->Step(scenegraph, timestep, curr_game_time);
+                }
+            }
+        });
+        for (int i = count - 1; i >= 0; i--) {
+            if (particles[i]->ae_reader.valid()) {
+                particles[i]->Update(scenegraph, timestep, curr_game_time);
+            } else {
+                particles[i]->ApplyHits(scenegraph);
+            }
             if (particles[i]->color[3] <= 0 || particles[i]->size <= 0) deleteParticle(i);
         }
     }

@@ -28,6 +28,8 @@ bool Start(double seconds, double interval_ms);  // false: running already, or u
 bool Running();
 // When done: the hottest functions, native and script, self and inclusive.
 // On the main thread, with the script modules sampled still loaded
-Json::Value Result(int top);
+// focus: a native function's name (a part of it); also who called it and in which script
+// function, for the samples it was in ("focus_callers", "focus_scripts")
+Json::Value Result(int top, const std::string& focus = std::string());
 
 }  // namespace Sampler

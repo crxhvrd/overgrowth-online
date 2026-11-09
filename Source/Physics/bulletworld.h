@@ -102,6 +102,9 @@ class BulletWorld {
     // BulletJobs::Active(). For the level's world, stepped on the main thread
     void Init(bool parallel = false);
     void Dispose();
+    // Overgrowth Online: could a ray from start to end reach anything in this world? False only
+    // when it crosses no object's box in the broadphase (all Bullet's ray test could reach)
+    bool RayMayHit(const vec3& start, const vec3& end) const;
 
     void Update(float timestep);
     void Draw(const TextureRef &light_cube);

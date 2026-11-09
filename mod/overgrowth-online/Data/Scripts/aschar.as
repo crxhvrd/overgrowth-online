@@ -8166,6 +8166,7 @@ float GetVisionDistance(const vec3 &in target_pos) {
 
 void GetMatchingCharactersInArray(array<int> &in characters, array<int> &out matching_characters, uint16 flags) {
     int num = characters.size();
+    bool getter_loaded = false;
 
     for(int i = 0; i < num; ++i) {
         if(this_mo.getID() == characters[i]) {
@@ -8190,7 +8191,10 @@ void GetMatchingCharactersInArray(array<int> &in characters, array<int> &out mat
             continue;
         }
 
-        character_getter.Load(this_mo.char_path);
+        if(!getter_loaded) {  // (Overgrowth Online: this character's own file, the same for every candidate: once)
+            character_getter.Load(this_mo.char_path);
+            getter_loaded = true;
+        }
 
         if(flags & _TC_ENEMY != 0 && (this_mo.OnSameTeam(char) || char.static_char)) {
             continue;
@@ -10134,14 +10138,42 @@ void HandleCollisionsBetweenTwoCharacters(MovementObject @other) {
                 push_velocity -= other_push;
             }
 
-            other.Execute("
-            if(!this_mo.static_char) {
-                this_mo.position += vec3(" + dir.x + ", " + dir.y + ", " + dir.z + ") * 0.5f;
-                push_velocity += vec3(" + other_push.x + ", " + other_push.y + ", " + other_push.z + ");
-                MindReceiveMessage(\"collided " + this_mo.GetID() + "\");
-            }");
+            if(other.HasVar("collision_push_from")) {
+                // (Overgrowth Online, perf C5: the values through its variables and one call, where
+                // Execute compiled this as a script string for every close pair every step)
+                other.SetFloatVar("collision_push_dx", dir.x);
+                other.SetFloatVar("collision_push_dy", dir.y);
+                other.SetFloatVar("collision_push_dz", dir.z);
+                other.SetFloatVar("collision_push_vx", other_push.x);
+                other.SetFloatVar("collision_push_vy", other_push.y);
+                other.SetFloatVar("collision_push_vz", other_push.z);
+                other.SetIntVar("collision_push_from", this_mo.GetID());
+                other.QueryIntFunction("int TakeCollisionPush()");
+            } else {  // (a character on another script)
+                other.Execute("
+                if(!this_mo.static_char) {
+                    this_mo.position += vec3(" + dir.x + ", " + dir.y + ", " + dir.z + ") * 0.5f;
+                    push_velocity += vec3(" + other_push.x + ", " + other_push.y + ", " + other_push.z + ");
+                    MindReceiveMessage(\"collided " + this_mo.GetID() + "\");
+                }");
+            }
         }
     }
+}
+
+// Overgrowth Online (perf C5): another character pushed this one away (its
+// HandleCollisionsBetweenTwoCharacters sets these, then calls this)
+float collision_push_dx = 0.0f, collision_push_dy = 0.0f, collision_push_dz = 0.0f;
+float collision_push_vx = 0.0f, collision_push_vy = 0.0f, collision_push_vz = 0.0f;
+int collision_push_from = -1;
+
+int TakeCollisionPush() {
+    if(!this_mo.static_char) {
+        this_mo.position += vec3(collision_push_dx, collision_push_dy, collision_push_dz) * 0.5f;
+        push_velocity += vec3(collision_push_vx, collision_push_vy, collision_push_vz);
+        MindReceiveMessage("collided " + collision_push_from);
+    }
+    return 0;
 }
 
 void UpdatePrimaryWeapon() {

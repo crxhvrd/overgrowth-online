@@ -27,6 +27,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 class AnimationRetargeter {
     std::string path;
@@ -43,5 +44,6 @@ class AnimationRetargeter {
     void Load(const char *path);
     void Reload();
     const std::string &GetSkeletonFile(const std::string &anim);
+    std::vector<std::string> SkeletonFiles() const;  // (Overgrowth Online: each skeleton file once)
     bool GetNoRetarget(const std::string &anim);
 };

@@ -21,6 +21,7 @@
 //   limitations under the License.
 //
 //-----------------------------------------------------------------------------
+#include <algorithm>
 #include "retargetfile.h"
 
 #include <Internal/error.h>
@@ -87,6 +88,16 @@ void AnimationRetargeter::Load(const char* _path) {
             }
         }
     }
+}
+
+std::vector<std::string> AnimationRetargeter::SkeletonFiles() const {
+    std::vector<std::string> files;
+    for (const auto& entry : anim_skeleton) {
+        if (std::find(files.begin(), files.end(), entry.second) == files.end()) {
+            files.push_back(entry.second);
+        }
+    }
+    return files;
 }
 
 const std::string& AnimationRetargeter::GetSkeletonFile(const std::string& anim) {

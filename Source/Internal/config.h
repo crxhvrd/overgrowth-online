@@ -78,6 +78,11 @@ class StringVariant {
         return toNumber<int>() == 1;
     }
 
+    // Overgrowth Online: the text itself, not a copy
+    const std::string& raw() const {
+        return data;
+    }
+
     std::string str() const {
         return data;
     }

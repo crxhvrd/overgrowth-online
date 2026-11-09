@@ -543,7 +543,7 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         if (req.isMember("seconds")) {
             out["started"] = Sampler::Start(req["seconds"].asDouble(), req.get("interval_ms", 1.0).asDouble());
         } else {
-            Json::Value result = Sampler::Result(req.get("top", 40).asInt());
+            Json::Value result = Sampler::Result(req.get("top", 40).asInt(), req.get("focus", "").asString());
             for (const std::string& key : result.getMemberNames()) {
                 out[key] = result[key];
             }

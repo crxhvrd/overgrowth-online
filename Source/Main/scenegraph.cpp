@@ -60,6 +60,10 @@
 #include <Internal/common.h>
 #include <Internal/profiler.h>
 #include <Internal/config.h>
+#include <Threading/job_system.h>
+#include <Internal/timer.h>
+
+extern Timer game_timer;
 
 #include <Editors/map_editor.h>
 #include <Editors/actors_editor.h>
@@ -946,10 +950,76 @@ void SceneGraph::Update(float timestep, float curr_game_time) {
     {
         // Only updating specific subtypes of objects? -Max
         PROFILER_ZONE(g_profiler_ctx, "Object updates");
+        // Overgrowth Online (perf B5): characters' poses on the job system. Pass 1, in the list's
+        // order: every object's update, a character's up to its pose; pass 2: the due poses, in
+        // parallel; pass 3: each character's update after its pose, in pass 1's order. Scripts
+        // see other characters' poses of the last step for all of them (it depended on the
+        // list's order, which removals shuffle anyway). Config "pose_jobs" false: one pass
+        static const bool pose_jobs = !config.HasKey("pose_jobs") || config["pose_jobs"].toBool();
+        const bool split = pose_jobs && Jobs::WorkerCount() > 0;
+        posing_.clear();
+        if (split) {
+            // (ragdolls' twist bones first, in parallel: each character's own bodies, from its
+            // other bones, which nothing moves until the update; its update then skips them)
+            twisting_.clear();
+            for (int i = 0; i < num_update_objects; ++i) {
+                Object* obj = update_objects_[i];
+                if (obj->GetType() == _movement_object) {
+                    MovementObject* mo = (MovementObject*)obj;
+                    RiggedObject* rigged = mo->rigged_object();
+                    if (rigged && !mo->network_proxy && !rigged->animated && !rigged->first_ragdoll_frame) {
+                        twisting_.push_back(rigged);
+                    }
+                }
+            }
+            if (!twisting_.empty()) {
+                PROFILER_ZONE(g_profiler_ctx, "Ragdoll twist bones");
+                Jobs::ParallelFor((int)twisting_.size(), 2, [&](int begin, int end) {
+                    for (int k = begin; k < end; ++k) {
+                        twisting_[k]->UpdateRagdollTwistAhead();
+                    }
+                });
+            }
+        }
         for (int i = 0; i < num_update_objects; ++i) {
             Object* obj = update_objects_[i];
             PROFILER_ZONE(g_profiler_ctx, "%s %d update", CStringFromEntityType(obj->GetType()), obj->GetID());
+            if (split && obj->GetType() == _movement_object) {
+                MovementObject* mo = (MovementObject*)obj;
+                if (mo->UpdateBeforePose(timestep)) {
+                    posing_.push_back(PosingCharacter{mo, mo->GetID(), mo->rigged_object()});
+                }
+                mo->walltime_last_update = game_timer.GetWallTime();
+                continue;
+            }
             obj->ReceiveObjectMessage(OBJECT_MSG::UPDATE, timestep);
+        }
+        if (!posing_.empty()) {
+            // (a script may have deleted a character, or given it a new rigged object, in between)
+            auto still_here = [this](const PosingCharacter& p) {
+                return DoesObjectWithIdExist(p.id) && GetObjectFromID(p.id) == p.mo;
+            };
+            for (PosingCharacter& p : posing_) {
+                if (!still_here(p) || p.mo->rigged_object() != p.rigged) {
+                    p.rigged = nullptr;
+                }
+            }
+            {
+                PROFILER_ZONE(g_profiler_ctx, "Character poses");
+                Jobs::ParallelFor((int)posing_.size(), 1, [&](int begin, int end) {
+                    for (int k = begin; k < end; ++k) {
+                        if (posing_[k].rigged) {
+                            posing_[k].rigged->ComputePose();
+                        }
+                    }
+                });
+            }
+            PROFILER_ZONE(g_profiler_ctx, "Characters after poses");
+            for (const PosingCharacter& p : posing_) {
+                if (still_here(p)) {
+                    p.mo->UpdateAfterPose(timestep);
+                }
+            }
         }
         /*
         for(object_list::iterator it = objects_.begin(); it != objects_.end();) {

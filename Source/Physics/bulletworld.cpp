@@ -1088,6 +1088,74 @@ void BulletWorld::RemoveStaticObject(BulletObject **_bullet_object) {
     *_bullet_object = NULL;
 }
 
+// Overgrowth Online (perf B4): does the segment cross any object's box in the broadphase's two
+// trees? Walked like Bullet's own ray test walks them (every object it can reach has a box the ray
+// crosses), boxes grown by 1 cm, without the narrow phase and without an allocation; true at the
+// first box crossed. Particles test every character's small world, and a character's world spans
+// from the map's origin (a bone object parked there) to the character, so the root box alone said
+// yes too often. NaN coordinates fall through to the real test
+static bool SegmentCrossesBox(const vec3 &start, const vec3 &delta, const btDbvtVolume &box) {
+    const float pad = 0.01f;
+    float t0 = 0.0f, t1 = 1.0f;
+    for (int i = 0; i < 3; ++i) {
+        float lo = box.Mins()[i] - pad, hi = box.Maxs()[i] + pad;
+        float d = delta[i];
+        if (fabsf(d) < 1e-12f) {
+            if (start[i] < lo || start[i] > hi) {
+                return false;
+            }
+        } else {
+            float ta = (lo - start[i]) / d, tb = (hi - start[i]) / d;
+            if (ta > tb) {
+                std::swap(ta, tb);
+            }
+            if (ta > t0) {
+                t0 = ta;
+            }
+            if (tb < t1) {
+                t1 = tb;
+            }
+            if (t0 > t1) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool BulletWorld::RayMayHit(const vec3 &start, const vec3 &end) const {
+    const btDbvtBroadphase *broadphase = static_cast<const btDbvtBroadphase *>(broadphase_interface_);
+    if (!broadphase) {
+        return true;
+    }
+    const vec3 delta = end - start;
+    const int kStack = 64;
+    const btDbvtNode *stack[kStack];
+    for (int set = 0; set < 2; ++set) {
+        const btDbvtNode *root = broadphase->m_sets[set].m_root;
+        if (!root) {
+            continue;
+        }
+        int depth = 0;
+        stack[depth++] = root;
+        while (depth > 0) {
+            const btDbvtNode *node = stack[--depth];
+            if (!SegmentCrossesBox(start, delta, node->volume)) {
+                continue;
+            }
+            if (node->isleaf()) {
+                return true;
+            }
+            if (depth + 2 > kStack) {
+                return true;  // (a tree this deep: the real test decides)
+            }
+            stack[depth++] = node->childs[0];
+            stack[depth++] = node->childs[1];
+        }
+    }
+    return false;
+}
+
 const btCollisionObject *BulletWorld::CheckRayCollision(const vec3 &start,
                                                         const vec3 &end,
                                                         vec3 *point,
@@ -1102,7 +1170,10 @@ const btCollisionObject *BulletWorld::CheckRayCollision(const vec3 &start,
     }
 
     if (length_squared(start - end) > std::numeric_limits<float>::epsilon()) {
-        dynamics_world_->rayTest(btstart, btend, callback);
+        // (Overgrowth Online: skipped when it can't reach anything; the results are then a miss's)
+        if (RayMayHit(start, end)) {
+            dynamics_world_->rayTest(btstart, btend, callback);
+        }
         if (point) {
             *point = end * callback.m_closestHitFraction +
                      start * (1.0f - callback.m_closestHitFraction);

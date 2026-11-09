@@ -270,11 +270,20 @@ float hud_dealt = 0.0f;
 float hud_taken = 0.0f;
 int hud_kos = 0;
 
+// (Overgrowth Online: HudTrack asks in the characters' order, and the records are in it too:
+// the record after the last one found is usually the one; a search otherwise)
+uint hud_cursor = 0;
+
 HudChar@ HudCharFor(MovementObject@ char) {
     int id = char.GetID();
 
+    if(hud_cursor < hud_chars.length() && hud_chars[hud_cursor].id == id) {
+        return hud_chars[hud_cursor++];
+    }
+
     for(uint i = 0; i < hud_chars.length(); ++i) {
         if(hud_chars[i].id == id) {
+            hud_cursor = i + 1;
             return hud_chars[i];
         }
     }
@@ -461,6 +470,7 @@ void HudTrack(MovementObject@ player, int player_id) {
     for(uint i = 0; i < hud_chars.length(); ++i) {
         hud_chars[i].seen = false;
     }
+    hud_cursor = 0;
 
     for(int i = 0, len = GetNumCharacters(); i < len; ++i) {
         MovementObject@ char = ReadCharacter(i);

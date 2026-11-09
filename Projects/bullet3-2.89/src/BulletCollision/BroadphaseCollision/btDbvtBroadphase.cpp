@@ -243,21 +243,17 @@ void btDbvtBroadphase::rayTest(const btVector3& rayFrom, const btVector3& rayTo,
 	btAlignedObjectArray<const btDbvtNode*>* stack = &m_rayTestStacks[0];
 #if BT_THREADSAFE
 	// for this function to be threadsafe, each thread must have a separate copy
-	// of this stack.  This could be thread-local static to avoid dynamic allocations,
-	// instead of just a local.
-	int threadIndex = btGetCurrentThreadIndex();
+	// of this stack.
+	// ALTERED by Overgrowth Online (2026-11-09): a thread-local stack kept between calls, as the
+	// note above suggested. The local stack Bullet used here allocated on every ray test (a
+	// particle tests a hundred small worlds a step). A ray test started on this thread while
+	// its stack is in use (from a ray callback) gets a local stack, as before
+	static thread_local btAlignedObjectArray<const btDbvtNode*> threadStack;
+	static thread_local bool threadStackBusy = false;
 	btAlignedObjectArray<const btDbvtNode*> localStack;
-	//todo(erwincoumans, "why do we get tsan issue here?")
-	if (0)//threadIndex < m_rayTestStacks.size())
-	//if (threadIndex < m_rayTestStacks.size())
-	{
-		// use per-thread preallocated stack if possible to avoid dynamic allocations
-		stack = &m_rayTestStacks[threadIndex];
-	}
-	else
-	{
-		stack = &localStack;
-	}
+	const bool ownsThreadStack = !threadStackBusy;
+	stack = ownsThreadStack ? &threadStack : &localStack;
+	threadStackBusy = true;
 #endif
 
 	m_sets[0].rayTestInternal(m_sets[0].m_root,
@@ -281,6 +277,12 @@ void btDbvtBroadphase::rayTest(const btVector3& rayFrom, const btVector3& rayTo,
 							  aabbMax,
 							  *stack,
 							  callback);
+#if BT_THREADSAFE
+	if (ownsThreadStack)
+	{
+		threadStackBusy = false;
+	}
+#endif
 }
 
 struct BroadphaseAabbTester : btDbvt::ICollide

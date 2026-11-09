@@ -290,7 +290,7 @@ bool Running() {
     return running;
 }
 
-Json::Value Result(int top) {
+Json::Value Result(int top, const std::string& focus) {
     Json::Value out;
     out["running"] = (bool)running;
 #ifdef _WIN32
@@ -310,12 +310,15 @@ Json::Value Result(int top) {
     std::unordered_map<uint64_t, std::string> native_cache;
     std::map<asIScriptFunction*, std::string> script_cache;
     std::map<std::string, int> native_self, native_incl, script_self, script_incl, script_lines;
+    std::map<std::string, int> focus_callers, focus_scripts;
+    int focus_samples = 0;
     int total = sample_count;
     int in_script = 0;
 
     for (int i = 0; i < total; ++i) {
         const Sample& s = samples[i];
         std::set<std::string> seen;
+        bool focus_found = false;
         for (int f = 0; f < s.native_n; ++f) {
             std::string name = NativeName(s.native[f], native_cache);
             if (f == 0) {
@@ -323,6 +326,25 @@ Json::Value Result(int top) {
             }
             if (seen.insert(name).second) {
                 ++native_incl[name];
+            }
+            if (!focus.empty() && !focus_found && name.find(focus) != std::string::npos) {
+                focus_found = true;
+                ++focus_samples;
+                // (the first caller outside the focus function's own recursion)
+                std::string caller = "(none)";
+                for (int g = f + 1; g < s.native_n; ++g) {
+                    std::string up = NativeName(s.native[g], native_cache);
+                    if (up.find(focus) == std::string::npos) {
+                        caller = up;
+                        break;
+                    }
+                }
+                ++focus_callers[caller];
+                if (s.script_n > 0 && KnownFunction(s.script_fn[0])) {
+                    ++focus_scripts[ScriptName(s.script_fn[0], script_cache) + " @ " + ScriptLine(s.script_ctx, s.script_line[0])];
+                } else {
+                    ++focus_scripts["(not in a script)"];
+                }
             }
         }
         if (s.script_n == 0) {
@@ -354,6 +376,11 @@ Json::Value Result(int top) {
     out["script_self"] = Ranked(script_self, total, top);
     out["script_inclusive"] = Ranked(script_incl, total, top);
     out["script_lines"] = Ranked(script_lines, total, top);  // (the innermost frame; a line is where it last called out)
+    if (!focus.empty()) {
+        out["focus_samples"] = focus_samples;
+        out["focus_callers"] = Ranked(focus_callers, total, top);
+        out["focus_scripts"] = Ranked(focus_scripts, total, top);
+    }
 #endif
     return out;
 }

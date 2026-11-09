@@ -628,11 +628,17 @@ const float _max_anim_frames_per_second = 100.0f;
 void SetAnimUpdateFreqs() {
     int num = GetNumCharacters();
     array<float> framerate_request(num);
+    // (Overgrowth Online: each character's answer kept for the second loop: it was asked twice)
+    array<int> needs_frames(num, 0);
     vec3 cam_pos = camera.GetPos();
     float total_framerate_request = 0.0f;
     for(int i=0; i<num; ++i){
         MovementObject@ char = ReadCharacter(i);
-        if(char.controlled || char.QueryIntFunction("int NeedsAnimFrames()") == 0){
+        if(char.controlled){
+            continue;
+        }
+        needs_frames[i] = char.QueryIntFunction("int NeedsAnimFrames()");
+        if(needs_frames[i] == 0){
             continue;
         }
         float dist = distance(char.position, cam_pos);
@@ -651,7 +657,7 @@ void SetAnimUpdateFreqs() {
         //DebugText("update_script_counter"+i, i+" script counter: "+char.update_script_counter, 0.5);
         //DebugText("anim_update_period"+i, i+" anim_update_period: "+char.rigged_object().anim_update_period, 0.5);
         //DebugText("curr_anim_update_time"+i, i+" curr_anim_update_time: "+char.rigged_object().curr_anim_update_time, 0.5);
-        int needs_anim_frames = char.QueryIntFunction("int NeedsAnimFrames()");
+        int needs_anim_frames = needs_frames[i];
         if(char.controlled || needs_anim_frames==0){
             continue;
         }

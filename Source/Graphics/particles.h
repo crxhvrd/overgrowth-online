@@ -74,7 +74,22 @@ class Particle {
     bool collided;
 
     void Draw(SceneGraph *scenegraph, DrawType draw_type, const mat4 &proj_view_matrix);
-    void Update(SceneGraph *scenegraph, float timestep, float curr_game_time);
+    void Update(SceneGraph *scenegraph, float timestep, float curr_game_time);  // Step then ApplyHits
+
+    // Overgrowth Online (perf B4): the update in two parts. Step moves the particle and ray-tests
+    // its path, writing only this particle (the job system's workers run it); a hit is recorded,
+    // and ApplyHits, on the main thread in list order, does what it does to the rest of the game
+    // (decals, sounds, blood)
+    enum HitKind : unsigned char { kHitNone,
+                                   kHitSurface,
+                                   kHitCharacter };
+    unsigned char hit_kind = kHitNone;
+    bool hit_first = false;  // the particle's first hit: decals, sounds and blood only then
+    int hit_char = -1;
+    vec3 hit_point;
+    vec3 hit_normal;
+    void Step(SceneGraph *scenegraph, float timestep, float curr_game_time);
+    void ApplyHits(SceneGraph *scenegraph);
 };
 
 class ParticleSystem {

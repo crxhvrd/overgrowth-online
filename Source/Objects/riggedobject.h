@@ -320,7 +320,27 @@ class RiggedObject : public Object {
     ~RiggedObject() override;
 
     bool Initialize() override;
-    void Update(float timestep) override;
+    void Update(float timestep) override;  // UpdateBeforePose, ComputePose, UpdateAfterPose
+
+    // Overgrowth Online (perf B5): the update in three parts, so the scene can compute every due
+    // character's pose on the job system. BeforePose (main thread): blood, the animation client
+    // and its events, ragdoll bones, lipsync; ComputePose (any thread): the blend tree's matrices
+    // into this object's own fields, nothing else; AfterPose (main thread): the script's final
+    // matrix update, physics bones, items, collision objects
+    void UpdateBeforePose(float timestep);
+    void ComputePose();
+    void UpdateAfterPose(float timestep);
+    enum PoseStep : unsigned char { kPoseNone,
+                                    kPoseAnimated,
+                                    kPoseRagdoll };
+    unsigned char pose_step_ = kPoseNone;  // an animation update due, and for which state
+    bool pose_compute_ = false;            // matrices from the blend tree (else the cached ones)
+    bool pose_drawn_recently_ = false;
+    AnimOutput pose_output_;
+    // (perf B5: a ragdoll's twist bones, done ahead of the update pass on a worker: each
+    // character's own bodies only. BeforePose then skips them once)
+    void UpdateRagdollTwistAhead();
+    bool twist_done_ = false;
 
     // Drawing
     void DrawRiggedObject(const mat4 &proj_view_matrix, DrawType type);

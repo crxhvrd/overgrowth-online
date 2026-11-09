@@ -208,7 +208,12 @@ class MovementObject : public Object {
     bool InitializeMultiplayer();
     void GetShaderNames(std::map<std::string, int>& shaders) override;
 
-    void Update(float timestep) override;
+    void Update(float timestep) override;  // UpdateBeforePose, the pose, UpdateAfterPose
+    // Overgrowth Online (perf B5): the update in two parts around the rigged object's pose. True
+    // from BeforePose when the rest follows (the scene computes the pose on the job system, then
+    // runs UpdateAfterPose); false: the update is done (a character another machine runs)
+    bool UpdateBeforePose(float timestep);
+    void UpdateAfterPose(float timestep);
     void Draw() override;
     void ClientBeforeDraw();
     virtual void HandleTransformationOccured();
@@ -227,7 +232,7 @@ class MovementObject : public Object {
     void CollideWith(MovementObject* other);
     void ASSetScriptUpdatePeriod(int val);
     bool HasFunction(const std::string& function_definition);
-    int QueryIntFunction(std::string func);
+    int QueryIntFunction(const std::string& func);
     void SetScriptParams(const ScriptParamMap& spm) override;
     void ApplyPalette(const OGPalette& palette, bool from_socket = false) override;
     OGPalette* GetPalette() override;
@@ -366,6 +371,11 @@ class MovementObject : public Object {
     static void InvalidatedItemCallback(ItemObjectScriptReader* invalidated, void* this_ptr);
     void ASDetachAllItems();
     bool OnTeam(const std::string& other_team);
+    // Overgrowth Online (perf C4): the "Teams" parameter split, kept with the text it came from
+    // (OnSameTeam copied and split both characters' lists on every call)
+    const std::vector<std::string>& Teams();
+    std::string teams_source_;
+    std::vector<std::string> teams_;
     void SetEnabled(bool val) override;
     void AttachItemToSlotAttachmentRef(int which, AttachmentType type, bool mirrored, const AttachmentRef* ref, bool from_socket = false);
     void AddToAttackHistory(const std::string& str);

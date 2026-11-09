@@ -196,6 +196,12 @@ RiggedObject::RiggedObject() : static_char(false),
 }
 
 RiggedObject::~RiggedObject() {
+    // Overgrowth Online: items' readers first, while this character's bones still exist. The
+    // members are destroyed after this body in reverse order, the skeleton (its bodies) before
+    // these lists, and a reader's detach removes its joint to a bone: a knife stuck in a
+    // character that was deleted (a guest leaving the session) touched freed bodies
+    stuck_items.items.clear();
+    attached_items.items.clear();
 #ifdef USE_SSE
 #ifdef _WIN32
     _aligned_free(simd_bone_mats);
@@ -1348,7 +1354,12 @@ void UpdateAttachedItemRagdoll(AttachedItem& stuck_item, const Skeleton& skeleto
 
 void RiggedObject::Update(float timestep) {
     PROFILER_ZONE(g_profiler_ctx, "RiggedObject Update()");
+    UpdateBeforePose(timestep);
+    ComputePose();
+    UpdateAfterPose(timestep);
+}
 
+void RiggedObject::UpdateBeforePose(float timestep) {
     Model* model = &Models::Instance()->GetModel(model_id[0]);
     // blood_surface.CreateDripInTri(RangedRandomInt(0, model->faces.size()/3-1), vec3(1.0f/3.0f), 1.0f, 0.0f, true, SurfaceWalker::WATER);
     {
@@ -1367,7 +1378,7 @@ void RiggedObject::Update(float timestep) {
     }
     if (!animated) {
         PROFILER_ZONE(g_profiler_ctx, "Update ragdoll");
-        if (!first_ragdoll_frame) {
+        if (!first_ragdoll_frame && !twist_done_) {  // (Overgrowth Online: or done ahead, UpdateRagdollTwistAhead)
             skeleton_.UpdateTwistBones(true);
         }
         first_ragdoll_frame = false;
@@ -1383,19 +1394,134 @@ void RiggedObject::Update(float timestep) {
         }
     }
 
+    twist_done_ = false;
+
     --time_until_next_anim_update;
     --curr_anim_update_time;
     --prev_anim_update_time;
 
+    pose_step_ = kPoseNone;
     if (time_until_next_anim_update <= 0) {
         for (auto& morph_target : morph_targets) {
             morph_target.UpdateForInterpolation();
         }
         if (!animated) {
+            pose_step_ = kPoseRagdoll;
+            pose_compute_ = true;
+        } else {
+            pose_step_ = kPoseAnimated;
+            HandleLipSyncMorphTargets(timestep);
+            pose_drawn_recently_ = last_draw_time > game_timer.game_time - 1.0f;
+            pose_compute_ = cached_animation_frame_bone_matrices.empty() || pose_drawn_recently_ || !static_char;
+        }
+        // (the skeletons retargeting reads, loaded here: ComputePose may run on a worker)
+        PrepareRetargetSkeletons(anim_client.GetRetargetNew());
+    }
+}
+
+// (Overgrowth Online, perf B5: may run on a worker; the twist bones' bodies are this
+// character's own, positioned from its other bones)
+void RiggedObject::UpdateRagdollTwistAhead() {
+    if (!animated && !first_ragdoll_frame) {
+        skeleton_.UpdateTwistBones(true);
+        twist_done_ = true;
+    }
+}
+
+// (Overgrowth Online, perf B5: may run on a worker. It writes only this object's own fields;
+// the animation assets it reads are const)
+void RiggedObject::ComputePose() {
+    if (pose_step_ == kPoseNone || !pose_compute_) {
+        return;
+    }
+    pose_output_ = AnimOutput();
+    AnimOutput& anim_output = pose_output_;
+    // Get results from animation blend tree
+    anim_client.GetMatrices(anim_output, &skeleton_.parents);
+    if (pose_step_ == kPoseAnimated) {
+        for (auto& matrice : anim_output.matrices) {
+            matrice.origin *= model_char_scale;
+        }
+        for (auto& ik_bone : anim_output.ik_bones) {
+            ik_bone.transform.origin *= model_char_scale;
+        }
+        weap_anim_info_map = anim_output.weap_anim_info_map;
+        // Copy bone transforms for further manipulation
+        std::vector<BoneTransform> transforms = anim_output.matrices;
+        // Get info for moving and rotating entire character based on animation
+        total_center_offset += vec3(anim_output.delta_offset[0],
+                                    anim_output.delta_offset[1],
+                                    anim_output.delta_offset[2]) *
+                               model_char_scale;
+        total_rotation += anim_output.delta_rotation;
+
+        unmodified_transforms = anim_output.unmodified_matrices;
+
+        // Apply full-character rotation to bone and weapon transforms
+        vec4 angle_axis(0.0f, 1.0f, 0.0f, total_rotation);
+        quaternion rot(angle_axis);
+        mat4 rotmat4 = Mat4FromQuaternion(rot);
+        for (auto& transform : transforms) {
+            transform = rotmat4 * transform;
+        }
+        for (auto& ik_bone : anim_output.ik_bones) {
+            ik_bone.transform = rotmat4 * ik_bone.transform;
+        }
+        for (auto& iter : weap_anim_info_map) {
+            WeapAnimInfo& weap_anim_info = iter.second;
+            if (weap_anim_info.relative_id == -1) {
+                weap_anim_info.bone_transform = rotmat4 * weap_anim_info.bone_transform;
+            }
+        }
+
+        // Apply full-character translation to bone and weapon transforms
+        for (unsigned i = 0; i < transforms.size(); i++) {
+            transforms[i].origin += total_center_offset;
+            animation_frame_bone_matrices[i] = transforms[i];
+        }
+        for (auto& ik_bone : anim_output.ik_bones) {
+            ik_bone.transform.origin += total_center_offset;
+        }
+        for (auto& iter : weap_anim_info_map) {
+            WeapAnimInfo& weap_anim_info = iter.second;
+            if (weap_anim_info.relative_id == -1) {
+                weap_anim_info.bone_transform.origin += total_center_offset;
+            } else {
+                weap_anim_info.matrix = weap_anim_info.bone_transform.GetMat4();
+            }
+        }
+
+        // Apply animation morphs
+        std::map<std::string, MorphTarget*> morph_target_names;
+        for (auto& morph_target : morph_targets) {
+            morph_target_names[morph_target.name] = &morph_target;
+        }
+        for (auto& skb : anim_output.shape_keys) {
+            const std::string& label = skb.label;
+            if (morph_target_names.find(label) != morph_target_names.end()) {
+                morph_target_names[label]->anim_weight = skb.weight * skb.weight_weight;
+            }
+        }
+
+        // Apply status keys
+        status_keys.clear();
+        for (auto key : anim_output.status_keys) {
+            status_keys[key.label] = key.weight * key.weight_weight;
+        }
+
+        blended_bone_paths = anim_output.ik_bones;
+        cached_animation_frame_bone_matrices = animation_frame_bone_matrices;
+    }
+}
+
+void RiggedObject::UpdateAfterPose(float timestep) {
+    if (pose_step_ != kPoseNone) {
+        // (Overgrowth Online, perf B5: ragdolled, or back on its feet, since BeforePose: another
+        // character's script did it in between. The pose was for the other state: not applied,
+        // so a ragdoll's first impulse isn't overwritten by the animation)
+        if (pose_step_ == kPoseRagdoll && !animated) {
             PROFILER_ZONE(g_profiler_ctx, "Update ragdoll animation");
-            // Get results from animation blend tree
-            AnimOutput anim_output;
-            anim_client.GetMatrices(anim_output, &skeleton_.parents);
+            AnimOutput& anim_output = pose_output_;
             if (!anim_output.matrices.empty()) {
                 // Store animation frame
                 for (int i = 0, len = animation_frame_bone_matrices.size(); i < len; i++) {
@@ -1437,93 +1563,12 @@ void RiggedObject::Update(float timestep) {
                     }
                 }
             }
-        } else if (animated) {
+        } else if (pose_step_ == kPoseAnimated && animated) {
             PROFILER_ZONE(g_profiler_ctx, "Update animation");
-            HandleLipSyncMorphTargets(timestep);
-            AnimOutput anim_output;
-            // Get results from animation blend tree
-            bool drawn_recently = last_draw_time > game_timer.game_time - 1.0f;
-            if (cached_animation_frame_bone_matrices.empty() || drawn_recently || !static_char) {
-                {
-                    PROFILER_ZONE(g_profiler_ctx, "anim_client.GetMatrices()");
-                    anim_client.GetMatrices(anim_output, &skeleton_.parents);
-                }
-                for (auto& matrice : anim_output.matrices) {
-                    matrice.origin *= model_char_scale;
-                }
-                for (auto& ik_bone : anim_output.ik_bones) {
-                    ik_bone.transform.origin *= model_char_scale;
-                }
-                weap_anim_info_map = anim_output.weap_anim_info_map;
-                // Copy bone transforms for further manipulation
-                std::vector<BoneTransform> transforms = anim_output.matrices;
-                // Get info for moving and rotating entire character based on animation
-                total_center_offset += vec3(anim_output.delta_offset[0],
-                                            anim_output.delta_offset[1],
-                                            anim_output.delta_offset[2]) *
-                                       model_char_scale;
-                total_rotation += anim_output.delta_rotation;
-
-                unmodified_transforms = anim_output.unmodified_matrices;
-
-                // Apply full-character rotation to bone and weapon transforms
-                vec4 angle_axis(0.0f, 1.0f, 0.0f, total_rotation);
-                quaternion rot(angle_axis);
-                mat4 rotmat4 = Mat4FromQuaternion(rot);
-                for (auto& transform : transforms) {
-                    transform = rotmat4 * transform;
-                }
-                for (auto& ik_bone : anim_output.ik_bones) {
-                    ik_bone.transform = rotmat4 * ik_bone.transform;
-                }
-                for (auto& iter : weap_anim_info_map) {
-                    WeapAnimInfo& weap_anim_info = iter.second;
-                    if (weap_anim_info.relative_id == -1) {
-                        weap_anim_info.bone_transform = rotmat4 * weap_anim_info.bone_transform;
-                    }
-                }
-
-                // Apply full-character translation to bone and weapon transforms
-                for (unsigned i = 0; i < transforms.size(); i++) {
-                    transforms[i].origin += total_center_offset;
-                    animation_frame_bone_matrices[i] = transforms[i];
-                }
-                for (auto& ik_bone : anim_output.ik_bones) {
-                    ik_bone.transform.origin += total_center_offset;
-                }
-                for (auto& iter : weap_anim_info_map) {
-                    WeapAnimInfo& weap_anim_info = iter.second;
-                    if (weap_anim_info.relative_id == -1) {
-                        weap_anim_info.bone_transform.origin += total_center_offset;
-                    } else {
-                        weap_anim_info.matrix = weap_anim_info.bone_transform.GetMat4();
-                    }
-                }
-
-                // Apply animation morphs
-                std::map<std::string, MorphTarget*> morph_target_names;
-                for (auto& morph_target : morph_targets) {
-                    morph_target_names[morph_target.name] = &morph_target;
-                }
-                for (auto& skb : anim_output.shape_keys) {
-                    const std::string& label = skb.label;
-                    if (morph_target_names.find(label) != morph_target_names.end()) {
-                        morph_target_names[label]->anim_weight = skb.weight * skb.weight_weight;
-                    }
-                }
-
-                // Apply status keys
-                status_keys.clear();
-                for (auto key : anim_output.status_keys) {
-                    status_keys[key.label] = key.weight * key.weight_weight;
-                }
-
-                blended_bone_paths = anim_output.ik_bones;
-                cached_animation_frame_bone_matrices = animation_frame_bone_matrices;
-            } else {
+            if (!pose_compute_) {
                 animation_frame_bone_matrices = cached_animation_frame_bone_matrices;
             }
-
+            const bool drawn_recently = pose_drawn_recently_;
             ASArglist args;
             if (drawn_recently) {
                 args.Add(anim_update_period);
@@ -1567,6 +1612,7 @@ void RiggedObject::Update(float timestep) {
 
         // Store the current animation frame bones for the next network character update.
         StoreNetworkBones();
+        pose_step_ = kPoseNone;
     }
 
     if (animated) {
@@ -3670,6 +3716,11 @@ void RiggedObject::UpdateCollisionObjects() {
             continue;
         }
         cbo->SetTransform(physics_bone.bullet_object->GetTransform());
+        // (Overgrowth Online, perf B4: the "previous" pose too. These are bodies with mass in a
+        // world that never steps, and Bullet grows a moving body's box to take in that pose,
+        // which stayed at the map's origin: every bone's box ran from there to the bone, so
+        // every ray, sweep and contact query against characters tested them all)
+        cbo->body->setInterpolationWorldTransform(cbo->body->getWorldTransform());
         cbo->UpdateTransform();
     }
     skeleton_.UpdateCollisionWorldAABB();

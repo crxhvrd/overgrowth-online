@@ -1723,7 +1723,7 @@ void ASModule::ResetGlobals() {
 }
 
 asIScriptFunction* ASModule::GetFunctionID(const std::string& function_name) {
-    std::map<std::string, asIScriptFunction*>::const_iterator iter = func_map_.find(function_name);
+    auto iter = func_map_.find(function_name);
     asIScriptFunction* func;
     if (iter == func_map_.end()) {
         func = module_->GetFunctionByDecl(function_name.c_str());

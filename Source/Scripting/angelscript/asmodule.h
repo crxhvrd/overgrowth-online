@@ -217,7 +217,7 @@ class ASModule {
         void* ptr;
     };
     std::unordered_map<uint64_t, VarPtrByName> var_ptr_by_name;
-    std::map<std::string, asIScriptFunction*> func_map_;
+    std::unordered_map<std::string, asIScriptFunction*> func_map_;  // (Overgrowth Online: hashed; every QueryIntFunction looks here)
     Path script_path_;
     std::list<VarStorage> saved_vars_;
     std::list<ScriptObjectInstance> saved_handle_vars_;

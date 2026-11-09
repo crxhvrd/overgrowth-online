@@ -95,6 +95,7 @@ class AnimationClient {
     void ApplyAnimationFlags(AnimationReader &reader, AnimationAssetRef &new_ref, char flags);
 
    public:
+    const std::string &GetRetargetNew() const { return retarget_new; }  // (Overgrowth Online)
     void SetAnimation(const std::string &path, float fade_speed = _default_fade_speed, char flags = 0);
     int AddLayer(const std::string &path, float fade_speed = _default_fade_speed, char flags = 0);
     void SetBlendCoord(const std::string &label, float coord);
