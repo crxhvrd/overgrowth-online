@@ -592,6 +592,39 @@ void LevelLoader::SaveTerrain(TiXmlNode* root, SceneGraph* s) {
     }
 }
 
+bool LevelLoader::SaveNeedsDialog(SceneGraph& s) {
+    return s.level_path_.isValid() == false || (((s.level_path_.source & kModPaths) || (s.level_path_.source & kDataPaths)) && (!s.level_has_been_previously_saved_ && config["allow_game_dir_save"].toBool() == false));
+}
+
+bool LevelLoader::PointLevelAt(SceneGraph& s, const std::string& abs_path) {
+    CreateParentDirs(abs_path);
+    if (fileexists(abs_path.c_str()) != 0) {
+        createfile(abs_path.c_str());  // (a path to a file that isn't there doesn't resolve)
+    }
+    Path path = FindShortestPath2(abs_path);
+    if (!path.isValid()) {
+        LOGE << "Couldn't point the level at " << abs_path << std::endl;  // (never the Save As dialog)
+        return false;
+    }
+    s.level_path_ = path;
+    s.level_has_been_previously_saved_ = true;
+    return true;
+}
+
+void LevelLoader::SaveLevelCopy(SceneGraph& s, const std::string& abs_path) {
+    Path path = s.level_path_;
+    bool saved = s.level_has_been_previously_saved_;
+    std::string name = s.level_name_, visible = s.level_visible_name_;
+    if (!PointLevelAt(s, abs_path)) {
+        return;
+    }
+    SaveLevel(s, kSaveInPlace);
+    s.level_path_ = path;
+    s.level_has_been_previously_saved_ = saved;
+    s.level_name_ = name;
+    s.level_visible_name_ = visible;
+}
+
 void LevelLoader::SaveLevel(SceneGraph& s, SaveLevelType type) {
     /*if(s.VerifySanity() == false ) {
         SDL_MessageBoxData message_box_data;
@@ -623,7 +656,7 @@ void LevelLoader::SaveLevel(SceneGraph& s, SaveLevelType type) {
         old_path = save_path;
     }
 
-    if (type == kSaveAs || s.level_path_.isValid() == false || (((s.level_path_.source & kModPaths) || (s.level_path_.source & kDataPaths)) && (!s.level_has_been_previously_saved_ && config["allow_game_dir_save"].toBool() == false))) {
+    if (type == kSaveAs || SaveNeedsDialog(s)) {
         std::string start_dir;
         if (config["allow_game_dir_save"].toBool()) {
             if (save_path.empty()) {

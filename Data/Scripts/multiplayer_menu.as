@@ -216,6 +216,7 @@ void BuildUI(){
     browse_row.append(public_count_text);
     left_panel.append(browse_row);
     AddWideButton("Join a friend", left_panel, play_icon);        // Steam friends hosting (multiplayer_join_friend.as)
+    AddWideButton("Build a level", left_panel, play_icon);        // host any level in build mode (multiplayer_build_menu.as)
     AddWideButton("Your character", left_panel, settings_icon);   // character, colours and name: their own screen
 
     // The games you host: listed in the browser or for friends only; the
@@ -324,6 +325,10 @@ void Update() {
         else if (message.name == "Browse games")
         {
             this_ui.SendCallback("multiplayer_browser.as");
+        }
+        else if (message.name == "Build a level")
+        {
+            this_ui.SendCallback("multiplayer_build_menu.as");
         }
         else if (message.name == HostingLabel())
         {

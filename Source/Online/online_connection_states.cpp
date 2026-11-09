@@ -110,6 +110,8 @@ BaseState<PendingConnection>* StateHandshake::OnUpdate() {
 void StateSync::OnEnter() {
     // TODO This package is a placeholder, we don't actually send any level files here right now, as this would require a bigger refactor to file transfer
     // For now, we simply tell the client what map to load and *pray* the client loads the exact same map as the host! (pretty much like it did before)
+    // Overgrowth Online: a level of the host's own (its write folder) goes as a file first
+    Online::Instance()->SendLevelFile(actor->net_connection_id, Online::Instance()->level_name);
     Online::Instance()->SendTo<OnlineMessages::PCSFileTransferMetadataMessage>(actor->net_connection_id, Online::Instance()->level_name, Online::Instance()->campaign_id);
 
     // TODO initiate level file transfers to client

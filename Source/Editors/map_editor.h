@@ -201,6 +201,10 @@ class MapEditor {
     void SaveEntities(TiXmlNode* root);
 
     void QueueSaveHistoryState();
+    void UndoHere();  // (Overgrowth Online: in a session, this machine's own edits)
+    void RedoHere();
+    bool CanUndoHere();
+    bool CanRedoHere();
 
     bool CanUndo();
     bool CanRedo();

@@ -40,6 +40,8 @@
 #include <SDL_assert.h>
 
 #include <cstdarg>
+#include <unordered_map>
+#include <chrono>
 
 extern Timer game_timer;
 
@@ -80,6 +82,15 @@ int Object::LineCheckEditorCube(const vec3 &start, const vec3 &end, vec3 *point,
 void Object::HandleTransformationOccurred() {
     Online *online = Online::Instance();
     if (online->IsActive()) {
+        // (Overgrowth Online: a drag calls this every step; 20 a second per object is enough to
+        // watch it move, and the edit sync sends where it ends)
+        static std::unordered_map<int, double> &last_sent = *new std::unordered_map<int, double>();
+        double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        double &last = last_sent[GetID()];
+        if (now - last < 0.05) {
+            return;
+        }
+        last = now;
         online->Send<OnlineMessages::EditorTransformChange>(GetID(), translation_, scale_, rotation_);
     }
 }

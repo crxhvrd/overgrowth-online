@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<Mod>
+    <Id>online-api-test</Id>
+    <Name>Online script API test hook</Name>
+    <Author>test</Author>
+    <Category>Test</Category>
+    <Description>Test-only level hook: listens through the Overgrowth Online script API and says what it hears as level messages (apitest ...).</Description>
+    <Thumbnail>Data/Images/thumb.png</Thumbnail>
+    <Version>0.1</Version>
+    <SupportedVersion>*</SupportedVersion>
+    <SupportsOnline>true</SupportsOnline>
+    <LevelHookFile>Data/Scripts/online_api_test_hook.as</LevelHookFile>
+</Mod>

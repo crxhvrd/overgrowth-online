@@ -5840,6 +5840,28 @@ void AS_Online_Host() {
     Online::Instance()->StartHostingMultiplayer();
 }
 
+// Overgrowth Online: building a level together: the session in build mode (paused for everyone)
+static bool AS_Online_BuildMode() {
+    return Online::Instance()->IsActive() && Online::Instance()->BuildMode();
+}
+
+// Overgrowth Online: Build a level (multiplayer_build_menu.as)
+static void AS_Online_BuildOnLoad() {
+    Online::Instance()->BuildOnLoad();
+}
+
+static CScriptArray* AS_Online_SavedLevels() {
+    asIScriptContext* ctx = asGetActiveContext();
+    asIScriptEngine* engine = ctx->GetEngine();
+    asITypeInfo* arrayType = engine->GetTypeInfoById(engine->GetTypeIdByDecl("array<string>"));
+    CScriptArray* array = CScriptArray::Create(arrayType);
+    for (const std::string& level : Online::SavedLevels()) {
+        std::string copy = level;
+        array->InsertLast(&copy);
+    }
+    return array;
+}
+
 // Overgrowth Online (host): a player's character up at `pos`, facing `facing`, on its machine
 static bool AS_Online_IsPlayerCharacter(int char_id) {
     return Online::Instance()->IsPlayerCharacter(char_id);
@@ -6014,9 +6036,86 @@ std::string AS_Online_GetActiveIncompatibleModsString() {
     return OnlineUtility::GetActiveIncompatibleModsString();
 }
 
+// ---- Overgrowth Online: the script API for mods (Docs/Markdown/Overgrowth Online Script API.md) ----
+// Players by the API's ids: the host 0, guests 1.. (-1: none); object ids by this machine's ids
+
+static int AS_Online_ApiVersion() {
+    return Online::kScriptApiVersion;
+}
+
+static int AS_Online_GetOwnPlayerID() {
+    return Online::Instance()->OwnApiPlayerID();
+}
+
+static int AS_Online_GetHostPlayerID() {
+    return Online::Instance()->IsActive() ? 0 : -1;
+}
+
+static CScriptArray* AS_Online_GetPlayerIDs() {
+    asIScriptEngine* engine = asGetActiveContext()->GetEngine();
+    CScriptArray* array = CScriptArray::Create(engine->GetTypeInfoById(engine->GetTypeIdByDecl("array<int>")), (asUINT)0);
+    for (int id : Online::Instance()->ApiPlayerIDs()) {
+        array->InsertLast(&id);
+    }
+    return array;
+}
+
+static std::string AS_Online_GetPlayerName(int player) {
+    return Online::Instance()->ApiPlayerName(player);
+}
+
+static int AS_Online_GetPlayerCharacter(int player) {
+    return Online::Instance()->ApiPlayerCharacter(player);
+}
+
+static int AS_Online_GetCharacterPlayer(int character) {
+    return Online::Instance()->CharacterApiPlayer(character);
+}
+
+static int AS_Online_ToSharedID(int object_id) {
+    Online* online = Online::Instance();
+    return online->IsActive() ? (int)online->GetOriginalID(object_id) : object_id;
+}
+
+static int AS_Online_FromSharedID(int shared_id) {
+    Online* online = Online::Instance();
+    return online->IsActive() ? (int)online->GetObjectID(shared_id) : shared_id;
+}
+
+static bool AS_Online_Send(const std::string& channel, const std::string& text) {
+    return Online::Instance()->SendScriptMessage(OnlineMessages::ScriptMessage::kEveryone, channel, text);
+}
+
+static bool AS_Online_SendToHost(const std::string& channel, const std::string& text) {
+    return Online::Instance()->SendScriptMessage(0, channel, text);
+}
+
+static bool AS_Online_SendToPlayer(int player, const std::string& channel, const std::string& text) {
+    if (player < 0) {
+        return false;
+    }
+    return Online::Instance()->SendScriptMessage(player, channel, text);
+}
+
+static bool AS_Online_Listen(const std::string& channel, const std::string& function) {
+    asIScriptContext* active = asGetActiveContext();
+    ASContext* ctx = GetActiveASContext();
+    return active != nullptr && ctx != nullptr && ctx->ListenOnline(channel, function);
+}
+
+static void AS_Online_StopListening(const std::string& channel) {
+    ASContext* ctx = GetActiveASContext();
+    if (ctx != nullptr) {
+        ctx->StopListeningOnline(channel);
+    }
+}
+
 void AttachOnline(ASContext* context) {
     context->RegisterGlobalFunction("void Online_Connect(string ip)", asFUNCTION(AS_Online_Connect), asCALL_CDECL);
     context->RegisterGlobalFunction("void Online_Host()", asFUNCTION(AS_Online_Host), asCALL_CDECL);
+    context->RegisterGlobalFunction("void Online_BuildOnLoad()", asFUNCTION(AS_Online_BuildOnLoad), asCALL_CDECL);
+    context->RegisterGlobalFunction("bool Online_BuildMode()", asFUNCTION(AS_Online_BuildMode), asCALL_CDECL);
+    context->RegisterGlobalFunction("array<string>@ Online_SavedLevels()", asFUNCTION(AS_Online_SavedLevels), asCALL_CDECL);
     context->RegisterGlobalFunction("vec3 Online_SafeSpotNear(const vec3 &in base, const vec3 &in facing, int index)", asFUNCTION(AS_Online_SafeSpotNear), asCALL_CDECL);
     context->RegisterGlobalFunction("bool Online_FindSafeSpot(const vec3 &in base, const vec3 &in facing, int index, vec3 &out spot)", asFUNCTION(AS_Online_FindSafeSpot), asCALL_CDECL);
     context->RegisterGlobalFunction("string Online_ObjectFile(int id)", asFUNCTION(AS_Online_ObjectFile), asCALL_CDECL);
@@ -6057,6 +6156,35 @@ void AttachOnline(ASContext* context) {
     context->RegisterGlobalFunction("string Online_PublicGames()", asFUNCTION(AS_Online_PublicGames), asCALL_CDECL);
     context->RegisterGlobalFunction("string Online_GetVersion()", asFUNCTION(AS_Online_GetVersion), asCALL_CDECL);
     context->RegisterGlobalFunction("bool Online_JoinPublicGame(const string &in lobby)", asFUNCTION(AS_Online_JoinPublicGame), asCALL_CDECL);
+    // Overgrowth Online: the script API for mods (Docs/Markdown/Overgrowth Online Script API.md)
+    context->RegisterGlobalFunction("int Online_ApiVersion()", asFUNCTION(AS_Online_ApiVersion), asCALL_CDECL,
+                                    "Overgrowth Online: the script API's version (1)");
+    context->RegisterGlobalFunction("int Online_GetOwnPlayerID()", asFUNCTION(AS_Online_GetOwnPlayerID), asCALL_CDECL,
+                                    "Overgrowth Online: this machine's player (the host is 0); -1 without a session");
+    context->RegisterGlobalFunction("int Online_GetHostPlayerID()", asFUNCTION(AS_Online_GetHostPlayerID), asCALL_CDECL,
+                                    "Overgrowth Online: the host's player, 0; -1 without a session");
+    context->RegisterGlobalFunction("array<int>@ Online_GetPlayerIDs()", asFUNCTION(AS_Online_GetPlayerIDs), asCALL_CDECL,
+                                    "Overgrowth Online: everyone in the session, the host first");
+    context->RegisterGlobalFunction("string Online_GetPlayerName(int player_id)", asFUNCTION(AS_Online_GetPlayerName), asCALL_CDECL,
+                                    "Overgrowth Online: a player's name; empty for no such player");
+    context->RegisterGlobalFunction("int Online_GetPlayerCharacter(int player_id)", asFUNCTION(AS_Online_GetPlayerCharacter), asCALL_CDECL,
+                                    "Overgrowth Online: a player's character on this machine; -1 for none yet");
+    context->RegisterGlobalFunction("int Online_GetCharacterPlayer(int character_id)", asFUNCTION(AS_Online_GetCharacterPlayer), asCALL_CDECL,
+                                    "Overgrowth Online: the player whose character this is; -1 for an NPC");
+    context->RegisterGlobalFunction("int Online_ToSharedID(int object_id)", asFUNCTION(AS_Online_ToSharedID), asCALL_CDECL,
+                                    "Overgrowth Online: an object's id as every machine knows it (to send in a message)");
+    context->RegisterGlobalFunction("int Online_FromSharedID(int shared_id)", asFUNCTION(AS_Online_FromSharedID), asCALL_CDECL,
+                                    "Overgrowth Online: a shared id (from a message) as this machine's object id");
+    context->RegisterGlobalFunction("bool Online_Send(const string &in channel, const string &in text)", asFUNCTION(AS_Online_Send), asCALL_CDECL,
+                                    "Overgrowth Online: text to every other player's scripts listening on the channel");
+    context->RegisterGlobalFunction("bool Online_SendToHost(const string &in channel, const string &in text)", asFUNCTION(AS_Online_SendToHost), asCALL_CDECL,
+                                    "Overgrowth Online: text to the host's scripts listening on the channel");
+    context->RegisterGlobalFunction("bool Online_SendToPlayer(int player_id, const string &in channel, const string &in text)", asFUNCTION(AS_Online_SendToPlayer), asCALL_CDECL,
+                                    "Overgrowth Online: text to one player's scripts listening on the channel");
+    context->RegisterGlobalFunction("bool Online_Listen(const string &in channel, const string &in function)", asFUNCTION(AS_Online_Listen), asCALL_CDECL,
+                                    "Overgrowth Online: a channel's messages to this script's \"void F(int from_player, const string &in text)\" (a name is enough)");
+    context->RegisterGlobalFunction("void Online_StopListening(const string &in channel)", asFUNCTION(AS_Online_StopListening), asCALL_CDECL,
+                                    "Overgrowth Online: no more of this channel's messages for this script");
 }
 
 void AttachStringConvert(ASContext* context) {

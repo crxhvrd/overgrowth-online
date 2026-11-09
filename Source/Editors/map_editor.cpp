@@ -249,10 +249,12 @@ static void DrawObjInfo(Object* obj) {
 void MapEditor::RemoveObject(Object* o, SceneGraph* scenegraph, bool removed_by_socket) {
     Online* online = Online::Instance();
 
-    if (online->IsActive()) {
+    // (Overgrowth Online: while building together the edit sync tells the others, edit_sync.h; a
+    // guest who isn't building still only asks the host, which refuses)
+    if (online->IsActive() && !online->edit_sync.applying) {
         if (online->IsHosting()) {
             online->RemoveObject(o, o->GetID());
-        } else if (removed_by_socket == false) {
+        } else if (removed_by_socket == false && !online->MayUseEditor()) {
             // This case is for the editor
             // If we removed something, and it was not by the socket
             // we want to inform the host.
@@ -1277,6 +1279,11 @@ void MapEditor::Update(GameCursor* cursor) {
             }
             save_countdown_ = 0;
 
+            // Overgrowth Online: building together: what this operation changed goes to the others
+            if (Online::Instance()->IsActive()) {
+                Online::Instance()->edit_sync.Scan(scenegraph_);
+            }
+
             // If the last saved chunk global is invalid we try and fix it,
             // This is mainly due to startup, where we don't have a state to point to until the first
             // state is saved.
@@ -1678,10 +1685,10 @@ void MapEditor::HandleShortcuts(const LineSegment& mouseray) {
     }
     // handle undo/redo
     if (KeyCommand::CheckPressed(keyboard, KeyCommand::kRedo, KIMF_LEVEL_EDITOR_GENERAL)) {
-        Redo();
+        RedoHere();
     }
     if (KeyCommand::CheckPressed(keyboard, KeyCommand::kUndo, KIMF_LEVEL_EDITOR_GENERAL)) {
-        Undo();
+        UndoHere();
     }
     // handle copy/paste
     if (KeyCommand::CheckPressed(keyboard, KeyCommand::kCopy, KIMF_LEVEL_EDITOR_GENERAL)) {
@@ -2475,6 +2482,34 @@ void MapEditor::SaveSelected() {
     }
 }
 
+// Overgrowth Online: in a session, undo and redo are this machine's own edits, through the edit
+// sync (the history's undo would put back everyone's)
+void MapEditor::UndoHere() {
+    if (Online::Instance()->IsActive()) {
+        RibbonFlash(gui, "undo");
+        Online::Instance()->edit_sync.Undo(scenegraph_);
+    } else {
+        Undo();
+    }
+}
+
+void MapEditor::RedoHere() {
+    if (Online::Instance()->IsActive()) {
+        RibbonFlash(gui, "redo");
+        Online::Instance()->edit_sync.Redo(scenegraph_);
+    } else {
+        Redo();
+    }
+}
+
+bool MapEditor::CanUndoHere() {
+    return Online::Instance()->IsActive() ? Online::Instance()->edit_sync.CanUndo() : CanUndo();
+}
+
+bool MapEditor::CanRedoHere() {
+    return Online::Instance()->IsActive() ? Online::Instance()->edit_sync.CanRedo() : CanRedo();
+}
+
 bool MapEditor::CanUndo() {
     if (state_ != MapEditor::kIdle || state_history_.current_state <= state_history_.start_state || Online::Instance()->IsActive())
         return false;
@@ -2787,9 +2822,22 @@ void MapEditor::SaveLevel(LevelLoader::SaveLevelType type) {
         return;
     }
 
+    // Overgrowth Online: in a session the host's copy is the level, and the host saves it; a
+    // builder's save asks the host to
+    if (Online::Instance()->IsClient()) {
+        if (Online::Instance()->MayUseEditor()) {
+            Online::Instance()->RequestSave();
+        } else {
+            DisplayMessage("Cannot save level", "In a multiplayer session the host saves the level.");
+        }
+        return;
+    }
+
     scenegraph_->level->Message("save_selected_dialogue");
 
     LevelLoader::SaveLevel(*scenegraph_, type);
+    Online::Instance()->edit_sync.MarkSaved();  // (Overgrowth Online: the file has the edits now)
+    Online::Instance()->NoteHostSaved(scenegraph_);
 
     SetLastSaveOnCurrentUndoChunk();
 

@@ -82,6 +82,10 @@
 #include <Online/Message/ping.h>
 #include <Online/Message/pong.h>
 #include <Online/Message/combat_messages.h>
+#include <Online/Message/script_message.h>
+#include <Online/Message/edit_messages.h>
+#include <Online/edit_sync.h>
+#include <set>
 
 #include <Math/vec3.h>
 #include <Math/mat4.h>
@@ -197,7 +201,13 @@ typedef OnlineMessageHandlerTemplate<
     ItemHit,
     ItemDrop,
     AvatarCharacter,
-    ItemUnstick>
+    ItemUnstick,
+    ScriptMessage,
+    EditBatch,
+    BuildStateMessage,
+    BuilderPresence,
+    BuildRequest,
+    LevelFileChunk>
     OnlineMessageHandler;
 
 extern OnlineMessageHandler message_handler;
@@ -414,6 +424,65 @@ class Online {
     double last_role_message_ms = -1e9;
     bool sent_role = false;
     bool own_state_missing_logged = false;  // (GetOwnPlayerState: said once while there's none)
+    // (the script API: what scripts sent, waiting for the update; what came for them; the players
+    // they were last told about; per guest, the host's message count this second)
+    struct ScriptApiOutgoing {
+        int to;
+        std::string channel, text;
+    };
+    struct ScriptApiDelivery {
+        int from;
+        std::string channel, text;
+    };
+    std::vector<ScriptApiOutgoing> script_api_outgoing;
+    std::vector<ScriptApiDelivery> script_api_deliveries;
+    std::map<int, std::string> script_api_players;
+    std::map<PeerID, std::pair<double, int>> script_api_rate;
+    int script_api_dropped = 0;
+    // (building together: the state, the guests caught up with the edits, the editor's last state here)
+    bool build_mode_ = false;
+    std::vector<int> builders_;
+    bool build_state_dirty_ = false;
+    double last_build_state_ms_ = -1e9;
+    double last_edit_scan_ms_ = 0.0;
+    bool editor_was_open_ = false;
+    std::set<PeerID> edit_caught_up_;
+    double last_presence_ms_ = -1e9;
+    double last_autosave_ms_ = 0.0;
+    int autosave_mark_ = 0;
+    bool presence_sent_editing_ = false;
+    // (the level's save state: the host's own, or the host's last word on a guest)
+    double saved_ms_ = -1.0, autosaved_ms_ = -1.0;  // -1: not since the level loaded
+    int guest_saved_ago_ = -1, guest_autosaved_ago_ = -1, guest_unsaved_ = 0;
+    double guest_save_state_ms_ = 0.0;
+    // (edit lines for the chat: per player, what it placed, changed and removed lately)
+    struct EditTally {
+        std::set<int> placed, changed, removed;
+        bool sky = false, params = false;
+        double first_ms = 0.0, last_ms = 0.0;
+    };
+    std::map<int, EditTally> edit_tallies_;
+    // (reflection captures re-rendered once edits pause; the navmesh rebuilt going to Play)
+    int refl_mark_ = 0, nav_mark_ = 0;
+    double refl_edit_ms_ = 0.0;
+    bool refl_pending_ = false, nav_current_unsaved_ = false;
+    // (a builder's save request waiting for the host's answer; ours, not sent again too soon)
+    int save_request_from_ = -1;
+    bool save_request_told_ = false;
+    double last_save_request_ms_ = -1e9;
+    void MaybeRebuildNavMesh(SceneGraph* sg);
+    void FlushEditTallies(bool all);
+    double rebaseline_at_ms_ = -1.0;  // (after build mode switches: what's there then is the baseline)
+    bool build_on_load_ = false;      // (Build a level: the hosted level opens in build mode)
+    std::set<int> auto_builders_;     // (players made builders by everyone_builds, once each)
+    // (a level file on its way from the host; the ones that arrived: the host's name -> ours)
+    std::string incoming_level_;
+    std::vector<std::string> incoming_parts_;
+    std::map<std::string, std::string> received_levels_;
+    // (the host: who got the level's file with the level change; their handshake that follows doesn't
+    // send it again)
+    std::string level_file_broadcast_;
+    std::set<HSteamNetConnection> level_file_broadcast_to_;
     void SendAvatarPaletteChange(const OGPalette& palette, ObjectID object_id);
     bool IsAvatarPossessed(ObjectID avatar_id);
     void PossessAvatar(PlayerID player_id, ObjectID object_id);
@@ -465,6 +534,97 @@ class Online {
     bool HostOnlyMessage(OnlineMessageType type) const;
     void StreamCharacters(SceneGraph* scenegraph);
     void ReceiveSnapshots(PeerID from, const uint8_t* data, size_t size);
+
+    // ---- The script API for mods (Online_* in asfuncs.cpp; Docs/Markdown/Overgrowth Online
+    // Script API.md). Players by the API's ids: the host 0, guests 1.. (inside, the host's
+    // PlayerID is 255 and a guest's peer is its player)
+    static const int kScriptApiVersion = 1;
+    static const size_t kScriptChannelMax = 64;
+    static const size_t kScriptTextMax = 16384;
+    int ApiPlayerID(PlayerID id) const { return id == (PlayerID)-1 ? 0 : (int)id; }
+    int OwnApiPlayerID() const;
+    std::vector<int> ApiPlayerIDs() const;
+    std::string ApiPlayerName(int player) const;
+    ObjectID ApiPlayerCharacter(int player) const;
+    int CharacterApiPlayer(ObjectID character) const;
+    // to: a player, or ScriptMessage::kEveryone (every other player); false: refused (no session,
+    // a reserved or oversized channel or text). Sent with the next frame's update
+    bool SendScriptMessage(int to, const std::string& channel, const std::string& text);
+    bool AcceptScriptMessage(PeerID from, const std::string& channel, const std::string& text);  // host: a guest's
+    void QueueScriptDelivery(int from, const std::string& channel, const std::string& text);
+    void RelayScriptMessage(const OnlineMessageRef& ref, PeerID from);  // host, peers locked
+    void UpdateScriptApi();  // LateUpdate: sends, then deliveries and player events to the scripts
+
+    // ---- Building a level together (edit_sync.h, docs_mp_editing_plan.md). The host owns the
+    // level; in build mode the session is paused and builders may use the editor
+    EditSync edit_sync;
+    bool BuildMode() const { return build_mode_; }
+    bool IsBuilder(int player) const;  // (the host always)
+    bool MayUseEditor() const;          // offline and the host: yes; a guest: a builder while building
+    std::vector<int> Builders() const { return builders_; }
+    void SetBuildMode(bool on);           // host
+    void SetBuilder(int player, bool on);  // host
+    void ReceiveBuildState(bool building, const std::vector<int>& builders, int saved_ago, int autosaved_ago, int unsaved);  // guest
+    // origin: whose edit (the API's player ids); to: -1 everyone (the host) or a player; a guest's goes to the host
+    void SendEditBatch(int origin, const std::string& blob, int to);
+    // A guest's translation for an object the edit sync made or removed, set or cleared both ways
+    // (a stale pair from an object gone earlier is dropped: it once moved the wrong object)
+    void LinkEditedObject(CommonObjectID host, ObjectID local);
+    void UnlinkEditedObject(ObjectID local);
+    // Builders' presence (phase 2): where each is and what it selected; claims: an object is the
+    // first selector's until it lets go, and the host refuses others' changes to it
+    void ReceivePresence(int player, const vec3& camera, bool editing, const std::vector<int>& selection);
+    bool ClaimedByOther(int shared_id, int player) const;  // host
+    struct Presence {
+        vec3 camera;
+        bool editing = false;
+        std::vector<int> selection;  // shared ids
+        double ms = -1e9;
+    };
+    std::map<int, Presence> presence_;
+    std::map<int, int> claims_;  // host: shared id -> player
+    void UpdateEditing(SceneGraph* sg);  // LateUpdate: batches, scans, the build state, joiners' catch-up
+    void AutosaveSoon() { last_autosave_ms_ = -1e9; autosave_mark_ = -1; }  // (the test bridge's)
+    // A level loaded (the engine, with edit_sync.Reset): nothing saved, tallied or pending
+    void NoteLevelLoaded(SceneGraph* sg);
+    // The host saved the level (MapEditor::SaveLevel): everyone told, the navmesh saved beside it
+    // when it's current
+    void NoteHostSaved(SceneGraph* sg);
+    // The level's save state in words ("Saved 3 min ago, 12 unsaved changes, autosaved 1 min ago")
+    std::string SaveStateText() const;
+    int SavedAgo() const;       // seconds; -1: not since the level loaded
+    int AutosavedAgo() const;   // the same
+    int UnsavedCount() const;
+    // Edit lines for the chat (host): "Bob placed 3 objects, changed 1 object"
+    void TallyEdits(int player, const std::vector<EditSync::Entry>& entries);
+    bool edit_chat = true;
+    // A line in one player's chat (the host's: sent to that player; our own: shown here)
+    void TellPlayer(int player, const std::string& text);
+    int ClaimHolder(int shared_id) const;  // host: -1 none
+    bool EditRebaselinePending() const { return rebaseline_at_ms_ >= 0.0; }
+    // Saving while building: a builder asks (Ctrl+S); the host saves at once when builders may
+    // save and no dialog is needed, else it gets a prompt (AnswerSaveRequest)
+    void RequestSave();                               // guest
+    void ReceiveBuildRequest(int player, int what);   // host, inside message handling
+    int SaveRequestFrom() const { return save_request_from_; }
+    void AnswerSaveRequest(bool save);                // host
+    bool builders_may_save = false;
+    // Build a level (the Multiplayer menu): the next level hosted opens in build mode, the host in
+    // the editor, and everyone who joins may build (the host can untick each)
+    void BuildOnLoad() { build_on_load_ = true; }
+    bool everyone_builds = false;
+    // A level the guests can't have (from the host's write folder: its own, saved) goes to them as a
+    // file before they're told to load it: to one guest joining (conn) or to all (conn 0). A guest
+    // keeps it in its write folder (Data/Levels/_online/) and loads that
+    void SendLevelFile(HSteamNetConnection conn, const std::string& level);
+    void ReceiveLevelChunk(const std::string& name, int part, int parts, const std::string& bytes);  // guest
+    std::string ReceivedLevel(const std::string& name) const;  // guest: ours for the host's name, or ""
+    int level_files_sent = 0, level_files_received = 0;  // (the test bridge's)
+    // The levels saved in the write folder (Data/Levels/..., the autosaves too), for the menu
+    static std::vector<std::string> SavedLevels();
+    int nav_builds = 0, refl_refreshes = 0, refl_last_count = 0;  // (the test bridge's)
+    double nav_build_ms = 0.0;
+    std::vector<std::string> chat_log;  // (the test bridge's: the last chat lines here)
 
     // Combat across machines (Phase 4)
     void SendToOwnerOf(ObjectID id, const OnlineMessageRef& ref, bool peers_locked);

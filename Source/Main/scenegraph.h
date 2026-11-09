@@ -38,6 +38,7 @@
 #include <Scripting/scriptparams.h>
 
 #include <list>
+#include <set>
 #include <map>
 
 class Sound;
@@ -229,6 +230,9 @@ class SceneGraph {
     };
     void DrawDepthMap(const mat4 &proj_view_matrix, const vec4 *cull_planes, int num_cull_planes, DepthType depth_type, SceneDrawType scene_draw_type);
     int GetAndReserveID();
+    // Overgrowth Online: a free id that isn't in `taken` (several new ids at once: GetAndReserveID
+    // hands out the first free slot again until an object takes it). Never 0, the terrain's
+    int GetFreeIDExcept(const std::set<int>& taken);
     int LinkUpdateObject(Object *obj);
     void UnlinkUpdateObject(Object *obj, int entry);
     void Dispose();

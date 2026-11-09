@@ -2157,8 +2157,8 @@ void DrawImGui(Graphics* graphics, SceneGraph* scenegraph, GUI* gui, AssetManage
                     SetBit(ribbon_flags, RibbonGUI::lights_editor_active, IsTypeEnabled(_dynamic_light_object));
                     SetBit(ribbon_flags, RibbonGUI::something_selected, IsSomethingSelected());
                     SetBit(ribbon_flags, RibbonGUI::one_object_selected, IsOneObjectSelected());
-                    SetBit(ribbon_flags, RibbonGUI::can_undo, CanUndo());
-                    SetBit(ribbon_flags, RibbonGUI::can_redo, CanRedo());
+                    SetBit(ribbon_flags, RibbonGUI::can_undo, me->CanUndoHere());
+                    SetBit(ribbon_flags, RibbonGUI::can_redo, me->CanRedoHere());
                     SetBit(ribbon_flags, RibbonGUI::show_probes, scenegraph_->light_probe_collection.show_probes);
                     SetBit(ribbon_flags, RibbonGUI::show_probes_through_walls, scenegraph_->light_probe_collection.show_probes_through_walls);
                     SetBit(ribbon_flags, RibbonGUI::probe_lighting_enabled, scenegraph_->light_probe_collection.probe_lighting_enabled);
@@ -2205,10 +2205,10 @@ void DrawImGui(Graphics* graphics, SceneGraph* scenegraph, GUI* gui, AssetManage
 
                 if (ImGui::BeginMenu("Edit")) {
                     if (ImGui::MenuItem("Undo", KeyCommand::GetDisplayText(KeyCommand::kUndo), false, !me->GetTerrainPreviewMode())) {
-                        me->Undo();
+                        me->UndoHere();
                     }
                     if (ImGui::MenuItem("Redo", KeyCommand::GetDisplayText(KeyCommand::kRedo), false, !me->GetTerrainPreviewMode())) {
-                        me->Redo();
+                        me->RedoHere();
                     }
                     ImGui::Separator();
                     if (ImGui::MenuItem("Cut", KeyCommand::GetDisplayText(KeyCommand::kCut))) {
@@ -3683,6 +3683,22 @@ Mark Stockton\nMikko Tarmia\nDavid Lyhed Danielsson");
         }
     }
 
+    // Overgrowth Online: a builder asked the host to save
+    if (online->IsHosting() && online->SaveRequestFrom() >= 0) {
+        std::string who = online->ApiPlayerName(online->SaveRequestFrom());
+        ImGui::SetNextWindowPos(ImVec2(Graphics::Instance()->render_dims[0] * 0.5f, 80.0f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+        ImGui::Begin("Save request", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Text("%s asks you to save the level", who.empty() ? "A builder" : who.c_str());
+        if (ImGui::Button("Save")) {
+            online->AnswerSaveRequest(true);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Not now")) {
+            online->AnswerSaveRequest(false);
+        }
+        ImGui::End();
+    }
+
     if (show_mp_settings) {
         ImGui::SetNextWindowPos(ImVec2(0.f, 200.f));
         ImGui::Begin("Multiplayer Settings", &show_mp_info,
@@ -3692,10 +3708,32 @@ Mark Stockton\nMikko Tarmia\nDavid Lyhed Danielsson");
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_AlwaysAutoResize);
 
-        bool host_allow_editor = online->GetHostAllowsClientEditor();
-        ImGui::Checkbox("Allow clients using the editor", &host_allow_editor);
-
-        online->SetIfHostAllowsClientEditor(host_allow_editor);
+        // Overgrowth Online: building a level together (docs_mp_editing_plan.md)
+        if (online->IsHosting()) {
+            bool building = online->BuildMode();
+            if (ImGui::Checkbox("Build mode (pauses the game; builders use the editor)", &building)) {
+                online->SetBuildMode(building);
+            }
+            ImGui::Checkbox("Builders may save (Ctrl+S saves the level for everyone)", &online->builders_may_save);
+            ImGui::Checkbox("Edit lines in the chat", &online->edit_chat);
+            ImGui::Checkbox("Players who join may build", &online->everyone_builds);
+            ImGui::Text("%s", online->SaveStateText().c_str());
+            ImGui::Text("Builders:");
+            for (int player : online->ApiPlayerIDs()) {
+                if (player == 0) {
+                    continue;
+                }
+                bool builder = online->IsBuilder(player);
+                std::string label = online->ApiPlayerName(player) + "##builder" + std::to_string(player);
+                if (ImGui::Checkbox(label.c_str(), &builder)) {
+                    online->SetBuilder(player, builder);
+                }
+            }
+        } else if (online->IsActive()) {
+            ImGui::Text(online->IsBuilder(online->OwnApiPlayerID()) ? "You may build (F1 in build mode; Ctrl+S asks the host to save)" : "The host builds");
+            ImGui::Text(online->BuildMode() ? "Build mode: on" : "Build mode: off");
+            ImGui::Text("%s", online->SaveStateText().c_str());
+        }
 
         if (spawner_tabs.find("Character") != spawner_tabs.end()) {
             SpawnerTab* character_tab = &spawner_tabs["Character"];

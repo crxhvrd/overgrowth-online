@@ -1907,6 +1907,14 @@ int SceneGraph::GetAndReserveID() {
     return free_id;
 }
 
+int SceneGraph::GetFreeIDExcept(const std::set<int>& taken) {
+    for (int id = 1;; ++id) {
+        if ((id >= (int)object_from_id_map_.size() || object_from_id_map_[id] == NULL) && taken.count(id) == 0) {
+            return id;
+        }
+    }
+}
+
 int SceneGraph::LinkUpdateObject(Object* obj) {
     if (num_update_objects < kMaxUpdateObjects) {
         int id = num_update_objects++;

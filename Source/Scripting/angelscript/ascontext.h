@@ -159,6 +159,17 @@ class ASContext {
     bool CallMPCallBack(uint32_t state, const std::vector<char>& data);
     bool CallMPCallBack(uint32_t state, const std::vector<unsigned int>& data);
     asIScriptEngine* GetEngine();
+
+    // Overgrowth Online: the script API's listeners (Online_Listen): a channel's messages go to a
+    // function of this script, "void F(int from_player, const string &in text)". The function
+    // may be given by its name alone. False: no such function here
+    bool ListenOnline(const std::string& channel, const std::string& function);
+    void StopListeningOnline(const std::string& channel);
+    // To every script listening on the channel (main thread; Online::UpdateScriptApi)
+    static void DeliverOnlineMessage(int from, const std::string& channel, const std::string& text);
+
+   private:
+    std::unordered_map<std::string, ASFunctionHandle> online_listeners_;
 };
 
 void DebugLineCallback(asIScriptContext* ctx, ASModule* asmod);

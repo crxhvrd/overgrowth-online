@@ -223,6 +223,7 @@ class Engine : public ModLoadingCallback {
     SaveFile save_file_;
     GUI gui;
     EngineState current_engine_state_;
+    bool SetEditorOpen(bool open);  // (Overgrowth Online: F1's switch; false: may not use the editor now)
 
     std::map<std::string, std::string> interlevel_data;
 

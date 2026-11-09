@@ -953,29 +953,31 @@ void Engine::HandleRabbotToggleControls() {
         Graphics::Instance()->SetMediaMode(false);
     }
 
-    if (Online::Instance()->IsClient() && Online::Instance()->GetHostAllowsClientEditor() == false) {
-        if (current_engine_state_.type == kEngineEditorLevelState) {
-            current_engine_state_.type = kEngineLevelState;
-            scenegraph_->map_editor->SendInRabbot();
-        }
+    // Overgrowth Online: in a session the editor is the host's, and a builder's while building
+    if (!Online::Instance()->MayUseEditor() && current_engine_state_.type == kEngineEditorLevelState) {
+        SetEditorOpen(false);
     }
 
     if (keyboard.wasScancodePressed(SDL_SCANCODE_F1, KIMF_PLAYING | KIMF_LEVEL_EDITOR_GENERAL)) {
-        if (Online::Instance()->IsClient()) {
-            if (Online::Instance()->GetHostAllowsClientEditor() == false && false) {
-                return;
-            }
-        }
-
-        if (current_engine_state_.type == kEngineLevelState) {
-            current_engine_state_.type = kEngineEditorLevelState;
-            scenegraph_->map_editor->StopRabbot();
-            Shaders::Instance()->create_program_warning = false;
-        } else if (current_engine_state_.type == kEngineEditorLevelState) {
-            current_engine_state_.type = kEngineLevelState;
-            scenegraph_->map_editor->SendInRabbot();
-        }
+        SetEditorOpen(current_engine_state_.type == kEngineLevelState);
     }
+}
+
+// Overgrowth Online: F1's switch, for the test bridge too. Refused while this machine may not
+// use the editor (a session where it isn't building)
+bool Engine::SetEditorOpen(bool open) {
+    if (open && !Online::Instance()->MayUseEditor()) {
+        return false;
+    }
+    if (open && current_engine_state_.type == kEngineLevelState) {
+        current_engine_state_.type = kEngineEditorLevelState;
+        scenegraph_->map_editor->StopRabbot();
+        Shaders::Instance()->create_program_warning = false;
+    } else if (!open && current_engine_state_.type == kEngineEditorLevelState) {
+        current_engine_state_.type = kEngineLevelState;
+        scenegraph_->map_editor->SendInRabbot();
+    }
+    return true;
 }
 
 static void ClipPolyToPlane(std::vector<vec3>* poly_verts, vec3 plane_normal, float plane_distance) {
@@ -4835,6 +4837,13 @@ void Engine::Draw() {
                         if (graphics->nav_mesh_out_of_date) {
                             gui.AddDebugText("_nav_update", "Nav mesh needs update", 0.5);
                         }
+                        if (Online::Instance()->IsActive()) {  // (Overgrowth Online)
+                            if (Online::Instance()->BuildMode()) {
+                                gui.AddDebugText("_mp_saved", Online::Instance()->SaveStateText(), 0.5);
+                            } else {
+                                gui.AddDebugText("_mp_saved", "Build mode is off: edits here aren't shared (Windows > Multiplayer settings)", 0.5);
+                            }
+                        }
                     }
                 }
             }
@@ -5832,6 +5841,8 @@ void Engine::LoadLevel(Path queued_level) {
 
             native_loading_text.Clear();
 
+            Online::Instance()->edit_sync.Reset(scenegraph_);  // (Overgrowth Online: a level loaded: nothing edited)
+            Online::Instance()->NoteLevelLoaded(scenegraph_);
             level_loaded_ = true;
             UIShowCursor(0);
             level_updated_ = 0;
@@ -6553,7 +6564,7 @@ void Engine::CommitPause() {
     if (!Online::Instance()->IsActive()) {
         paused = user_paused || menu_paused;
     } else {
-        paused = false;
+        paused = Online::Instance()->BuildMode();  // (Overgrowth Online: building: paused for everyone)
     }
 
     game_timer.target_time_scale = (paused || slow_motion) ? 0.1f : current_global_scale_mult;

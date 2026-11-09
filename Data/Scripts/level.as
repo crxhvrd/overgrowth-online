@@ -417,7 +417,10 @@ void DrawGUI2() {
         fade_in_end = the_time + 0.2;
     }
 
-    if(fade_out_end != -1.0f){
+    // Overgrowth Online: building (the game paused for everyone): no fade drawn. Its clock is the
+    // game's, which stands still: a reset's fade-in stayed black for the whole build
+    bool building = Online_BuildMode();
+    if(fade_out_end != -1.0f && !building){
         float blackout_amount = min(1.0, 1.0 - ((fade_out_end - the_time) / (fade_out_end - fade_out_start)));
         HUDImage @blackout_image = hud.AddImage();
         blackout_image.SetImageFromPath("Data/Textures/diffuse.tga");
@@ -430,7 +433,7 @@ void DrawGUI2() {
             dialogue.UpdatedQueue();
             fade_out_end = -1.0f;
         }
-    } else if(fade_in_end != -1.0f){
+    } else if(fade_in_end != -1.0f && !building){
         float blackout_amount = min(1.0, ((fade_in_end - the_time) / (fade_in_end - fade_in_start)));
         HUDImage @blackout_image = hud.AddImage();
         blackout_image.SetImageFromPath("Data/Textures/diffuse.tga");

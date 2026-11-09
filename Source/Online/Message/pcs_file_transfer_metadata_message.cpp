@@ -28,6 +28,7 @@
 
 #include <Main/engine.h>
 #include <Internal/modloading.h>
+#include <Internal/filesystem.h>
 #include <Utility/binn_util.h>
 
 #include <string>
@@ -89,11 +90,20 @@ void PCSFileTransferMetadataMessage::Execute(const OnlineMessageRef& ref, void* 
     // Overgrowth Online: the host's campaign, ours too (co-op rules: a guest knew
     // none, so it never counted as a story level)
     Online::Instance()->campaign_id = t->campaign_id;
+    // Overgrowth Online: the host's own level file, if it sent one; a level outside the campaigns
+    // (Build a level: an empty level, a mod's level) loads as it is
+    std::string load = online->ReceivedLevel(t->map_name);
+    if (load.empty()) {
+        load = t->map_name;
+    }
     if (ModLoading::Instance().WhichCampaignLevelBelongsTo(t->map_name) != "") {
         Online::Instance()->online_session->free_avatars.clear();
 
         Engine::Instance()->ScriptableUICallback("set_campaign " + t->campaign_id);
-        Engine::Instance()->ScriptableUICallback(t->map_name);
+        Engine::Instance()->ScriptableUICallback(load);
+    } else if (FileExists(load, kAnyPath) || FileExists("Data/Levels/" + load, kAnyPath)) {
+        Online::Instance()->online_session->free_avatars.clear();
+        Engine::Instance()->ScriptableUICallback(load);
     } else {
         LOGE << "Unabled to load level: \"" + t->map_name + "\" in campaign: " + t->campaign_id << std::endl;
         Online::Instance()->QueueStopMultiplayer();

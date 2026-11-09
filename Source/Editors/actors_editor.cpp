@@ -394,7 +394,8 @@ std::vector<Object*> ActorsEditor_AddEntitiesAtMouse(const Path& source, SceneGr
 
 std::vector<Object*> ActorsEditor_AddEntitiesAtPosition(const Path& source, SceneGraph* scenegraph, const EntityDescriptionList& desc_list, vec3 spawn_pos, bool in_new_prefab, CommonObjectID hostid) {
     Online* online = Online::Instance();
-    if (online->IsClient()) {
+    // (Overgrowth Online: a builder makes it here, and the edit sync sends it to the host)
+    if (online->IsClient() && !online->MayUseEditor()) {
         if (hostid == 0) {
             std::string path;
 
@@ -495,7 +496,7 @@ std::vector<Object*> ActorsEditor_AddEntitiesAtPosition(const Path& source, Scen
                 if (online->IsActive()) {
                     new_entity->created_on_the_fly = true;
                     if (online->IsHosting()) {
-                        online->Send<OnlineMessages::CreateEntity>(new_entity->obj_file, spawn_pos, new_entity->GetID());
+                        // (Overgrowth Online: the edit sync sends the whole object, edit_sync.h)
                     } else {
                         // this is hacky, checking if hostid is 0, but there is no other option atm.
                         // if it's zero, then this function was called with no id supplied, meaning there is no corresponding object

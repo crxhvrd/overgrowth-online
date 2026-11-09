@@ -8,6 +8,8 @@
 //        License: Apache-2.0, like the rest of the engine (see LICENSE)
 //-----------------------------------------------------------------------------
 #include "test_bridge.h"
+#include <Editors/entity_type.h>
+#include <Editors/actors_editor.h>
 
 #include <Main/engine.h>
 #include <Main/scenegraph.h>
@@ -24,6 +26,7 @@
 #endif
 #include <Online/clock_sync.h>
 #include <Editors/map_editor.h>
+#include <Objects/reflectioncaptureobject.h>
 #include <Scripting/scriptparams.h>
 #include <Internal/config.h>
 #include <Internal/crashreport.h>
@@ -500,6 +503,11 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
 
         out["held"] = (int)input->injected_keys_.size();
     } else if (cmd == "load_level") {
+        if (req.get("discard", false).asBool()) {
+            // (the "save changes?" check answered No: the level is left as it is)
+            engine->check_save_level_changes_dialog_is_finished = true;
+            engine->check_save_level_changes_last_result = true;
+        }
         engine->ScriptableUICallback(req.get("path", "").asString());
     } else if (cmd == "host") {
         // Host first, then load: hosting inside a loaded level hands the
@@ -1005,6 +1013,191 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
                     e["model_scale"] = r->GetCharScale();
                     out["characters"].append(e);
                 }
+            }
+        }
+    } else if (cmd == "build") {
+        // Overgrowth Online: building together. {"on": bool} build mode (host), {"builder": id,
+        // "may": bool} (host), {"editor": bool} opens or closes the editor here; the answer: the state
+        Online* online = Online::Instance();
+        if (req.isMember("on")) {
+            online->SetBuildMode(req["on"].asBool());
+        }
+        if (req.isMember("builder")) {
+            online->SetBuilder(req["builder"].asInt(), req.get("may", true).asBool());
+        }
+        if (req.isMember("editor")) {
+            out["editor_ok"] = Engine::Instance()->SetEditorOpen(req["editor"].asBool());
+        }
+        if (req.get("autosave", false).asBool()) {
+            online->AutosaveSoon();
+        }
+        if (req.get("build_on_load", false).asBool()) {
+            online->BuildOnLoad();  // (Build a level: before "host")
+        }
+        if (req.isMember("builders_save")) {
+            online->builders_may_save = req["builders_save"].asBool();
+        }
+        SceneGraph* bsg = Engine::Instance()->GetSceneGraph();
+        if (req.isMember("save_to") && bsg != nullptr && bsg->map_editor != nullptr) {
+            // (host: the level made a file in the write folder, then saved as the editor does)
+            out["save_to_ok"] = LevelLoader::PointLevelAt(*bsg, req["save_to"].asString());
+            if (out["save_to_ok"].asBool()) {
+                bsg->map_editor->SaveLevel(LevelLoader::kSaveInPlace);
+            }
+        }
+        if (req.get("save", false).asBool() && bsg != nullptr && bsg->map_editor != nullptr) {
+            bsg->map_editor->SaveLevel(LevelLoader::kSaveInPlace);  // (a builder: asks the host)
+        }
+        if (req.isMember("answer_save")) {
+            online->AnswerSaveRequest(req["answer_save"].asBool());
+        }
+        out["save_state"] = online->SaveStateText();
+        out["saved_ago"] = online->SavedAgo();
+        out["autosaved_ago"] = online->AutosavedAgo();
+        out["unsaved"] = online->UnsavedCount();
+        out["save_request"] = online->SaveRequestFrom();
+        out["nav_builds"] = online->nav_builds;
+        out["nav_build_ms"] = online->nav_build_ms;
+        out["refl_refreshes"] = online->refl_refreshes;
+        out["level_name"] = online->level_name;
+        out["level_files_sent"] = online->level_files_sent;
+        out["level_files_received"] = online->level_files_received;
+        out["everyone_builds"] = online->everyone_builds;
+        out["saved_levels"] = Json::Value(Json::arrayValue);
+        for (const std::string& level : Online::SavedLevels()) {
+            out["saved_levels"].append(level);
+        }
+        out["refl_captures"] = online->refl_last_count;
+        int refl_dirty = 0;
+        if (bsg != nullptr) {
+            for (Object* obj : bsg->objects_) {
+                if (obj->GetType() == _reflection_capture_object && static_cast<ReflectionCaptureObject*>(obj)->dirty) {
+                    ++refl_dirty;  // (marked, not rendered yet)
+                }
+            }
+        }
+        out["refl_dirty"] = refl_dirty;
+        out["chat"] = Json::Value(Json::arrayValue);
+        for (const std::string& line : online->chat_log) {
+            out["chat"].append(line);
+        }
+        out["build_mode"] = online->BuildMode();
+        out["may_edit"] = online->MayUseEditor();
+        out["editor_open"] = Engine::Instance()->current_engine_state_.type == kEngineEditorLevelState;
+        out["scans"] = online->edit_sync.scans;
+        out["sent"] = online->edit_sync.batches_sent;
+        out["applied"] = online->edit_sync.batches_applied;
+        out["refused"] = online->edit_sync.refused;
+        out["edited"] = online->edit_sync.edited_count();
+        out["presence"] = Json::Value(Json::objectValue);
+        for (const auto& p : online->presence_) {
+            Json::Value v;
+            v["editing"] = p.second.editing;
+            v["camera"].append(p.second.camera[0]);
+            v["camera"].append(p.second.camera[1]);
+            v["camera"].append(p.second.camera[2]);
+            v["selection"] = Json::Value(Json::arrayValue);
+            for (int id : p.second.selection) {
+                v["selection"].append(id);
+            }
+            out["presence"][std::to_string(p.first)] = v;
+        }
+        out["claims"] = Json::Value(Json::objectValue);
+        for (const auto& c : online->claims_) {
+            out["claims"][std::to_string(c.first)] = c.second;
+        }
+    } else if (cmd == "edit") {
+        // Overgrowth Online: editor operations as the editor's tools do them, for the building
+        // tests. {"op": "spawn", "path", "pos"} | {"op": "move", "obj", "pos"} | {"op": "delete", "obj"}
+        // | {"op": "param", "obj", "key", "value"} | {"op": "group", "objs"} | {"op": "get", "obj"} |
+        // {"op": "find", "path"}. Ids are this machine's ("obj": "id" is the bridge's own request id);
+        // answers carry each object's shared id too
+        Online* online = Online::Instance();
+        SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+        if (sg == nullptr || sg->map_editor == nullptr) {
+            throw std::runtime_error("no level loaded");
+        }
+        std::string op = req.get("op", "").asString();
+        auto vec = [](const Json::Value& v) { return vec3(v[0].asFloat(), v[1].asFloat(), v[2].asFloat()); };
+        auto describe = [&](Object* obj) {
+            Json::Value o;
+            o["id"] = obj->GetID();
+            o["shared"] = (int)online->GetOriginalID(obj->GetID());
+            vec3 pos = obj->GetTranslation();
+            o["pos"].append(pos[0]);
+            o["pos"].append(pos[1]);
+            o["pos"].append(pos[2]);
+            o["file"] = obj->obj_file;
+            o["type"] = CStringFromEntityType(obj->GetType());
+            o["parent"] = obj->parent ? obj->parent->GetID() : -1;
+            o["selected"] = obj->Selected();
+            return o;
+        };
+        if (op == "spawn") {
+            EntityDescriptionList descs;
+            std::string file_type;
+            Path source;
+            ActorsEditor_LoadEntitiesFromFile(req["path"].asString(), descs, &file_type, &source);
+            std::vector<Object*> made = ActorsEditor_AddEntitiesAtPosition(source, sg, descs, vec(req["pos"]), false);
+            for (Object* obj : made) {
+                out["made"].append(describe(obj));
+            }
+            sg->map_editor->QueueSaveHistoryState();
+        } else if (op == "find") {
+            out["objects"] = Json::Value(Json::arrayValue);
+            for (Object* obj : sg->objects_) {
+                if (obj->obj_file == req["path"].asString()) {
+                    out["objects"].append(describe(obj));
+                }
+            }
+        } else {
+            int id = req.get("obj", -1).asInt();
+            Object* obj = (id >= 0 && sg->DoesObjectWithIdExist(id)) ? sg->GetObjectFromID(id) : nullptr;
+            if (op == "get") {
+                out["exists"] = obj != nullptr;
+                if (obj) {
+                    out["object"] = describe(obj);
+                    if (req.isMember("key") && obj->GetScriptParams()->HasParam(req["key"].asString())) {
+                        out["value"] = obj->GetScriptParams()->GetStringVal(req["key"].asString());
+                    }
+                }
+            } else if (op == "undo") {
+                sg->map_editor->UndoHere();
+            } else if (op == "redo") {
+                sg->map_editor->RedoHere();
+            } else if (op == "select") {
+                MapEditor::DeselectAll(sg);
+                for (const Json::Value& v : req["objs"]) {
+                    if (sg->DoesObjectWithIdExist(v.asInt())) {
+                        sg->GetObjectFromID(v.asInt())->Select(true);
+                    }
+                }
+            } else if (op == "group") {
+                MapEditor::DeselectAll(sg);
+                for (const Json::Value& v : req["objs"]) {
+                    if (sg->DoesObjectWithIdExist(v.asInt())) {
+                        sg->GetObjectFromID(v.asInt())->Select(true);
+                    }
+                }
+                sg->map_editor->GroupSelected();
+                MapEditor::DeselectAll(sg);
+            } else if (obj == nullptr) {
+                throw std::runtime_error("no object " + std::to_string(id));
+            } else if (op == "move") {
+                obj->SetTranslation(vec(req["pos"]));
+                obj->HandleTransformationOccurred();
+                sg->map_editor->QueueSaveHistoryState();
+            } else if (op == "delete") {
+                sg->map_editor->RemoveObject(obj, sg);
+                sg->map_editor->QueueSaveHistoryState();
+            } else if (op == "param") {
+                ScriptParamMap spm = obj->GetScriptParamMap();
+                ScriptParam param;
+                param.SetString(req["value"].asString());
+                spm[req["key"].asString()] = param;
+                sg->map_editor->ApplyScriptParams(spm, id);
+            } else {
+                throw std::runtime_error("unknown op " + op);
             }
         }
     } else if (cmd == "level_messages") {

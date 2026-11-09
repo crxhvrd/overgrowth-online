@@ -36,6 +36,14 @@ enum SaveLevelType {
 };
 
 void SaveLevel(SceneGraph& s, SaveLevelType type);
+// Overgrowth Online: the level as it is now, written to another file (an autosave while building);
+// the scene keeps its own path and name
+void SaveLevelCopy(SceneGraph& s, const std::string& abs_path);
+// Overgrowth Online: whether saving in place would ask where (Save As): a level never saved from the
+// game's own folders, or none. PointLevelAt makes a file (in the write folder) the level's own, so the
+// next save goes there (false when its path doesn't resolve)
+bool SaveNeedsDialog(SceneGraph& s);
+bool PointLevelAt(SceneGraph& s, const std::string& abs_path);
 void SaveTerrain(TiXmlNode* doc, SceneGraph* s);
 }  // namespace LevelLoader
 

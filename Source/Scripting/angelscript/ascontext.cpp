@@ -41,6 +41,7 @@
 #include <Compat/fileio.h>
 #include <Utility/assert.h>
 #include <Logging/logdata.h>
+#include <algorithm>
 
 #include <angelscript.h>
 
@@ -262,7 +263,65 @@ void ASContext::run(asIScriptFunction *func, const ASArglist *args_ptr, ASArg *r
     active_context_stack.pop();
 }
 
+namespace {
+// (Overgrowth Online: the contexts with script API listeners; a context leaves when destroyed)
+std::vector<ASContext *> &OnlineListeningContexts() {
+    static std::vector<ASContext *> &contexts = *new std::vector<ASContext *>();
+    return contexts;
+}
+
+bool IsOnlineListening(ASContext *context) {
+    const std::vector<ASContext *> &contexts = OnlineListeningContexts();
+    return std::find(contexts.begin(), contexts.end(), context) != contexts.end();
+}
+}  // namespace
+
+bool ASContext::ListenOnline(const std::string &channel, const std::string &function) {
+    std::string decl = function;
+    if (decl.find('(') == std::string::npos) {
+        decl = "void " + decl + "(int, const string &in)";
+    }
+    ASFunctionHandle handle = RegisterExpectedFunction(decl, false);
+    LoadExpectedFunctions();
+    if (!HasFunction(handle)) {
+        LOGE << "Online_Listen(\"" << channel << "\"): this script has no \"" << decl << "\"" << std::endl;
+        return false;
+    }
+    online_listeners_[channel] = handle;
+    if (!IsOnlineListening(this)) {
+        OnlineListeningContexts().push_back(this);
+    }
+    return true;
+}
+
+void ASContext::StopListeningOnline(const std::string &channel) {
+    online_listeners_.erase(channel);
+}
+
+void ASContext::DeliverOnlineMessage(int from, const std::string &channel, const std::string &text) {
+    // (a copy: a listener may load or delete scripts; a context gone meanwhile is skipped)
+    std::vector<ASContext *> contexts = OnlineListeningContexts();
+    for (ASContext *context : contexts) {
+        if (!IsOnlineListening(context)) {
+            continue;
+        }
+        auto found = context->online_listeners_.find(channel);
+        if (found == context->online_listeners_.end() || !context->HasFunction(found->second)) {
+            continue;
+        }
+        ASArglist args;
+        args.Add(from);
+        std::string text_arg = text;
+        args.AddString(&text_arg);
+        context->CallScriptFunction(found->second, &args);
+    }
+}
+
 ASContext::~ASContext() {
+    {  // (Overgrowth Online: no more script API messages for this script)
+        std::vector<ASContext *> &contexts = OnlineListeningContexts();
+        contexts.erase(std::remove(contexts.begin(), contexts.end(), this), contexts.end());
+    }
     if (asdebugger_enabled)
         ASDebugger::RemoveContext(this);
     if (asprofiler_enabled)

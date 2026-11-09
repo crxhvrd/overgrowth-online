@@ -569,6 +569,30 @@ def _combat_session(ctx):
 SCENARIOS["combat_session"] = _combat_session
 
 
+def _online_api(ctx):
+    from .online_api_suite import online_api
+    return online_api(ctx)
+
+
+SCENARIOS["online_api"] = _online_api
+
+
+def _mp_build(ctx):
+    from .build_suite import mp_build
+    return mp_build(ctx)
+
+
+SCENARIOS["mp_build"] = _mp_build
+
+
+def _mp_build_level(ctx):
+    from .build_suite import mp_build_level
+    return mp_build_level(ctx)
+
+
+SCENARIOS["mp_build_level"] = _mp_build_level
+
+
 def _sync_ping(ctx):
     from .sync_suite import sync_ping
     return sync_ping(ctx)

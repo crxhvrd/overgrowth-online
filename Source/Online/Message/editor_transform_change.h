@@ -34,6 +34,7 @@ class EditorTransformChange : public OnlineMessageBase {
 
    public:
     EditorTransformChange(ObjectID id, const vec3& trans, const vec3& scale, const quaternion& rot);
+    CommonObjectID Target() const { return id; }  // (Overgrowth Online: the host checks claims)
 
     static binn* Serialize(void* object);
     static void Deserialize(void* object, binn* l);

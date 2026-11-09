@@ -24,6 +24,8 @@
 #include <thread>
 #include <chrono>
 #include "online.h"
+#include <Scripting/angelscript/ascontext.h>
+#include <algorithm>
 
 #include <Game/level.h>
 #include <Game/connection_closed_reason.h>
@@ -54,6 +56,15 @@
 #include <Compat/time.h>
 
 #include <Graphics/pxdebugdraw.h>
+#include <Internal/filesystem.h>
+#include <XML/level_loader.h>
+#include <fstream>
+#include <iterator>
+#include <cctype>
+#include <Objects/reflectioncaptureobject.h>
+#include <Editors/map_editor.h>
+#include <Game/level.h>
+#include <Graphics/graphics.h>
 #include <Main/scenegraph.h>
 #include <Internal/config.h>
 #include <Internal/modloading.h>
@@ -220,6 +231,7 @@ void Online::ChangeLevel(const string& id) {
     // Overgrowth Online: the clients load it now, together with us (the
     // network thread sends it while we load); the handshake that follows
     // used to tell them only once we had finished
+    SendLevelFile(0, level_name);  // (a level of the host's own: the file first)
     Send<OnlineMessages::PCSFileTransferMetadataMessage>(level_name, campaign_id, true);
 }
 
@@ -349,6 +361,9 @@ void Online::SendPlayerInputState() {
 }
 
 void Online::LateUpdate(SceneGraph* scenegraph) {
+    UpdateScriptApi();  // (Overgrowth Online: the script API's sends, deliveries and player events)
+    UpdateEditing(scenegraph);  // (Overgrowth Online: building a level together)
+
     // Overgrowth Online: the session is over: the level scripts go back to
     // offline, and we to our own game speed
     if (sent_role && !IsActive()) {
@@ -508,7 +523,8 @@ void Online::SetLevelLoaded() {
         ObjectID avatar = GetFreeAvatarID();
 
         campaign_id = ModLoading::Instance().WhichCampaignLevelBelongsTo(level_name);
-        LOG_ASSERT(level_name == Engine::Instance()->GetSceneGraph()->level_path_.GetOriginalPathStr());
+        // (the empty level, Data/Levels/nothing.xml, loads as a new level: no path of its own)
+        LOG_ASSERT(!Engine::Instance()->GetSceneGraph()->level_path_.isValid() || level_name == Engine::Instance()->GetSceneGraph()->level_path_.GetOriginalPathStr());
     }
 }
 
@@ -842,6 +858,10 @@ bool Online::PeerMayChange(PeerID from, ObjectID id) const {
     if (!IsHosting() || online_session == nullptr || from == online_session->local_player_id) {
         return true;
     }
+    if (build_mode_ && IsBuilder(ApiPlayerID(from)) && !IsPlayerCharacter(id)) {
+        // (a builder while building: anything but a player's character, or what another builder holds)
+        return !ClaimedByOther((int)GetOriginalID(id), ApiPlayerID(from));
+    }
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
     Object* o = sg != nullptr ? sg->GetObjectFromID(id) : nullptr;
     if (o == nullptr) {
@@ -873,6 +893,8 @@ bool Online::HostOnlyMessage(OnlineMessageType type) const {
         message_handler.GetMessageType<OnlineMessages::TimedSlowMotion>(),
         message_handler.GetMessageType<OnlineMessages::CreateEntity>(),
         message_handler.GetMessageType<OnlineMessages::RemoveObject>(),
+        message_handler.GetMessageType<OnlineMessages::BuildStateMessage>(),
+        message_handler.GetMessageType<OnlineMessages::LevelFileChunk>(),
         message_handler.GetMessageType<OnlineMessages::ItemHit>(),
         message_handler.GetMessageType<OnlineMessages::ItemDrop>(),
     };
@@ -1324,6 +1346,892 @@ void Online::SendToOwnerOf(ObjectID id, const OnlineMessageRef& ref, bool peers_
 
 // Host, inside message handling (peers lock held): pass a client's message on
 // to every other client
+// ---- Overgrowth Online: building a level together (edit_sync.h) -------------------------------
+
+bool Online::IsBuilder(int player) const {
+    if (!IsActive()) {
+        return false;
+    }
+    return player == 0 || std::find(builders_.begin(), builders_.end(), player) != builders_.end();
+}
+
+bool Online::MayUseEditor() const {
+    if (!IsActive() || IsHosting()) {
+        return true;
+    }
+    return build_mode_ && IsBuilder(OwnApiPlayerID());
+}
+
+// Build mode: the session paused for everyone, the level back to its start, builders in the editor.
+// Leaving it starts the level again too
+void Online::SetBuildMode(bool on) {
+    if (!IsHosting() || on == build_mode_) {
+        return;
+    }
+    build_mode_ = on;
+    build_state_dirty_ = true;
+    rebaseline_at_ms_ = OnlineClockMs() + 1000.0;
+    Engine::Instance()->CommitPause();
+    SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+    if (!on) {
+        FlushEditTallies(true);
+        MaybeRebuildNavMesh(sg);  // (before the reset: the AI starts on the new one)
+    }
+    if (sg != nullptr && sg->level != nullptr) {
+        sg->level->Message("reset");  // (to the guests too: the host's level messages go to everyone)
+    }
+    LOGI << "Overgrowth Online editing: build mode " << (on ? "on" : "off") << std::endl;
+}
+
+void Online::SetBuilder(int player, bool on) {
+    if (!IsHosting() || player <= 0) {
+        return;
+    }
+    auto found = std::find(builders_.begin(), builders_.end(), player);
+    if (on && found == builders_.end()) {
+        builders_.push_back(player);
+    } else if (!on && found != builders_.end()) {
+        builders_.erase(found);
+    } else {
+        return;
+    }
+    build_state_dirty_ = true;
+    LOGI << "Overgrowth Online editing: player " << player << (on ? " may build" : " may not build") << std::endl;
+}
+
+void Online::ReceiveBuildState(bool building, const std::vector<int>& builders, int saved_ago, int autosaved_ago, int unsaved) {
+    bool changed = building != build_mode_;
+    build_mode_ = building;
+    builders_ = builders;
+    guest_saved_ago_ = saved_ago;
+    guest_autosaved_ago_ = autosaved_ago;
+    guest_unsaved_ = unsaved;
+    guest_save_state_ms_ = OnlineClockMs();
+    if (changed) {
+        rebaseline_at_ms_ = OnlineClockMs() + 1000.0;
+        Engine::Instance()->CommitPause();
+        LOGI << "Overgrowth Online editing: the host turned build mode " << (building ? "on" : "off") << std::endl;
+    }
+}
+
+void Online::SendEditBatch(int origin, const std::string& blob, int to) {
+    if (!IsActive() || blob.empty()) {
+        return;
+    }
+    if (IsClient() || to == -1) {
+        Send<OnlineMessages::EditBatch>(origin, blob);
+        return;
+    }
+    OnlineMessageRef ref = message_handler.Create<OnlineMessages::EditBatch>(origin, blob);
+    lock_guard<mutex> guard(online_session->connected_peers_lock);
+    for (const Peer& peer : online_session->connected_peers) {
+        if ((int)peer.peer_id == to) {
+            SendTo(peer.conn_id, ref);
+        }
+    }
+}
+
+void Online::LinkEditedObject(CommonObjectID host, ObjectID local) {
+    auto common = to_common_id.find(local);
+    if (common != to_common_id.end() && common->second != host) {
+        auto object = to_object_id.find(common->second);
+        if (object != to_object_id.end() && object->second == local) {
+            to_object_id.erase(object);
+        }
+    }
+    auto object = to_object_id.find(host);
+    if (object != to_object_id.end() && object->second != local) {
+        auto stale = to_common_id.find(object->second);
+        if (stale != to_common_id.end() && stale->second == host) {
+            to_common_id.erase(stale);
+        }
+    }
+    to_object_id[host] = local;
+    to_common_id[local] = host;
+}
+
+void Online::UnlinkEditedObject(ObjectID local) {
+    auto common = to_common_id.find(local);
+    if (common != to_common_id.end()) {
+        auto object = to_object_id.find(common->second);
+        if (object != to_object_id.end() && object->second == local) {
+            to_object_id.erase(object);
+        }
+        to_common_id.erase(common);
+    }
+}
+
+void Online::ReceivePresence(int player, const vec3& camera, bool editing, const std::vector<int>& selection) {
+    Presence& p = presence_[player];
+    p.camera = camera;
+    p.editing = editing;
+    p.selection = editing ? selection : std::vector<int>();
+    p.ms = OnlineClockMs();
+    if (!IsHosting()) {
+        return;
+    }
+    // Claims: what it selected is its own unless someone selecting it already has it; what it let
+    // go of is free
+    for (auto it = claims_.begin(); it != claims_.end();) {
+        bool still = it->second != player || std::find(p.selection.begin(), p.selection.end(), it->first) != p.selection.end();
+        it = still ? std::next(it) : claims_.erase(it);
+    }
+    for (int id : p.selection) {
+        auto claim = claims_.find(id);
+        if (claim == claims_.end() || !ClaimedByOther(id, player)) {
+            claims_[id] = player;
+        }
+    }
+}
+
+bool Online::ClaimedByOther(int shared_id, int player) const {
+    auto claim = claims_.find(shared_id);
+    if (claim == claims_.end() || claim->second == player) {
+        return false;
+    }
+    auto p = presence_.find(claim->second);
+    return p != presence_.end() && p->second.editing && OnlineClockMs() - p->second.ms < 3000.0 &&
+           std::find(p->second.selection.begin(), p->second.selection.end(), shared_id) != p->second.selection.end();
+}
+
+namespace {
+vec4 BuilderColor(int player) {
+    static const vec4 colors[] = {vec4(1.0f, 0.75f, 0.2f, 1.0f), vec4(0.3f, 0.8f, 1.0f, 1.0f), vec4(0.5f, 1.0f, 0.4f, 1.0f),
+                                  vec4(1.0f, 0.45f, 0.8f, 1.0f), vec4(0.75f, 0.55f, 1.0f, 1.0f), vec4(1.0f, 0.5f, 0.35f, 1.0f)};
+    return colors[(player < 0 ? 0 : player) % 6];
+}
+
+void DrawObjectBox(Object* obj, const vec4& color) {
+    mat4 transform = obj->GetTransform();
+    const Box& box = obj->box_;
+    vec3 corners[8];
+    for (int i = 0; i < 8; ++i) {
+        vec3 local((i & 1) ? 0.5f : -0.5f, (i & 2) ? 0.5f : -0.5f, (i & 4) ? 0.5f : -0.5f);
+        local = box.center + vec3(local[0] * box.dims[0], local[1] * box.dims[1], local[2] * box.dims[2]);
+        corners[i] = transform * local;
+    }
+    static const int edges[12][2] = {{0, 1}, {2, 3}, {4, 5}, {6, 7}, {0, 2}, {1, 3}, {4, 6}, {5, 7}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
+    for (const auto& e : edges) {
+        DebugDraw::Instance()->AddLine(corners[e[0]], corners[e[1]], color, _delete_on_update);
+    }
+}
+}  // namespace
+
+void Online::UpdateEditing(SceneGraph* sg) {
+    if (!IsActive() || sg == nullptr) {
+        if (build_mode_) {
+            build_mode_ = false;
+            Engine::Instance()->CommitPause();
+        }
+        builders_.clear();
+        edit_caught_up_.clear();
+        editor_was_open_ = false;
+        everyone_builds = false;
+        auto_builders_.clear();
+        received_levels_.clear();
+        incoming_parts_.clear();
+        return;
+    }
+    edit_sync.ApplyQueued(sg);
+
+    // Reflection captures see the level as it was: re-rendered on every machine once the edits
+    // pause (1.5 s), like a newly placed capture is
+    {
+        int mark = edit_sync.batches_sent + edit_sync.batches_applied;
+        if (mark != refl_mark_) {
+            refl_mark_ = mark;
+            refl_edit_ms_ = OnlineClockMs();
+            refl_pending_ = true;
+        }
+        if (refl_pending_ && OnlineClockMs() - refl_edit_ms_ > 1500.0) {
+            refl_pending_ = false;
+            int count = 0;
+            for (Object* obj : sg->objects_) {
+                if (obj->GetType() == _reflection_capture_object) {
+                    static_cast<ReflectionCaptureObject*>(obj)->dirty = true;
+                    ++count;
+                }
+            }
+            ++refl_refreshes;
+            refl_last_count = count;
+            if (count > 0) {
+                LOGI << "Overgrowth Online editing: " << count << " reflection capture(s) to re-render" << std::endl;
+            }
+        }
+    }
+
+    // Build mode switched a second ago (the level reset since): that's the baseline
+    if (rebaseline_at_ms_ >= 0.0 && OnlineClockMs() >= rebaseline_at_ms_) {
+        rebaseline_at_ms_ = -1.0;
+        edit_sync.Rebaseline(sg);
+    }
+
+    // The editor here: opened, it starts from what's there; open, a scan a second (what the
+    // editor changed without an undo save)
+    bool editor_open = Engine::Instance()->current_engine_state_.type == kEngineEditorLevelState;
+    if (editor_open && !editor_was_open_) {
+        edit_sync.Rebaseline(sg);
+    }
+    editor_was_open_ = editor_open;
+    if (editor_open && OnlineClockMs() - last_edit_scan_ms_ > 1000.0) {
+        last_edit_scan_ms_ = OnlineClockMs();
+        edit_sync.Scan(sg);
+    }
+
+    // Our presence while building: where we look from and what we hold, five times a second; once
+    // more when we leave the editor
+    bool editing = editor_open && MayUseEditor();
+    if ((editing && OnlineClockMs() - last_presence_ms_ > 200.0) || (!editing && presence_sent_editing_)) {
+        last_presence_ms_ = OnlineClockMs();
+        presence_sent_editing_ = editing;
+        std::vector<int> selection;
+        if (editing) {
+            for (Object* obj : sg->objects_) {
+                if (obj->Selected() && !obj->parent) {
+                    selection.push_back((int)GetOriginalID(obj->GetID()));
+                }
+            }
+        }
+        vec3 camera = ActiveCameras::Get() ? ActiveCameras::Get()->GetPos() : vec3(0.0f);
+        int me = OwnApiPlayerID();
+        if (IsHosting()) {
+            ReceivePresence(me, camera, editing, selection);
+        }
+        Send<OnlineMessages::BuilderPresence>(me, camera, editing, selection);
+    }
+
+    // The others' presence, drawn while we edit: a marker with the name where each looks from, and
+    // what each holds outlined in its colour
+    if (editor_open) {
+        for (const auto& entry : presence_) {
+            const Presence& p = entry.second;
+            if (entry.first == OwnApiPlayerID() || !p.editing || OnlineClockMs() - p.ms > 3000.0) {
+                continue;
+            }
+            vec4 color = BuilderColor(entry.first);
+            DebugDraw::Instance()->AddWireSphere(p.camera, 0.35f, color, _delete_on_update);
+            std::string name = ApiPlayerName(entry.first);
+            DebugDraw::Instance()->AddText(p.camera + vec3(0.0f, 0.6f, 0.0f), name.empty() ? "Builder" : name, 1.0f, _delete_on_update, _DD_NO_FLAG, color);
+            for (int shared : p.selection) {
+                int local = (int)GetObjectID(shared);
+                if (sg->DoesObjectWithIdExist(local)) {
+                    DrawObjectBox(sg->GetObjectFromID(local), color);
+                }
+            }
+        }
+    }
+
+    if (IsHosting()) {
+        // Building: no "Press any key to continue" after a level loads (the level isn't drawn behind
+        // it, and the editor opened over it showed only black); the session is paused anyway, and
+        // guests still loading come in as late joiners do
+        if ((build_on_load_ || build_mode_) && sg->level != nullptr && !loading && !host_started_level) {
+            SessionStarted(true);
+            Engine::Instance()->waiting_for_input_ = false;
+            LOGI << "Overgrowth Online editing: the session starts without the key press (building)" << std::endl;
+        }
+        // Build a level: the hosted level is here; build mode, the editor open, joiners may build
+        if (build_on_load_ && sg->level != nullptr) {
+            build_on_load_ = false;
+            everyone_builds = true;
+            SetBuildMode(true);
+            Engine::Instance()->SetEditorOpen(true);
+            LOGI << "Overgrowth Online editing: building " << level_name << std::endl;
+        }
+        if (everyone_builds) {
+            for (int player : ApiPlayerIDs()) {
+                if (player > 0 && auto_builders_.insert(player).second) {
+                    SetBuilder(player, true);
+                }
+            }
+        }
+        if (build_state_dirty_ || OnlineClockMs() - last_build_state_ms_ > 2000.0) {
+            build_state_dirty_ = false;
+            last_build_state_ms_ = OnlineClockMs();
+            Send<OnlineMessages::BuildStateMessage>(build_mode_, builders_, SavedAgo(), AutosavedAgo(), UnsavedCount());
+        }
+        FlushEditTallies(false);
+
+        // A builder asked to save: at once when builders may and no dialog is needed; otherwise
+        // the host is asked (the prompt in the editor's Multiplayer window, a chat line here)
+        if (save_request_from_ >= 0) {
+            if (!IsBuilder(save_request_from_)) {
+                save_request_from_ = -1;
+            } else if (builders_may_save && !LevelLoader::SaveNeedsDialog(*sg)) {
+                AnswerSaveRequest(true);
+            } else if (!save_request_told_) {
+                save_request_told_ = true;
+                std::string who = ApiPlayerName(save_request_from_);
+                AddLocalChatMessage((who.empty() ? std::string("A builder") : who) + " asks you to save the level");
+            }
+        }
+        // An autosave while building, every five minutes when something changed: to the write
+        // folder (Data/Levels/autosave/<level>_autosave.xml), never over the level's file
+        int mark = edit_sync.batches_sent + edit_sync.batches_applied;
+        if (build_mode_ && mark != autosave_mark_ && OnlineClockMs() - last_autosave_ms_ > 300000.0) {
+            last_autosave_ms_ = OnlineClockMs();
+            autosaved_ms_ = OnlineClockMs();
+            build_state_dirty_ = true;
+            autosave_mark_ = mark;
+            std::string name = sg->level_name_.empty() ? std::string("level") : sg->level_name_;
+            std::string path = GetWritePath(CoreGameModID) + "Data/Levels/autosave/" + name + "_autosave.xml";
+            LevelLoader::SaveLevelCopy(*sg, path);
+            LOGI << "Overgrowth Online editing: autosaved to " << path << std::endl;
+        }
+
+        // A guest who loaded the level file: the edits since it was loaded or saved
+        lock_guard<mutex> guard(online_session->connected_peers_lock);
+        std::set<PeerID> present;
+        for (const Peer& peer : online_session->connected_peers) {
+            present.insert(peer.peer_id);
+            if (edit_caught_up_.count(peer.peer_id) == 0 &&
+                online_session->client_connection_manager.IsClientLoaded(peer.peer_id) &&
+                online_session->client_connection_manager.HasClientGottenPersistentQueue(peer.peer_id)) {
+                edit_caught_up_.insert(peer.peer_id);
+                std::string blob = edit_sync.CatchUpBlob(sg);
+                if (!blob.empty()) {
+                    SendTo(peer.conn_id, message_handler.Create<OnlineMessages::EditBatch>(-1, blob));
+                    LOGI << "Overgrowth Online editing: player " << (int)peer.peer_id << " gets " << edit_sync.edited_count() << " edit(s)" << std::endl;
+                }
+            }
+        }
+        for (auto it = edit_caught_up_.begin(); it != edit_caught_up_.end();) {
+            it = present.count(*it) ? std::next(it) : edit_caught_up_.erase(it);
+        }
+    }
+}
+
+// ---- Building together: saving, chat lines, the navmesh, reflection captures ------------------
+
+void Online::NoteLevelLoaded(SceneGraph* sg) {
+    saved_ms_ = autosaved_ms_ = -1.0;
+    guest_saved_ago_ = guest_autosaved_ago_ = -1;
+    guest_unsaved_ = 0;
+    edit_tallies_.clear();
+    int mark = edit_sync.batches_sent + edit_sync.batches_applied;
+    refl_mark_ = nav_mark_ = autosave_mark_ = mark;
+    refl_pending_ = nav_current_unsaved_ = false;
+    save_request_from_ = -1;
+    rebaseline_at_ms_ = -1.0;
+    build_state_dirty_ = true;
+}
+
+void Online::NoteHostSaved(SceneGraph* sg) {
+    if (!IsActive() || !IsHosting()) {
+        return;
+    }
+    saved_ms_ = OnlineClockMs();
+    build_state_dirty_ = true;
+    // A guest joining from now on loads the file as saved (the edits since come with it); saved
+    // somewhere new, that's the level's name from now on
+    if (sg != nullptr && sg->level_path_.isValid() && sg->level_path_.GetOriginalPathStr() != level_name) {
+        level_name = sg->level_path_.GetOriginalPathStr();
+        campaign_id = ModLoading::Instance().WhichCampaignLevelBelongsTo(level_name);
+        LOGI << "Overgrowth Online editing: joiners now load " << level_name << std::endl;
+    }
+    if (nav_current_unsaved_ && sg != nullptr && sg->GetNavMesh() != nullptr) {
+        sg->SaveNavMesh();  // (rebuilt after the edits: it belongs with the file now)
+        nav_current_unsaved_ = false;
+    }
+    std::string me = ApiPlayerName(OwnApiPlayerID());
+    SendRawChatMessage((me.empty() ? std::string("The host") : me) + " saved the level");
+}
+
+int Online::SavedAgo() const {
+    if (IsHosting()) {
+        return saved_ms_ < 0.0 ? -1 : (int)((OnlineClockMs() - saved_ms_) / 1000.0);
+    }
+    return guest_saved_ago_ < 0 ? -1 : guest_saved_ago_ + (int)((OnlineClockMs() - guest_save_state_ms_) / 1000.0);
+}
+
+int Online::AutosavedAgo() const {
+    if (IsHosting()) {
+        return autosaved_ms_ < 0.0 ? -1 : (int)((OnlineClockMs() - autosaved_ms_) / 1000.0);
+    }
+    return guest_autosaved_ago_ < 0 ? -1 : guest_autosaved_ago_ + (int)((OnlineClockMs() - guest_save_state_ms_) / 1000.0);
+}
+
+int Online::UnsavedCount() const {
+    return IsHosting() ? edit_sync.unsaved_count() : guest_unsaved_;
+}
+
+static std::string AgoText(int seconds) {
+    if (seconds < 60) {
+        return "just now";
+    }
+    if (seconds < 3600) {
+        return std::to_string(seconds / 60) + " min ago";
+    }
+    return std::to_string(seconds / 3600) + " h " + std::to_string(seconds / 60 % 60) + " min ago";
+}
+
+std::string Online::SaveStateText() const {
+    if (!IsActive()) {
+        return std::string();
+    }
+    int saved = SavedAgo(), autosaved = AutosavedAgo(), unsaved = UnsavedCount();
+    std::string text = saved < 0 ? "Not saved since the level loaded" : "Saved " + AgoText(saved);
+    if (unsaved > 0) {
+        text += ", " + std::to_string(unsaved) + (unsaved == 1 ? " unsaved change" : " unsaved changes");
+    } else if (saved >= 0) {
+        text += ", no changes since";
+    }
+    if (autosaved >= 0) {
+        text += " (autosaved " + AgoText(autosaved) + ")";
+    }
+    return text;
+}
+
+void Online::TallyEdits(int player, const std::vector<EditSync::Entry>& entries) {
+    if (!IsHosting() || entries.empty()) {
+        return;
+    }
+    EditTally& t = edit_tallies_[player];
+    if (t.first_ms <= 0.0) {
+        t.first_ms = OnlineClockMs();
+    }
+    t.last_ms = OnlineClockMs();
+    for (const EditSync::Entry& e : entries) {
+        switch (e.kind) {
+            case EditSync::kNew:
+            case EditSync::kRestore:
+                t.placed.insert(e.id);
+                t.removed.erase(e.id);
+                break;
+            case EditSync::kChanged:
+                if (!t.placed.count(e.id)) {
+                    t.changed.insert(e.id);
+                }
+                break;
+            case EditSync::kRemoved:
+                t.changed.erase(e.id);
+                if (!t.placed.erase(e.id)) {
+                    t.removed.insert(e.id);  // (placed and gone again: neither)
+                }
+                break;
+            case EditSync::kSky:
+                t.sky = true;
+                break;
+            case EditSync::kLevelParams:
+                t.params = true;
+                break;
+        }
+    }
+}
+
+// The chat line once a player's edits pause (3 s), or every 15 s while it keeps editing
+void Online::FlushEditTallies(bool all) {
+    for (auto it = edit_tallies_.begin(); it != edit_tallies_.end();) {
+        const EditTally& t = it->second;
+        if (!all && OnlineClockMs() - t.last_ms < 3000.0 && OnlineClockMs() - t.first_ms < 15000.0) {
+            ++it;
+            continue;
+        }
+        auto objects = [](const char* verb, size_t n) {
+            return std::string(verb) + " " + std::to_string(n) + (n == 1 ? " object" : " objects");
+        };
+        std::vector<std::string> parts;
+        if (!t.placed.empty()) parts.push_back(objects("placed", t.placed.size()));
+        if (!t.changed.empty()) parts.push_back(objects("changed", t.changed.size()));
+        if (!t.removed.empty()) parts.push_back(objects("removed", t.removed.size()));
+        if (t.sky) parts.push_back("changed the sky");
+        if (t.params) parts.push_back("changed the level settings");
+        if (!parts.empty() && edit_chat && IsActive()) {
+            std::string who = ApiPlayerName(it->first);
+            std::string line = who.empty() ? std::string("A builder") : who;
+            for (size_t i = 0; i < parts.size(); ++i) {
+                line += (i == 0 ? " " : (i + 1 == parts.size() ? " and " : ", ")) + parts[i];
+            }
+            SendRawChatMessage(line);
+        }
+        it = edit_tallies_.erase(it);
+    }
+}
+
+void Online::TellPlayer(int player, const std::string& text) {
+    if (!IsActive() || text.empty()) {
+        return;
+    }
+    if (player == OwnApiPlayerID()) {
+        AddLocalChatMessage(text);
+        return;
+    }
+    if (!IsHosting()) {
+        return;
+    }
+    OnlineMessageRef ref = message_handler.Create<OnlineMessages::ChatEntryMessage>(text);
+    lock_guard<mutex> guard(online_session->connected_peers_lock);
+    for (const Peer& peer : online_session->connected_peers) {
+        if (ApiPlayerID(peer.peer_id) == player) {
+            SendTo(peer.conn_id, ref);
+        }
+    }
+}
+
+int Online::ClaimHolder(int shared_id) const {
+    auto found = claims_.find(shared_id);
+    return found == claims_.end() ? -1 : found->second;
+}
+
+void Online::RequestSave() {
+    if (!IsClient()) {
+        return;
+    }
+    if (OnlineClockMs() - last_save_request_ms_ < 3000.0) {
+        return;  // (Ctrl+S held, or pressed again: one request)
+    }
+    last_save_request_ms_ = OnlineClockMs();
+    Send<OnlineMessages::BuildRequest>(1);
+    AddLocalChatMessage("Asked the host to save the level");
+}
+
+void Online::ReceiveBuildRequest(int player, int what) {
+    if (what == 1 && IsBuilder(player) && player != 0) {
+        if (save_request_from_ != player) {
+            save_request_told_ = false;
+        }
+        save_request_from_ = player;
+    }
+}
+
+void Online::AnswerSaveRequest(bool save) {
+    int player = save_request_from_;
+    save_request_from_ = -1;
+    if (player < 0) {
+        return;
+    }
+    if (save) {
+        SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+        if (sg != nullptr && sg->map_editor != nullptr) {
+            sg->map_editor->SaveLevel(LevelLoader::kSaveInPlace);  // (everyone is told it's saved)
+        }
+    } else {
+        TellPlayer(player, "The host didn't save the level now");
+    }
+}
+
+// Going to Play: the AI walks the navmesh, and only the host runs the AI. Rebuilt when anything
+// changed since it was built, for levels that have one (or make one when loading)
+void Online::MaybeRebuildNavMesh(SceneGraph* sg) {
+    int mark = edit_sync.batches_sent + edit_sync.batches_applied;
+    if (sg == nullptr || sg->level == nullptr || mark == nav_mark_) {
+        return;
+    }
+    if (sg->GetNavMesh() == nullptr && !sg->level->nav_mesh_parameters_.generate) {
+        return;  // (a level without AI)
+    }
+    if (sg->map_editor != nullptr && sg->map_editor->GetTerrainPreviewMode()) {
+        return;  // (CreateNavMesh refuses with a dialog then)
+    }
+    nav_mark_ = mark;
+    double start = OnlineClockMs();
+    sg->CreateNavMesh();
+    nav_build_ms = OnlineClockMs() - start;
+    ++nav_builds;
+    nav_current_unsaved_ = true;
+    LOGI << "Overgrowth Online editing: navmesh rebuilt for Play in " << (int)nav_build_ms << " ms" << std::endl;
+}
+
+// ---- Level files from the host ----------------------------------------------------------------
+
+static const size_t kLevelFileMaxBytes = 64u << 20;  // (as written; the biggest stock level is ~3 MB)
+static const size_t kLevelChunkBytes = 256u << 10;
+
+void Online::SendLevelFile(HSteamNetConnection conn, const std::string& level) {
+    if (!IsHosting() || level.empty()) {
+        return;
+    }
+    if (conn != 0 && level == level_file_broadcast_ && level_file_broadcast_to_.count(conn)) {
+        return;  // (it came with the level change)
+    }
+    if (conn == 0) {
+        level_file_broadcast_.clear();
+        level_file_broadcast_to_.clear();
+    }
+    Path path = FindFilePath(level, kAnyPath, false);
+    if (!path.isValid()) {
+        path = FindFilePath("Data/Levels/" + level, kAnyPath, false);
+    }
+    // The game's levels and the mods' every player has (the same mods are a must)
+    if (!path.isValid() || !(path.source & (kWriteDir | kAbsPath))) {
+        return;
+    }
+    std::ifstream file(path.GetFullPath(), std::ios::binary);
+    std::string raw((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (raw.empty() || raw.size() > kLevelFileMaxBytes) {
+        LOGW << "Overgrowth Online: the level file " << path.GetFullPath() << " isn't sent (" << raw.size() << " bytes)" << std::endl;
+        return;
+    }
+    std::string packed(ZSTD_compressBound(raw.size()), '\0');
+    size_t size = ZSTD_compress(&packed[0], packed.size(), raw.data(), raw.size(), 9);
+    if (ZSTD_isError(size)) {
+        return;
+    }
+    packed.resize(size);
+    int parts = (int)((packed.size() + kLevelChunkBytes - 1) / kLevelChunkBytes);
+    for (int i = 0; i < parts; ++i) {
+        std::string bytes = packed.substr((size_t)i * kLevelChunkBytes, kLevelChunkBytes);
+        if (conn == 0) {
+            Send<OnlineMessages::LevelFileChunk>(level, i, parts, bytes);
+        } else {
+            SendTo<OnlineMessages::LevelFileChunk>(conn, level, i, parts, bytes);
+        }
+    }
+    if (conn == 0) {
+        level_file_broadcast_ = level;
+        lock_guard<mutex> guard(online_session->connected_peers_lock);
+        for (const Peer& peer : online_session->connected_peers) {
+            level_file_broadcast_to_.insert(peer.conn_id);
+        }
+    }
+    ++level_files_sent;
+    LOGI << "Overgrowth Online: sent the level file " << level << " (" << raw.size() << " bytes, " << packed.size() << " packed)" << std::endl;
+}
+
+void Online::ReceiveLevelChunk(const std::string& name, int part, int parts, const std::string& bytes) {
+    if (parts <= 0 || parts > (int)(kLevelFileMaxBytes / kLevelChunkBytes) || part < 0 || part >= parts || bytes.size() > kLevelChunkBytes) {
+        return;
+    }
+    if (name != incoming_level_ || (int)incoming_parts_.size() != parts) {
+        incoming_level_ = name;
+        incoming_parts_.assign((size_t)parts, std::string());
+    }
+    incoming_parts_[(size_t)part] = bytes;
+    for (const std::string& p : incoming_parts_) {
+        if (p.empty()) {
+            return;  // (more to come)
+        }
+    }
+    std::string packed;
+    for (const std::string& p : incoming_parts_) {
+        packed += p;
+    }
+    incoming_parts_.clear();
+    unsigned long long raw_size = ZSTD_getFrameContentSize(packed.data(), packed.size());
+    if (raw_size == ZSTD_CONTENTSIZE_UNKNOWN || raw_size == ZSTD_CONTENTSIZE_ERROR || raw_size == 0 || raw_size > kLevelFileMaxBytes) {
+        LOGW << "Overgrowth Online: a level file that doesn't read: " << name << std::endl;
+        return;
+    }
+    std::string raw((size_t)raw_size, '\0');
+    size_t size = ZSTD_decompress(&raw[0], raw.size(), packed.data(), packed.size());
+    if (ZSTD_isError(size) || size != raw.size()) {
+        LOGW << "Overgrowth Online: a level file that doesn't read: " << name << std::endl;
+        return;
+    }
+    // Ours under its own name (a name only: nothing from the host chooses a folder)
+    std::string base = name.substr(name.find_last_of("/\\") == std::string::npos ? 0 : name.find_last_of("/\\") + 1);
+    for (char& c : base) {
+        if (!(isalnum((unsigned char)c) || c == '_' || c == '-' || c == '.')) {
+            c = '_';
+        }
+    }
+    if (base.size() < 5 || base.compare(base.size() - 4, 4, ".xml") != 0 || base[0] == '.') {
+        base += ".xml";
+    }
+    std::string rel = "Data/Levels/_online/" + base;
+    std::string full = GetWritePath(CoreGameModID) + rel;
+    CreateParentDirs(full);
+    std::ofstream out(full, std::ios::binary | std::ios::trunc);
+    out.write(raw.data(), (std::streamsize)raw.size());
+    out.close();
+    if (!out) {
+        LOGE << "Overgrowth Online: couldn't write the level file to " << full << std::endl;
+        return;
+    }
+    received_levels_[name] = rel;
+    ++level_files_received;
+    ClearFileLookups();  // (a file that wasn't there before: no remembered miss)
+    LOGI << "Overgrowth Online: got the level file " << name << " (" << raw.size() << " bytes) as " << rel << std::endl;
+}
+
+std::string Online::ReceivedLevel(const std::string& name) const {
+    auto found = received_levels_.find(name);
+    return found == received_levels_.end() ? std::string() : found->second;
+}
+
+std::vector<std::string> Online::SavedLevels() {
+    std::string dir = GetWritePath(CoreGameModID) + "Data/Levels";
+    std::vector<std::string> files, levels;
+    if (fileExist(dir.c_str())) {
+        getDeepManifest(dir.c_str(), "", files);
+    }
+    for (const std::string& f : files) {
+        if (f.size() > 4 && f.compare(f.size() - 4, 4, ".xml") == 0 && f.compare(0, 8, "_online/") != 0) {
+            levels.push_back("Data/Levels/" + f);
+        }
+    }
+    std::sort(levels.begin(), levels.end());
+    return levels;
+}
+
+// ---- Overgrowth Online: the script API (see online.h) ----------------------------------------
+
+int Online::OwnApiPlayerID() const {
+    if (!IsActive()) {
+        return -1;
+    }
+    return ApiPlayerID(online_session->local_player_id);
+}
+
+std::vector<int> Online::ApiPlayerIDs() const {
+    std::vector<int> ids;
+    if (IsActive()) {
+        for (const auto& entry : online_session->player_states) {
+            ids.push_back(ApiPlayerID(entry.first));
+        }
+        std::sort(ids.begin(), ids.end());
+    }
+    return ids;
+}
+
+std::string Online::ApiPlayerName(int player) const {
+    if (IsActive()) {
+        for (const auto& entry : online_session->player_states) {
+            if (ApiPlayerID(entry.first) == player) {
+                return entry.second.playername;
+            }
+        }
+    }
+    return std::string();
+}
+
+ObjectID Online::ApiPlayerCharacter(int player) const {
+    if (!IsActive()) {
+        return -1;
+    }
+    SceneGraph* sg = Engine::Instance()->GetSceneGraph();
+    for (const auto& entry : online_session->player_states) {
+        if (ApiPlayerID(entry.first) == player) {
+            ObjectID id = entry.second.object_id;
+            if (sg != nullptr && sg->DoesObjectWithIdExist(id) && sg->GetObjectFromID(id)->GetType() == _movement_object) {
+                return id;
+            }
+            return -1;  // (no character yet)
+        }
+    }
+    return -1;
+}
+
+int Online::CharacterApiPlayer(ObjectID character) const {
+    if (IsActive() && character != -1) {
+        for (const auto& entry : online_session->player_states) {
+            if (entry.second.object_id == character) {
+                return ApiPlayerID(entry.first);
+            }
+        }
+    }
+    return -1;
+}
+
+bool Online::SendScriptMessage(int to, const std::string& channel, const std::string& text) {
+    if (!IsActive()) {
+        return false;
+    }
+    if (channel.empty() || channel.size() > kScriptChannelMax || text.size() > kScriptTextMax ||
+        channel.compare(0, 7, "online:") == 0) {
+        LOGW << "Overgrowth Online script API: a message refused (channel \"" << channel.substr(0, 80) << "\", "
+             << text.size() << " bytes; channels 1-" << kScriptChannelMax << " characters, not \"online:...\", text up to "
+             << kScriptTextMax << " bytes)" << std::endl;
+        return false;
+    }
+    script_api_outgoing.push_back({to, channel, text});
+    return true;
+}
+
+// The host about a guest's message: its channel and size, and at most 240 a second from one guest
+bool Online::AcceptScriptMessage(PeerID from, const std::string& channel, const std::string& text) {
+    bool ok = !channel.empty() && channel.size() <= kScriptChannelMax && text.size() <= kScriptTextMax &&
+              channel.compare(0, 7, "online:") != 0;
+    std::pair<double, int>& rate = script_api_rate[from];
+    double now = OnlineClockMs();
+    if (now - rate.first > 1000.0) {
+        rate = {now, 0};
+    }
+    ok = ok && ++rate.second <= 240;
+    if (!ok && script_api_dropped++ % 100 == 0) {
+        LOGW << "Overgrowth Online script API: player " << (int)from << "'s messages refused (" << script_api_dropped
+             << " so far: a reserved or oversized channel or text, or over 240 a second)" << std::endl;
+    }
+    return ok;
+}
+
+void Online::QueueScriptDelivery(int from, const std::string& channel, const std::string& text) {
+    script_api_deliveries.push_back({from, channel, text});
+}
+
+void Online::RelayScriptMessage(const OnlineMessageRef& ref, PeerID from) {
+    OnlineMessages::ScriptMessage* m = static_cast<OnlineMessages::ScriptMessage*>(ref.GetData());
+    if (m->to == OnlineMessages::ScriptMessage::kEveryone) {
+        RelayFromPeer(ref, from);
+    } else if (m->to > 0) {
+        for (const Peer& peer : online_session->connected_peers) {
+            if ((int)peer.peer_id == m->to) {
+                SendTo(peer.conn_id, ref);
+            }
+        }
+    }
+}
+
+void Online::UpdateScriptApi() {
+    // What scripts sent since the last update (queued: a script may run inside message handling,
+    // with the peers locked)
+    if (IsActive() && !script_api_outgoing.empty()) {
+        const int me = OwnApiPlayerID();
+        std::vector<ScriptApiOutgoing> outgoing;
+        outgoing.swap(script_api_outgoing);
+        lock_guard<mutex> guard(online_session->connected_peers_lock);
+        for (const ScriptApiOutgoing& out : outgoing) {
+            if (out.to == me) {
+                QueueScriptDelivery(me, out.channel, out.text);  // (to ourselves: next update, like the rest)
+            } else if (IsClient()) {
+                Send<OnlineMessages::ScriptMessage>(out.to, me, out.channel, out.text);  // (the host passes it on)
+            } else if (out.to == OnlineMessages::ScriptMessage::kEveryone) {
+                Send<OnlineMessages::ScriptMessage>(out.to, me, out.channel, out.text);
+            } else {
+                OnlineMessageRef ref = message_handler.Create<OnlineMessages::ScriptMessage>(out.to, me, out.channel, out.text);
+                for (const Peer& peer : online_session->connected_peers) {
+                    if ((int)peer.peer_id == out.to) {
+                        SendTo(peer.conn_id, ref);
+                    }
+                }
+            }
+        }
+    } else if (!IsActive()) {
+        script_api_outgoing.clear();
+        script_api_rate.clear();
+    }
+
+    // Players who came and went since the last update: the "online:joined" / "online:left" events
+    // (everyone left when the session ends)
+    std::map<int, std::string> now;
+    if (IsActive()) {
+        for (int id : ApiPlayerIDs()) {
+            now[id] = ApiPlayerName(id);
+        }
+    }
+    for (const auto& known : script_api_players) {
+        if (now.find(known.first) == now.end()) {
+            QueueScriptDelivery(known.first, "online:left", known.second);
+        }
+    }
+    for (const auto& player : now) {
+        if (script_api_players.find(player.first) == script_api_players.end()) {
+            QueueScriptDelivery(player.first, "online:joined", player.second);
+        }
+    }
+    script_api_players.swap(now);
+
+    // Deliveries: to every script listening on the channel (a script may queue more meanwhile:
+    // those go with the next update)
+    if (!script_api_deliveries.empty()) {
+        std::vector<ScriptApiDelivery> deliveries;
+        deliveries.swap(script_api_deliveries);
+        for (const ScriptApiDelivery& d : deliveries) {
+            ASContext::DeliverOnlineMessage(d.from, d.channel, d.text);
+        }
+    }
+}
+
 void Online::RelayFromPeer(const OnlineMessageRef& ref, PeerID from) {
     if (!IsHosting() || online_session == nullptr) {
         return;
@@ -2001,6 +2909,10 @@ PlayerState Online::GenerateHostPlayerState() const {
 void Online::AddLocalChatMessage(string chat_message) {
     lock_guard<mutex> guard(online_session->chat_messages_lock);
     online_session->chat_messages.push_back({game_timer.game_time, chat_message});
+    chat_log.push_back(chat_message);
+    if (chat_log.size() > 64) {
+        chat_log.erase(chat_log.begin());
+    }
 }
 
 void Online::RemoveOldChatMessages(float threshold) {
@@ -2142,6 +3054,14 @@ void Online::CheckPendingMessages() {
                     ++sounds_from_clients;
                 } else if (type == message_handler.GetMessageType<OnlineMessages::SetAvatarPalette>()) {
                     Send(it.message);  // to everyone, and kept for late joiners (its sender ignores its own)
+                } else if (type == message_handler.GetMessageType<OnlineMessages::ScriptMessage>()) {
+                    RelayScriptMessage(it.message, it.from);  // (a guest's script message: on to its readers)
+                } else if (type == message_handler.GetMessageType<OnlineMessages::EditorTransformChange>() &&
+                           build_mode_ && IsBuilder(ApiPlayerID(it.from)) &&
+                           !ClaimedByOther((int)static_cast<OnlineMessages::EditorTransformChange*>(it.message.GetData())->Target(), ApiPlayerID(it.from))) {
+                    RelayFromPeer(it.message, it.from);  // (a builder dragging: the others see it move)
+                } else if (type == message_handler.GetMessageType<OnlineMessages::BuilderPresence>() && IsBuilder(ApiPlayerID(it.from))) {
+                    RelayFromPeer(it.message, it.from);  // (a builder's camera and selection, stamped)
                 }
             }
         }
