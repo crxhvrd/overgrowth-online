@@ -47,7 +47,9 @@
 
 btScalar ContactSlideCallback::addSingleResult(btManifoldPoint& cp, const btCollisionObjectWrapper* colObjWrap0, int partId0, int index0, const btCollisionObjectWrapper* colObj1Wrap, int partId1, int index1) {
     // LOG_ASSERT2(index0 >= 0, index0);
-    LOG_ASSERT_ONCE(index1 >= 0);
+    // (Overgrowth Online: no assert on index1: it is -1 for a shape that isn't a triangle mesh (a box,
+    // a convex hull), which is fine; only a triangle's index is used below, and that is checked.
+    // The assert fired whenever the game ran beside such an object, e.g. while building)
 
     collision_info.contacts.resize(collision_info.contacts.size() + 1);
     btVector3 normal_world = cp.m_normalWorldOnB;

@@ -224,6 +224,8 @@ class Engine : public ModLoadingCallback {
     GUI gui;
     EngineState current_engine_state_;
     bool SetEditorOpen(bool open);  // (Overgrowth Online: F1's switch; false: may not use the editor now)
+    void PressEditorKey();          // (Overgrowth Online: F1, for the test bridge too: the switch, and building's play/build)
+    bool CursorVisible() const { return cursor.visible; }  // (Overgrowth Online: the test bridge's)
 
     std::map<std::string, std::string> interlevel_data;
 

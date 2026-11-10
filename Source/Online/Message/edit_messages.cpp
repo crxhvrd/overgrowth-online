@@ -54,8 +54,8 @@ void EditBatch::Destroy(void* object) {
     static_cast<EditBatch*>(object)->~EditBatch();
 }
 
-BuildStateMessage::BuildStateMessage(bool building, const std::vector<int>& list, int saved_ago, int autosaved_ago, int unsaved)
-    : OnlineMessageBase(OnlineMessageCategory::LEVEL_TRANSIENT), building(building), builders(list.begin(), list.end()), saved_ago(saved_ago), autosaved_ago(autosaved_ago), unsaved(unsaved) {
+BuildStateMessage::BuildStateMessage(bool building, const std::vector<int>& list, int saved_ago, int autosaved_ago, int unsaved, bool frozen)
+    : OnlineMessageBase(OnlineMessageCategory::LEVEL_TRANSIENT), building(building), builders(list.begin(), list.end()), saved_ago(saved_ago), autosaved_ago(autosaved_ago), unsaved(unsaved), frozen(frozen) {
 }
 
 binn* BuildStateMessage::Serialize(void* object) {
@@ -71,6 +71,7 @@ binn* BuildStateMessage::Serialize(void* object) {
     binn_object_set_int32(l, "sv", m->saved_ago);
     binn_object_set_int32(l, "as", m->autosaved_ago);
     binn_object_set_int32(l, "un", m->unsaved);
+    binn_object_set_bool(l, "fz", m->frozen);
     return l;
 }
 
@@ -84,6 +85,9 @@ void BuildStateMessage::Deserialize(void* object, binn* l) {
     binn_object_get_int32(l, "sv", &m->saved_ago);
     binn_object_get_int32(l, "as", &m->autosaved_ago);
     binn_object_get_int32(l, "un", &m->unsaved);
+    BOOL frozen = FALSE;
+    binn_object_get_bool(l, "fz", &frozen);
+    m->frozen = frozen != FALSE;
     m->builders.clear();
     void* list = nullptr;
     if (binn_object_get_list(l, "who", &list) && list != nullptr) {
@@ -99,11 +103,11 @@ void BuildStateMessage::Deserialize(void* object, binn* l) {
 
 void BuildStateMessage::Execute(const OnlineMessageRef& ref, void* object, PeerID peer) {
     BuildStateMessage* m = static_cast<BuildStateMessage*>(object);
-    Online::Instance()->ReceiveBuildState(m->building, std::vector<int>(m->builders.begin(), m->builders.end()), m->saved_ago, m->autosaved_ago, m->unsaved);
+    Online::Instance()->ReceiveBuildState(m->building, std::vector<int>(m->builders.begin(), m->builders.end()), m->saved_ago, m->autosaved_ago, m->unsaved, m->frozen);
 }
 
 void* BuildStateMessage::Construct(void* mem) {
-    return new (mem) BuildStateMessage(false, std::vector<int>(), -1, -1, 0);
+    return new (mem) BuildStateMessage(false, std::vector<int>(), -1, -1, 0, false);
 }
 
 void BuildStateMessage::Destroy(void* object) {

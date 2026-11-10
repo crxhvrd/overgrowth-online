@@ -289,6 +289,9 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         out["camera_pos"] = Vec(ActiveCameras::Get()->GetPos());  // the view on screen (camera jitter checks)
         out["level_loaded"] = loaded;
         out["waiting_for_input"] = engine->waiting_for_input_;
+        out["grab_mouse"] = Input::Instance()->GetGrabMouse();  // (the editor's cursor checks)
+        out["cursor_visible"] = engine->CursorVisible();
+        out["paused"] = engine->paused;
         out["level"] = loaded ? sg->level_path_.GetOriginalPath() : "";
         out["my_avatar"] = loaded ? MyAvatar(engine) : -1;
         out["gl_problems"] = GLDebugProblemCount();  // GL debug output: errors, undefined, deprecated ("gl_debug")
@@ -743,6 +746,27 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
             vk["uploads"] = (Json::UInt64)s.uploads;
             vk["upload_mb"] = (double)s.upload_bytes / (1024.0 * 1024.0);
         }
+    } else if (cmd == "key") {
+        // A key pressed and let go as the keyboard sends it (SDL events through the engine's own
+        // input path): {"key": "f1"}; "repeat": how many presses, one per call
+        SDL_Scancode code = SDL_GetScancodeFromName(req.get("key", "").asString().c_str());
+        out["ok"] = code != SDL_SCANCODE_UNKNOWN;
+        if (code != SDL_SCANCODE_UNKNOWN) {
+            Uint32 window = SDL_GetWindowID(Graphics::Instance()->sdl_window_);
+            for (int i = 0; i < std::max(1, req.get("repeat", 1).asInt()); ++i) {
+                SDL_Event e;
+                SDL_zero(e);
+                e.type = SDL_KEYDOWN;
+                e.key.windowID = window;
+                e.key.state = SDL_PRESSED;
+                e.key.keysym.scancode = code;
+                e.key.keysym.sym = SDL_GetKeyFromScancode(code);
+                SDL_PushEvent(&e);
+                e.type = SDL_KEYUP;
+                e.key.state = SDL_RELEASED;
+                SDL_PushEvent(&e);
+            }
+        }
     } else if (cmd == "screenshot") {
         Graphics* g = Graphics::Instance();
         g->queued_screenshot_path = req.get("path", "").asString();
@@ -1020,13 +1044,22 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         // "may": bool} (host), {"editor": bool} opens or closes the editor here; the answer: the state
         Online* online = Online::Instance();
         if (req.isMember("on")) {
-            online->SetBuildMode(req["on"].asBool());
+            online->SetBuildSession(req["on"].asBool());  // (a build session: building allowed)
+        }
+        if (req.isMember("freeze")) {
+            online->SetTimeFrozen(req["freeze"].asBool());
+        }
+        if (req.get("restart", false).asBool()) {
+            online->RestartLevel(Engine::Instance()->GetSceneGraph());
         }
         if (req.isMember("builder")) {
             online->SetBuilder(req["builder"].asInt(), req.get("may", true).asBool());
         }
         if (req.isMember("editor")) {
             out["editor_ok"] = Engine::Instance()->SetEditorOpen(req["editor"].asBool());
+        }
+        if (req.get("f1", false).asBool()) {
+            Engine::Instance()->PressEditorKey();  // (F1 as the player presses it: building follows the editor)
         }
         if (req.get("autosave", false).asBool()) {
             online->AutosaveSoon();
@@ -1063,6 +1096,8 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         out["level_files_sent"] = online->level_files_sent;
         out["level_files_received"] = online->level_files_received;
         out["everyone_builds"] = online->everyone_builds;
+        out["build_session"] = online->BuildSession();
+        out["banner"] = online->SessionBanner();
         out["saved_levels"] = Json::Value(Json::arrayValue);
         for (const std::string& level : Online::SavedLevels()) {
             out["saved_levels"].append(level);
@@ -1081,7 +1116,9 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
         for (const std::string& line : online->chat_log) {
             out["chat"].append(line);
         }
-        out["build_mode"] = online->BuildMode();
+        out["build_mode"] = online->BuildSession();  // (a build session)
+        out["time_frozen"] = online->TimeFrozen();
+        out["batches_sent"] = online->edit_sync.batches_sent;
         out["may_edit"] = online->MayUseEditor();
         out["editor_open"] = Engine::Instance()->current_engine_state_.type == kEngineEditorLevelState;
         out["scans"] = online->edit_sync.scans;

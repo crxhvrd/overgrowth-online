@@ -2008,6 +2008,80 @@ static void ResizeCallback(ImGuiSizeCallbackData* data) {
     last_y = data->DesiredSize.y;
 }
 
+// Overgrowth Online: a build session's controls (the editor's Build session panel and the
+// Multiplayer settings window). The host: building on or off, time, restart, the AI's paths, who
+// builds, saving; a guest: what it may do and asking to save
+static void DrawBuildControls(Online* online, SceneGraph* scenegraph, Engine* engine) {
+    bool editor_open = engine->current_engine_state_.type == kEngineEditorLevelState;
+    if (online->IsHosting()) {
+        bool session = online->BuildSession();
+        if (ImGui::Checkbox("Building in this session (players you allow use the editor; the game runs on)", &session)) {
+            online->SetBuildSession(session);
+        }
+        if (!session) {
+            return;
+        }
+        if (scenegraph != nullptr && editor_open && ImGui::Button("Save (Ctrl+S)")) {
+            scenegraph->map_editor->SaveLevel(LevelLoader::kSaveInPlace);
+        }
+        if (scenegraph != nullptr) {
+            if (editor_open) {
+                ImGui::SameLine();
+            }
+            if (ImGui::Button("Restart the level (everyone)")) {
+                online->RestartLevel(scenegraph);
+            }
+            if (online->NavMeshOutOfDate(scenegraph)) {
+                ImGui::SameLine();
+                if (ImGui::Button("Rebuild the AI's paths")) {
+                    online->RebuildNavMesh(scenegraph);
+                }
+            }
+        }
+        bool frozen = online->TimeFrozen();
+        if (ImGui::Checkbox("Freeze time (for everyone)", &frozen)) {
+            online->SetTimeFrozen(frozen);
+        }
+        ImGui::Checkbox("Players who join may build", &online->everyone_builds);
+        ImGui::Checkbox("Builders may save (Ctrl+S saves the level for everyone)", &online->builders_may_save);
+        ImGui::Checkbox("Edit lines in the chat", &online->edit_chat);
+        ImGui::Text("%s", online->SaveStateText().c_str());
+        if (scenegraph != nullptr && online->NavMeshOutOfDate(scenegraph)) {
+            ImGui::TextDisabled("The AI's paths are from before the edits (restarting rebuilds them)");
+        }
+        std::vector<int> players;
+        for (int player : online->ApiPlayerIDs()) {
+            if (player != 0) {
+                players.push_back(player);
+            }
+        }
+        if (players.empty()) {
+            ImGui::TextDisabled("No one has joined yet (Join a friend, the server list or your IP)");
+        } else {
+            ImGui::Text("Who may build:");
+            for (int player : players) {
+                bool builder = online->IsBuilder(player);
+                std::string label = online->ApiPlayerName(player) + "##builder" + std::to_string(player);
+                if (ImGui::Checkbox(label.c_str(), &builder)) {
+                    online->SetBuilder(player, builder);
+                }
+            }
+        }
+    } else if (online->IsActive()) {
+        if (!online->BuildSession()) {
+            ImGui::Text("Building is off in this session (the host turns it on)");
+            return;
+        }
+        bool builder = online->IsBuilder(online->OwnApiPlayerID());
+        ImGui::Text("%s", builder ? "You may build (F1: the editor)" : "The host hasn't let you build");
+        ImGui::Text("%s", online->TimeFrozen() ? "Time is frozen by the host" : "Time runs");
+        ImGui::Text("%s", online->SaveStateText().c_str());
+        if (builder && scenegraph != nullptr && editor_open && ImGui::Button("Ask the host to save (Ctrl+S)")) {
+            scenegraph->map_editor->SaveLevel(LevelLoader::kSaveInPlace);
+        }
+    }
+}
+
 void DrawImGui(Graphics* graphics, SceneGraph* scenegraph, GUI* gui, AssetManager* assetmanager, Engine* engine, bool cursor_visible) {
     Online* online = Online::Instance();
 
@@ -3699,6 +3773,27 @@ Mark Stockton\nMikko Tarmia\nDavid Lyhed Danielsson");
         ImGui::End();
     }
 
+    // Overgrowth Online: a build session's line at the top of every screen: building or playing,
+    // and what the keys do for this player
+    std::string banner = scenegraph != nullptr && engine->IsLevelLoaded() && !engine->waiting_for_input_ ? online->SessionBanner() : std::string();
+    if (!banner.empty() && !graphics->media_mode()) {
+        bool editor_open = engine->current_engine_state_.type == kEngineEditorLevelState;
+        ImGui::SetNextWindowPos(ImVec2(graphics->render_dims[0] * 0.5f, editor_open ? 28.0f : 10.0f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+        ImGui::SetNextWindowBgAlpha(0.6f);
+        ImGui::Begin("##build_session_banner", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoFocusOnAppearing);
+        ImVec4 color = online->TimeFrozen() ? ImVec4(0.6f, 0.85f, 1.0f, 1.0f) : ImVec4(1.0f, 0.82f, 0.45f, 1.0f);
+        ImGui::TextColored(color, "%s", banner.c_str());
+        ImGui::End();
+    }
+    // ...and in the editor its controls, always in view (top right)
+    if (scenegraph != nullptr && online->IsActive() && online->BuildSession() && engine->current_engine_state_.type == kEngineEditorLevelState && !graphics->media_mode()) {
+        ImGui::SetNextWindowPos(ImVec2(graphics->render_dims[0] - 10.0f, 56.0f), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+        ImGui::SetNextWindowBgAlpha(0.85f);
+        ImGui::Begin("Build session", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
+        DrawBuildControls(online, scenegraph, engine);
+        ImGui::End();
+    }
+
     if (show_mp_settings) {
         ImGui::SetNextWindowPos(ImVec2(0.f, 200.f));
         ImGui::Begin("Multiplayer Settings", &show_mp_info,
@@ -3709,31 +3804,7 @@ Mark Stockton\nMikko Tarmia\nDavid Lyhed Danielsson");
                          ImGuiWindowFlags_AlwaysAutoResize);
 
         // Overgrowth Online: building a level together (docs_mp_editing_plan.md)
-        if (online->IsHosting()) {
-            bool building = online->BuildMode();
-            if (ImGui::Checkbox("Build mode (pauses the game; builders use the editor)", &building)) {
-                online->SetBuildMode(building);
-            }
-            ImGui::Checkbox("Builders may save (Ctrl+S saves the level for everyone)", &online->builders_may_save);
-            ImGui::Checkbox("Edit lines in the chat", &online->edit_chat);
-            ImGui::Checkbox("Players who join may build", &online->everyone_builds);
-            ImGui::Text("%s", online->SaveStateText().c_str());
-            ImGui::Text("Builders:");
-            for (int player : online->ApiPlayerIDs()) {
-                if (player == 0) {
-                    continue;
-                }
-                bool builder = online->IsBuilder(player);
-                std::string label = online->ApiPlayerName(player) + "##builder" + std::to_string(player);
-                if (ImGui::Checkbox(label.c_str(), &builder)) {
-                    online->SetBuilder(player, builder);
-                }
-            }
-        } else if (online->IsActive()) {
-            ImGui::Text(online->IsBuilder(online->OwnApiPlayerID()) ? "You may build (F1 in build mode; Ctrl+S asks the host to save)" : "The host builds");
-            ImGui::Text(online->BuildMode() ? "Build mode: on" : "Build mode: off");
-            ImGui::Text("%s", online->SaveStateText().c_str());
-        }
+        DrawBuildControls(online, scenegraph, engine);
 
         if (spawner_tabs.find("Character") != spawner_tabs.end()) {
             SpawnerTab* character_tab = &spawner_tabs["Character"];

@@ -593,6 +593,14 @@ def _mp_build_level(ctx):
 SCENARIOS["mp_build_level"] = _mp_build_level
 
 
+def _mp_build_session(ctx):
+    from .build_suite import mp_build_session
+    return mp_build_session(ctx)
+
+
+SCENARIOS["mp_build_session"] = _mp_build_session
+
+
 def _sync_ping(ctx):
     from .sync_suite import sync_ping
     return sync_ping(ctx)

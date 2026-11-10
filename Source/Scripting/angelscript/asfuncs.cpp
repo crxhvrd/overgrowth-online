@@ -5842,7 +5842,7 @@ void AS_Online_Host() {
 
 // Overgrowth Online: building a level together: the session in build mode (paused for everyone)
 static bool AS_Online_BuildMode() {
-    return Online::Instance()->IsActive() && Online::Instance()->BuildMode();
+    return Online::Instance()->IsActive() && Online::Instance()->TimeFrozen();  // (level.as: no fades while time stands still)
 }
 
 // Overgrowth Online: Build a level (multiplayer_build_menu.as)

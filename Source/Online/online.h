@@ -440,7 +440,7 @@ class Online {
     std::map<PeerID, std::pair<double, int>> script_api_rate;
     int script_api_dropped = 0;
     // (building together: the state, the guests caught up with the edits, the editor's last state here)
-    bool build_mode_ = false;
+    bool time_frozen_ = false;  // (the host's Freeze time: paused for everyone)
     std::vector<int> builders_;
     bool build_state_dirty_ = false;
     double last_build_state_ms_ = -1e9;
@@ -475,6 +475,13 @@ class Online {
     double rebaseline_at_ms_ = -1.0;  // (after build mode switches: what's there then is the baseline)
     bool build_on_load_ = false;      // (Build a level: the hosted level opens in build mode)
     std::set<int> auto_builders_;     // (players made builders by everyone_builds, once each)
+    // The build session (0.41.19, realtime): building is allowed in it; the game runs on while
+    // anyone edits, every builder opens their own editor (F1) when they like, and the host may
+    // freeze time for everyone (time_frozen_)
+    bool build_session_ = false;        // host: building allowed in this session; guest: the host says so
+    bool build_state_seen_ = false;     // guest: the first build state (the welcome line)
+    double last_hint_ms_ = -1e9;        // a refused F1's line, not more than one a second and a half
+    void Hint(const std::string& text);
     // (a level file on its way from the host; the ones that arrived: the host's name -> ours)
     std::string incoming_level_;
     std::vector<std::string> incoming_parts_;
@@ -556,15 +563,27 @@ class Online {
     void UpdateScriptApi();  // LateUpdate: sends, then deliveries and player events to the scripts
 
     // ---- Building a level together (edit_sync.h, docs_mp_editing_plan.md). The host owns the
-    // level; in build mode the session is paused and builders may use the editor
+    // level. In a build session builders use the editor while the game runs on (realtime); the
+    // host may freeze time for everyone
     EditSync edit_sync;
-    bool BuildMode() const { return build_mode_; }
+    bool BuildSession() const { return build_session_; }
+    bool TimeFrozen() const { return time_frozen_; }
     bool IsBuilder(int player) const;  // (the host always)
-    bool MayUseEditor() const;          // offline and the host: yes; a guest: a builder while building
+    bool MayUseEditor() const;          // offline and the host: yes; a guest: a builder in a build session
     std::vector<int> Builders() const { return builders_; }
-    void SetBuildMode(bool on);           // host
+    void SetBuildSession(bool on);        // host: building allowed in this session
+    void SetTimeFrozen(bool on);          // host: paused for everyone
     void SetBuilder(int player, bool on);  // host
-    void ReceiveBuildState(bool building, const std::vector<int>& builders, int saved_ago, int autosaved_ago, int unsaved);  // guest
+    void ReceiveBuildState(bool building, const std::vector<int>& builders, int saved_ago, int autosaved_ago, int unsaved, bool frozen);  // guest
+    // Host: the level from its start for everyone (the AI paths rebuilt first when edits changed them)
+    void RestartLevel(SceneGraph* sg);
+    // Host: the AI's paths rebuilt for the edited level now (a few seconds on a big level: the host
+    // stops meanwhile); NavMeshOutOfDate: edits since the last build
+    void RebuildNavMesh(SceneGraph* sg) { MaybeRebuildNavMesh(sg); }
+    bool NavMeshOutOfDate(SceneGraph* sg) const;
+    // The line at the top of every screen in a build session: what the keys do for this player and
+    // whether time runs ("" outside one)
+    std::string SessionBanner() const;
     // origin: whose edit (the API's player ids); to: -1 everyone (the host) or a player; a guest's goes to the host
     void SendEditBatch(int origin, const std::string& blob, int to);
     // A guest's translation for an object the edit sync made or removed, set or cleared both ways
@@ -612,6 +631,9 @@ class Online {
     // Build a level (the Multiplayer menu): the next level hosted opens in build mode, the host in
     // the editor, and everyone who joins may build (the host can untick each)
     void BuildOnLoad() { build_on_load_ = true; }
+    // F1 (Engine::PressEditorKey): open, whether it asked to open the editor; done, whether the
+    // editor did. A guest's refused F1 says why
+    void EditorKeyPressed(bool open, bool done);
     bool everyone_builds = false;
     // A level the guests can't have (from the host's write folder: its own, saved) goes to them as a
     // file before they're told to load it: to one guest joining (conn) or to all (conn 0). A guest

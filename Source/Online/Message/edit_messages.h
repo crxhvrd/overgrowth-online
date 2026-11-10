@@ -41,7 +41,8 @@ class BuildStateMessage : public OnlineMessageBase {
     // loaded), and how many objects changed since
     int32_t saved_ago = -1, autosaved_ago = -1, unsaved = 0;
 
-    BuildStateMessage(bool building, const std::vector<int>& builders, int saved_ago, int autosaved_ago, int unsaved);
+    bool frozen = false;  // (the host's Freeze time; building: a build session)
+    BuildStateMessage(bool building, const std::vector<int>& builders, int saved_ago, int autosaved_ago, int unsaved, bool frozen);
 
     static binn* Serialize(void* object);
     static void Deserialize(void* object, binn* source);

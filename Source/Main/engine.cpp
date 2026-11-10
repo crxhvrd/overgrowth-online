@@ -959,8 +959,25 @@ void Engine::HandleRabbotToggleControls() {
     }
 
     if (keyboard.wasScancodePressed(SDL_SCANCODE_F1, KIMF_PLAYING | KIMF_LEVEL_EDITOR_GENERAL)) {
-        SetEditorOpen(current_engine_state_.type == kEngineLevelState);
+        PressEditorKey();
     }
+}
+
+// Overgrowth Online: F1. The editor opens or closes; in a session, building follows it (the host
+// plays or builds the way F1 does offline: Online::EditorKeyPressed)
+void Engine::PressEditorKey() {
+    if (current_engine_state_.type != kEngineLevelState && current_engine_state_.type != kEngineEditorLevelState) {
+        return;
+    }
+    // (one switch per press: two within a moment undo each other)
+    static uint32_t last_press_ticks = 0;
+    uint32_t now = SDL_TS_GetTicks();
+    if (last_press_ticks != 0 && now - last_press_ticks < 400) {
+        return;
+    }
+    last_press_ticks = now;
+    bool open = current_engine_state_.type == kEngineLevelState;
+    Online::Instance()->EditorKeyPressed(open, SetEditorOpen(open));
 }
 
 // Overgrowth Online: F1's switch, for the test bridge too. Refused while this machine may not
@@ -971,11 +988,21 @@ bool Engine::SetEditorOpen(bool open) {
     }
     if (open && current_engine_state_.type == kEngineLevelState) {
         current_engine_state_.type = kEngineEditorLevelState;
-        scenegraph_->map_editor->StopRabbot();
+        if (scenegraph_->map_editor->state_ == MapEditor::kInGame) {  // (it may be: the editor's "8")
+            scenegraph_->map_editor->StopRabbot();
+        }
         Shaders::Instance()->create_program_warning = false;
+        // The editor's cursor: the mouse free, the cursor shown (a level loads with it hidden, shown again
+        // when the mouse is let go; Build a level opens the editor before anything grabbed it)
+        Input::Instance()->SetGrabMouse(false);
+        cursor.SetVisible(true);
     } else if (!open && current_engine_state_.type == kEngineEditorLevelState) {
         current_engine_state_.type = kEngineLevelState;
-        scenegraph_->map_editor->SendInRabbot();
+        // (the editor's "8" sends the character in with the editor still open: closing it then
+        // asserted in SendInRabbot)
+        if (scenegraph_->map_editor->state_ != MapEditor::kInGame) {
+            scenegraph_->map_editor->SendInRabbot();
+        }
     }
     return true;
 }
@@ -2142,9 +2169,11 @@ void Engine::Update() {
                     scenegraph_->level->Update(paused);
                 }
 
+                // (Overgrowth Online: not under the editor. A paused session's editor (building) had
+                // no cursor: the character's camera grabbed the mouse back from the editor every frame)
                 for (auto& movement_object : scenegraph_->movement_objects_) {
                     MovementObject* mo = (MovementObject*)movement_object;
-                    if (mo->controlled) {
+                    if (mo->controlled && scenegraph_->map_editor->state_ == MapEditor::kInGame) {
                         mo->UpdatePaused();
                     }
                 }
@@ -4838,10 +4867,10 @@ void Engine::Draw() {
                             gui.AddDebugText("_nav_update", "Nav mesh needs update", 0.5);
                         }
                         if (Online::Instance()->IsActive()) {  // (Overgrowth Online)
-                            if (Online::Instance()->BuildMode()) {
+                            if (Online::Instance()->BuildSession()) {
                                 gui.AddDebugText("_mp_saved", Online::Instance()->SaveStateText(), 0.5);
                             } else {
-                                gui.AddDebugText("_mp_saved", "Build mode is off: edits here aren't shared (Windows > Multiplayer settings)", 0.5);
+                                gui.AddDebugText("_mp_saved", "Building is off in this session: edits here aren't shared (Windows > Multiplayer settings)", 0.5);
                             }
                         }
                     }
@@ -5709,6 +5738,7 @@ void Engine::LoadLevel(Path queued_level) {
             menu_paused = false;
             user_paused = false;
             slow_motion = false;
+            CommitPause();  // (Overgrowth Online: a session's pause stays: building, a new level ran under the editors)
             check_save_level_changes_dialog_is_showing = false;
             check_save_level_changes_dialog_quit_if_not_cancelled = false;
             check_save_level_changes_dialog_is_finished = false;
@@ -5835,8 +5865,15 @@ void Engine::LoadLevel(Path queued_level) {
                 scenegraph_->light_probe_collection.UpdateTextureBuffer(*scenegraph_->bullet_world_);
             }
 
-            if ((config["editor_mode"].toNumber<bool>() == false && !scenegraph_->movement_objects_.empty()) || current_engine_state_.type != kEngineEditorLevelState) {
+            // Overgrowth Online: a machine that is building keeps its editor across a level change (it
+            // played, paused: frozen); a level that starts in play mode puts the engine there too, or
+            // closing the editor it still thought open asserted (SendInRabbot in play mode)
+            bool keep_editor = current_engine_state_.type == kEngineEditorLevelState && Online::Instance()->BuildSession() && Online::Instance()->MayUseEditor();
+            if (!keep_editor && ((config["editor_mode"].toNumber<bool>() == false && !scenegraph_->movement_objects_.empty()) || current_engine_state_.type != kEngineEditorLevelState)) {
                 scenegraph_->map_editor->SendInRabbot();
+                if (current_engine_state_.type == kEngineEditorLevelState) {
+                    current_engine_state_.type = kEngineLevelState;
+                }
             }
 
             native_loading_text.Clear();
@@ -6564,7 +6601,7 @@ void Engine::CommitPause() {
     if (!Online::Instance()->IsActive()) {
         paused = user_paused || menu_paused;
     } else {
-        paused = Online::Instance()->BuildMode();  // (Overgrowth Online: building: paused for everyone)
+        paused = Online::Instance()->TimeFrozen();  // (Overgrowth Online: the host froze time for everyone)
     }
 
     game_timer.target_time_scale = (paused || slow_motion) ? 0.1f : current_global_scale_mult;

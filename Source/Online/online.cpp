@@ -57,6 +57,7 @@
 
 #include <Graphics/pxdebugdraw.h>
 #include <Internal/filesystem.h>
+#include <Compat/fileio.h>
 #include <XML/level_loader.h>
 #include <fstream>
 #include <iterator>
@@ -858,8 +859,8 @@ bool Online::PeerMayChange(PeerID from, ObjectID id) const {
     if (!IsHosting() || online_session == nullptr || from == online_session->local_player_id) {
         return true;
     }
-    if (build_mode_ && IsBuilder(ApiPlayerID(from)) && !IsPlayerCharacter(id)) {
-        // (a builder while building: anything but a player's character, or what another builder holds)
+    if (build_session_ && IsBuilder(ApiPlayerID(from)) && !IsPlayerCharacter(id)) {
+        // (a builder in a build session: anything but a player's character, or what another builder holds)
         return !ClaimedByOther((int)GetOriginalID(id), ApiPlayerID(from));
     }
     SceneGraph* sg = Engine::Instance()->GetSceneGraph();
@@ -1359,28 +1360,95 @@ bool Online::MayUseEditor() const {
     if (!IsActive() || IsHosting()) {
         return true;
     }
-    return build_mode_ && IsBuilder(OwnApiPlayerID());
+    return build_session_ && IsBuilder(OwnApiPlayerID());
 }
 
-// Build mode: the session paused for everyone, the level back to its start, builders in the editor.
-// Leaving it starts the level again too
-void Online::SetBuildMode(bool on) {
-    if (!IsHosting() || on == build_mode_) {
+// A build session: builders may use the editor; the game runs on (realtime). Its end closes the
+// guests' editors (Engine: MayUseEditor)
+void Online::SetBuildSession(bool on) {
+    if (!IsHosting() || on == build_session_) {
         return;
     }
-    build_mode_ = on;
+    build_session_ = on;
     build_state_dirty_ = true;
-    rebaseline_at_ms_ = OnlineClockMs() + 1000.0;
-    Engine::Instance()->CommitPause();
-    SceneGraph* sg = Engine::Instance()->GetSceneGraph();
     if (!on) {
         FlushEditTallies(true);
-        MaybeRebuildNavMesh(sg);  // (before the reset: the AI starts on the new one)
+        SetTimeFrozen(false);
     }
-    if (sg != nullptr && sg->level != nullptr) {
-        sg->level->Message("reset");  // (to the guests too: the host's level messages go to everyone)
+    LOGI << "Overgrowth Online editing: building " << (on ? "allowed" : "off") << " in this session" << std::endl;
+}
+
+// Freeze time: the session paused for everyone (builders' editors work on)
+void Online::SetTimeFrozen(bool on) {
+    if (!IsHosting() || on == time_frozen_) {
+        return;
     }
-    LOGI << "Overgrowth Online editing: build mode " << (on ? "on" : "off") << std::endl;
+    time_frozen_ = on;
+    build_state_dirty_ = true;
+    Engine::Instance()->CommitPause();
+    LOGI << "Overgrowth Online editing: time " << (on ? "frozen" : "runs again") << std::endl;
+}
+
+void Online::RestartLevel(SceneGraph* sg) {
+    if (!IsHosting() || sg == nullptr || sg->level == nullptr) {
+        return;
+    }
+    FlushEditTallies(true);
+    MaybeRebuildNavMesh(sg);  // (before the reset: the AI starts on the new paths)
+    rebaseline_at_ms_ = OnlineClockMs() + 1000.0;
+    sg->level->Message("reset");  // (to the guests too: the host's level messages go to everyone)
+    LOGI << "Overgrowth Online editing: the level restarted" << std::endl;
+}
+
+bool Online::NavMeshOutOfDate(SceneGraph* sg) const {
+    if (sg == nullptr || sg->level == nullptr || (sg->GetNavMesh() == nullptr && !sg->level->nav_mesh_parameters_.generate)) {
+        return false;
+    }
+    return edit_sync.batches_sent + edit_sync.batches_applied != nav_mark_;
+}
+
+// F1 in a session: the editor opens or closes here only (the game runs on). A guest's refused F1
+// says why
+void Online::EditorKeyPressed(bool open, bool done) {
+    if (!IsActive() || IsHosting() || !open || done) {
+        return;
+    }
+    std::string host = ApiPlayerName(0);
+    host = host.empty() ? std::string("the host") : host;
+    Hint(!build_session_ ? std::string("Building is off in this session (") + host + " turns it on)"
+                         : "You can't build: " + host + " decides who builds");
+}
+
+void Online::Hint(const std::string& text) {
+    if (OnlineClockMs() - last_hint_ms_ < 1500.0) {
+        return;
+    }
+    last_hint_ms_ = OnlineClockMs();
+    AddLocalChatMessage(text);
+}
+
+std::string Online::SessionBanner() const {
+    if (!IsActive() || !build_session_) {
+        return "";
+    }
+    const char* kSep = "     |     ";
+    std::string host = ApiPlayerName(0);
+    host = host.empty() ? std::string("the host") : host;
+    bool editor_open = Engine::Instance()->current_engine_state_.type == kEngineEditorLevelState;
+    std::string editor = editor_open ? "F1: close the editor" : "F1: open the editor";
+    if (IsHosting()) {
+        int guests = 0;
+        for (int player : builders_) {
+            guests += player > 0 ? 1 : 0;
+        }
+        std::string who = guests == 0 ? std::string("only you build") : guests == 1 ? std::string("1 guest builds") : std::to_string(guests) + " guests build";
+        return std::string("BUILD SESSION") + kSep + editor + kSep + "Ctrl+S: save" + kSep + (time_frozen_ ? "TIME FROZEN" : "time runs") + kSep + who;
+    }
+    std::string time = time_frozen_ ? "TIME FROZEN by " + host : std::string("time runs");
+    if (!IsBuilder(OwnApiPlayerID())) {
+        return "BUILD SESSION with " + host + kSep + host + " decides who builds" + kSep + time;
+    }
+    return "BUILD SESSION with " + host + kSep + editor + kSep + "Ctrl+S: ask " + host + " to save" + kSep + time;
 }
 
 void Online::SetBuilder(int player, bool on) {
@@ -1399,18 +1467,30 @@ void Online::SetBuilder(int player, bool on) {
     LOGI << "Overgrowth Online editing: player " << player << (on ? " may build" : " may not build") << std::endl;
 }
 
-void Online::ReceiveBuildState(bool building, const std::vector<int>& builders, int saved_ago, int autosaved_ago, int unsaved) {
-    bool changed = building != build_mode_;
-    build_mode_ = building;
+void Online::ReceiveBuildState(bool building, const std::vector<int>& builders, int saved_ago, int autosaved_ago, int unsaved, bool frozen) {
+    int me = OwnApiPlayerID();
+    bool builder = std::find(builders.begin(), builders.end(), me) != builders.end();
+    bool session_changed = building != build_session_;
     builders_ = builders;
+    build_session_ = building;
+    if (!build_state_seen_ && building) {
+        std::string host = ApiPlayerName(0);
+        host = host.empty() ? std::string("the host") : host;
+        AddLocalChatMessage("You joined " + host + "'s build session: " +
+                            (builder ? std::string("F1 opens the editor; the game runs on while anyone builds") : host + " decides who builds"));
+    }
+    build_state_seen_ = true;
     guest_saved_ago_ = saved_ago;
     guest_autosaved_ago_ = autosaved_ago;
     guest_unsaved_ = unsaved;
     guest_save_state_ms_ = OnlineClockMs();
-    if (changed) {
-        rebaseline_at_ms_ = OnlineClockMs() + 1000.0;
+    if (frozen != time_frozen_) {
+        time_frozen_ = frozen;
         Engine::Instance()->CommitPause();
-        LOGI << "Overgrowth Online editing: the host turned build mode " << (building ? "on" : "off") << std::endl;
+        LOGI << "Overgrowth Online editing: the host " << (frozen ? "froze time" : "let time run again") << std::endl;
+    }
+    if (session_changed) {
+        LOGI << "Overgrowth Online editing: the host " << (building ? "allows building" : "turned building off") << std::endl;
     }
 }
 
@@ -1519,14 +1599,16 @@ void DrawObjectBox(Object* obj, const vec4& color) {
 
 void Online::UpdateEditing(SceneGraph* sg) {
     if (!IsActive() || sg == nullptr) {
-        if (build_mode_) {
-            build_mode_ = false;
+        if (time_frozen_) {
+            time_frozen_ = false;
             Engine::Instance()->CommitPause();
         }
         builders_.clear();
         edit_caught_up_.clear();
         editor_was_open_ = false;
         everyone_builds = false;
+        build_session_ = false;
+        build_state_seen_ = false;
         auto_builders_.clear();
         received_levels_.clear();
         incoming_parts_.clear();
@@ -1575,7 +1657,7 @@ void Online::UpdateEditing(SceneGraph* sg) {
     editor_was_open_ = editor_open;
     if (editor_open && OnlineClockMs() - last_edit_scan_ms_ > 1000.0) {
         last_edit_scan_ms_ = OnlineClockMs();
-        edit_sync.Scan(sg);
+        edit_sync.Scan(sg, false);  // (between editor operations: see EditSync::Scan)
     }
 
     // Our presence while building: where we look from and what we hold, five times a second; once
@@ -1622,19 +1704,20 @@ void Online::UpdateEditing(SceneGraph* sg) {
     }
 
     if (IsHosting()) {
-        // Building: no "Press any key to continue" after a level loads (the level isn't drawn behind
-        // it, and the editor opened over it showed only black); the session is paused anyway, and
-        // guests still loading come in as late joiners do
-        if ((build_on_load_ || build_mode_) && sg->level != nullptr && !loading && !host_started_level) {
+        // A build session: no "Press any key to continue" after a level loads (the level isn't drawn
+        // behind it, and the editor opened over it showed only black); guests still loading come in
+        // as late joiners do
+        if ((build_on_load_ || build_session_) && sg->level != nullptr && !loading && !host_started_level) {
             SessionStarted(true);
             Engine::Instance()->waiting_for_input_ = false;
             LOGI << "Overgrowth Online editing: the session starts without the key press (building)" << std::endl;
         }
-        // Build a level: the hosted level is here; build mode, the editor open, joiners may build
+        // Build a level: the hosted level is here; a build session, the host's editor open, joiners
+        // may build; the game runs
         if (build_on_load_ && sg->level != nullptr) {
             build_on_load_ = false;
             everyone_builds = true;
-            SetBuildMode(true);
+            SetBuildSession(true);
             Engine::Instance()->SetEditorOpen(true);
             LOGI << "Overgrowth Online editing: building " << level_name << std::endl;
         }
@@ -1642,13 +1725,15 @@ void Online::UpdateEditing(SceneGraph* sg) {
             for (int player : ApiPlayerIDs()) {
                 if (player > 0 && auto_builders_.insert(player).second) {
                     SetBuilder(player, true);
+                    std::string who = ApiPlayerName(player);
+                    AddLocalChatMessage((who.empty() ? std::string("A player") : who) + " joined and can build");
                 }
             }
         }
         if (build_state_dirty_ || OnlineClockMs() - last_build_state_ms_ > 2000.0) {
             build_state_dirty_ = false;
             last_build_state_ms_ = OnlineClockMs();
-            Send<OnlineMessages::BuildStateMessage>(build_mode_, builders_, SavedAgo(), AutosavedAgo(), UnsavedCount());
+            Send<OnlineMessages::BuildStateMessage>(build_session_, builders_, SavedAgo(), AutosavedAgo(), UnsavedCount(), time_frozen_);
         }
         FlushEditTallies(false);
 
@@ -1668,7 +1753,7 @@ void Online::UpdateEditing(SceneGraph* sg) {
         // An autosave while building, every five minutes when something changed: to the write
         // folder (Data/Levels/autosave/<level>_autosave.xml), never over the level's file
         int mark = edit_sync.batches_sent + edit_sync.batches_applied;
-        if (build_mode_ && mark != autosave_mark_ && OnlineClockMs() - last_autosave_ms_ > 300000.0) {
+        if (build_session_ && mark != autosave_mark_ && OnlineClockMs() - last_autosave_ms_ > 300000.0) {
             last_autosave_ms_ = OnlineClockMs();
             autosaved_ms_ = OnlineClockMs();
             build_state_dirty_ = true;
@@ -1956,8 +2041,17 @@ void Online::SendLevelFile(HSteamNetConnection conn, const std::string& level) {
     if (!path.isValid() || !(path.source & (kWriteDir | kAbsPath))) {
         return;
     }
-    std::ifstream file(path.GetFullPath(), std::ios::binary);
-    std::string raw((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    // (my_fopen: the path is UTF-8; an ifstream read it in the ANSI code page and found nothing in a
+    // user folder like "Документы", so no level of the host's own was ever sent)
+    std::string raw;
+    if (FILE* file = my_fopen(path.GetFullPath(), "rb")) {
+        char buffer[65536];
+        size_t got;
+        while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0 && raw.size() <= kLevelFileMaxBytes) {
+            raw.append(buffer, got);
+        }
+        fclose(file);
+    }
     if (raw.empty() || raw.size() > kLevelFileMaxBytes) {
         LOGW << "Overgrowth Online: the level file " << path.GetFullPath() << " isn't sent (" << raw.size() << " bytes)" << std::endl;
         return;
@@ -2031,10 +2125,12 @@ void Online::ReceiveLevelChunk(const std::string& name, int part, int parts, con
     std::string rel = "Data/Levels/_online/" + base;
     std::string full = GetWritePath(CoreGameModID) + rel;
     CreateParentDirs(full);
-    std::ofstream out(full, std::ios::binary | std::ios::trunc);
-    out.write(raw.data(), (std::streamsize)raw.size());
-    out.close();
-    if (!out) {
+    FILE* out = my_fopen(full.c_str(), "wb");  // (UTF-8 path: see SendLevelFile)
+    bool written = out != nullptr && fwrite(raw.data(), 1, raw.size(), out) == raw.size();
+    if (out != nullptr && fclose(out) != 0) {
+        written = false;
+    }
+    if (!written) {
         LOGE << "Overgrowth Online: couldn't write the level file to " << full << std::endl;
         return;
     }
@@ -3057,7 +3153,7 @@ void Online::CheckPendingMessages() {
                 } else if (type == message_handler.GetMessageType<OnlineMessages::ScriptMessage>()) {
                     RelayScriptMessage(it.message, it.from);  // (a guest's script message: on to its readers)
                 } else if (type == message_handler.GetMessageType<OnlineMessages::EditorTransformChange>() &&
-                           build_mode_ && IsBuilder(ApiPlayerID(it.from)) &&
+                           build_session_ && IsBuilder(ApiPlayerID(it.from)) &&
                            !ClaimedByOther((int)static_cast<OnlineMessages::EditorTransformChange*>(it.message.GetData())->Target(), ApiPlayerID(it.from))) {
                     RelayFromPeer(it.message, it.from);  // (a builder dragging: the others see it move)
                 } else if (type == message_handler.GetMessageType<OnlineMessages::BuilderPresence>() && IsBuilder(ApiPlayerID(it.from))) {

@@ -313,7 +313,10 @@ def mp_build(ctx):
     _edit(c1, op="spawn", path=BLOCK, pos=X)  # (an edit for the navmesh to follow)
     settle(2.0)
 
-    # --- 13. build mode off: the builder's editor closes; the host rebuilds the navmesh -------------
+    # --- 13. the host restarts the level (the navmesh rebuilt for the edits first), then turns building
+    # off: the builder's editor closes --------------------------------------------------------------
+    _build(host, restart=True)
+    settle(2.0)
     _build(host, on=False)
     settle(3.0)
     after = _build(c1)
@@ -329,7 +332,7 @@ def mp_build(ctx):
     if m["sent_in_play"]:
         fails.append(f"the host sent {m['sent_in_play']} edit batch(es) while playing")
     if hs["nav_builds"] != 1:
-        fails.append(f"the host's navmesh going to Play: {m['navmesh']} (want one rebuild)")
+        fails.append(f"the host's navmesh on the restart: {m['navmesh']} (want one rebuild)")
 
     # --- 14. edit lines in the chat; reflection captures refreshed on every machine ------------------
     lines = [line for line in _build(c3)["chat"] if " placed " in line or " removed " in line or " changed " in line]
@@ -357,7 +360,12 @@ def mp_build_level(ctx):
     time.sleep(2.0)
     hs = _build(host)
     m["host"] = {k: hs[k] for k in ("build_mode", "editor_open", "everyone_builds", "level_name")}
-    m["host"]["waiting_for_input"] = host.bridge.status()["waiting_for_input"]
+    hst = host.bridge.status()
+    m["host"]["waiting_for_input"] = hst["waiting_for_input"]
+    # (the editor's cursor: a level loads with it hidden; the editor shows it, and nothing grabs the mouse)
+    m["host"]["cursor"] = {"visible": hst["cursor_visible"], "grabbed": hst["grab_mouse"]}
+    if not hst["cursor_visible"] or hst["grab_mouse"]:
+        fails.append(f"no cursor in the host's editor: {m['host']['cursor']}")
     if not (hs["build_mode"] and hs["editor_open"] and hs["everyone_builds"]):
         fails.append(f"the hosted level isn't building: {m['host']}")
     if m["host"]["waiting_for_input"]:
@@ -399,7 +407,10 @@ def mp_build_level(ctx):
     if s2["level_files_received"] != 1 or "_online" not in m["c2"]["level"] or m["c2"]["blocks"] != 1 or not s2["may_edit"]:
         fails.append(f"the joiner and the host's own file: {m['c2']} (want the file received, loaded, with the block, may build)")
 
-    # The host loads its own file again: everyone gets it and loads it (and nobody waits on a key)
+    # The host loads its own file again: everyone gets it and loads it (and nobody waits on a key).
+    # Time frozen first: it stays frozen (a load cleared the pause, and the level ran under the editors)
+    _build(host, freeze=True)
+    time.sleep(1.0)
     host.bridge.call("load_level", path=rel, discard=True)
     time.sleep(4.0)
     for inst in (host, c1, c2):
@@ -408,6 +419,13 @@ def mp_build_level(ctx):
     m["waiting_after_change"] = {name: inst.bridge.status()["waiting_for_input"] for name, inst in {"host": host, "c1": c1, "c2": c2}.items()}
     if any(m["waiting_after_change"].values()):
         fails.append(f"after the level change someone waits on the key press: {m['waiting_after_change']}")
+    # (still frozen everywhere, the host's editor open)
+    m["paused_after_change"] = {name: inst.bridge.status()["paused"] for name, inst in {"host": host, "c1": c1, "c2": c2}.items()}
+    m["host_editor_after_change"] = _build(host)["editor_open"]
+    if not all(m["paused_after_change"].values()) or not m["host_editor_after_change"]:
+        fails.append(f"after the level change: paused {m['paused_after_change']}, host editor {m['host_editor_after_change']} (want time still frozen, the editor open)")
+    _build(host, freeze=False)
+    time.sleep(1.0)
     m["reload"] = {}
     for name, inst in {"host": host, "c1": c1, "c2": c2}.items():
         st = _build(inst)
@@ -417,4 +435,167 @@ def mp_build_level(ctx):
     if m["reload"]["c1"]["received"] != 1 or m["reload"]["c2"]["received"] != 2:
         fails.append(f"the level change's file, once to each: {m['reload']} (want c1 1, c2 2 received)")
 
+    # F1 is the host's own editor: closed, the session goes on and the game runs for everyone;
+    # open again, with the cursor (realtime: nobody is paused either way)
+    def clocks():
+        return {name: inst.bridge.status()["game_time"] for name, inst in {"host": host, "c1": c1}.items()}
+    _build(host, f1=True)
+    time.sleep(2.0)
+    t0 = clocks()
+    time.sleep(2.0)
+    t1 = clocks()
+    hb = _build(host)
+    m["f1_close"] = {"session": hb["build_mode"], "editor_open": hb["editor_open"],
+                     "ran": {k: round(t1[k] - t0[k], 2) for k in t0}}
+    if not hb["build_mode"] or hb["editor_open"] or min(m["f1_close"]["ran"].values()) < 1.0:
+        fails.append(f"F1 didn't close the host's editor with the game running: {m['f1_close']}")
+    _build(host, f1=True)
+    time.sleep(2.0)
+    hb, hst = _build(host), host.bridge.status()
+    m["f1_open"] = {"session": hb["build_mode"], "editor_open": hb["editor_open"], "paused": hst["paused"], "cursor": hst["cursor_visible"]}
+    if not (hb["build_mode"] and hb["editor_open"] and not hst["paused"] and hst["cursor_visible"]):
+        fails.append(f"F1 again didn't open the editor: {m['f1_open']}")
+
     return {"passed": not fails, "metrics": m, "notes": fails}
+
+
+def mp_build_session(ctx):
+    """A realtime build session as players meet it (0.41.19): editing never pauses the game; every
+    builder opens their own editor (F1, a real key event, one switch a press); a guest joins
+    through the real loading screen (no key-press skip, no forced start) and plays until it opens
+    its editor; what moves by itself (a guard spawned in the air, falling, its AI) isn't sent as
+    an edit, not even while a builder holds it, until that builder moves it; the host freezes time
+    for everyone and lets it run again; a guest without building rights is told why F1 does
+    nothing; the host restarts the level; a level saved under a non-ASCII folder reaches a joiner."""
+    m, fails = {}, []
+    host = ctx.instance("host")
+    _build(host, build_on_load=True)
+    host.bridge.call("host", level="Data/Levels/nothing.xml")
+    wait_loaded(host)
+    time.sleep(2.0)
+
+    def state(inst):
+        b, s = _build(inst), inst.bridge.status()
+        return {"session": b["build_mode"], "editor": b["editor_open"], "frozen": b.get("time_frozen"), "may": b["may_edit"],
+                "banner": b.get("banner", ""), "waiting": s["waiting_for_input"], "paused": s["paused"], "sent": b.get("batches_sent")}
+
+    def clock_runs(*insts):
+        t0 = [i.bridge.status()["game_time"] for i in insts]
+        time.sleep(1.5)
+        return [round(i.bridge.status()["game_time"] - t, 2) for i, t in zip(insts, t0)]
+
+    def connect(name):
+        inst = ctx.instance(name, keys={"skip_loading_pause": "false"})  # (the real loading screen)
+        inst.bridge.call("connect", ip="127.0.0.1")
+        wait_loaded(inst, timeout=180)
+        inst.bridge.wait(lambda: not inst.bridge.status()["waiting_for_input"], 60, what=f"{name} past its loading screen")
+        time.sleep(4.0)
+        return inst
+
+    def editor_switches(inst):
+        return sum(1 for l in inst.log().splitlines() if "Requesting editor-controlled mode" in l or "Requesting player-controlled mode" in l)
+
+    m["host_start"] = state(host)
+    if not (m["host_start"]["session"] and m["host_start"]["editor"] and not m["host_start"]["paused"] and "BUILD SESSION" in m["host_start"]["banner"]):
+        fails.append(f"Build a level didn't start a running build session in the host's editor: {m['host_start']}")
+
+    # A guest joins: playing, the game running, told how to build
+    c1 = connect("client1")
+    m["c1_join"] = state(c1)
+    m["c1_welcome"] = [l for l in _build(c1).get("chat", []) if "build session" in l]
+    m["ran_after_join"] = clock_runs(host, c1)
+    if m["c1_join"]["editor"] or not m["c1_join"]["may"] or m["c1_join"]["paused"] or "F1: open the editor" not in m["c1_join"]["banner"]:
+        fails.append(f"a guest who joined: {m['c1_join']} (want playing, may build, the banner's F1)")
+    if not m["c1_welcome"]:
+        fails.append("no welcome line for the guest")
+    if min(m["ran_after_join"]) < 1.0:
+        fails.append(f"the game doesn't run with the host in the editor: {m['ran_after_join']}")
+
+    # The guest's F1, a real key: one switch, its editor open, the game still running for both
+    before = editor_switches(c1)
+    c1.bridge.call("key", key="F1")
+    time.sleep(2.0)
+    m["c1_f1"] = {"switches": editor_switches(c1) - before, "editor": _build(c1)["editor_open"], "ran": clock_runs(host, c1)}
+    if m["c1_f1"]["switches"] != 1 or not m["c1_f1"]["editor"] or min(m["c1_f1"]["ran"]) < 1.0:
+        fails.append(f"the guest's F1: {m['c1_f1']} (want one switch, its editor, the game running)")
+
+    # A guard spawned in the air (an edit) falls and runs its AI: nothing of that is sent
+    G = [0.0, 6.0, 4.0]
+    made = _edit(host, op="spawn", path="Data/Objects/IGF_Characters/IGF_GuardActor.xml", pos=G)["made"]
+    time.sleep(3.0)
+    guard_host = made[0]["id"] if made else -1
+    sent0 = {"host": _build(host)["batches_sent"], "c1": _build(c1)["batches_sent"]}
+    guard_c1 = [o for o in _edit(c1, op="find", path="Data/Objects/IGF_Characters/IGF_GuardActor.xml")["objects"]]
+    time.sleep(5.0)
+    sent1 = {"host": _build(host)["batches_sent"], "c1": _build(c1)["batches_sent"]}
+    m["guard"] = {"on_c1": len(guard_c1), "sent_while_it_moves": {k: sent1[k] - sent0[k] for k in sent0}}
+    if len(guard_c1) != 1 or any(sent1[k] != sent0[k] for k in sent0):
+        fails.append(f"the guard: {m['guard']} (want it on the guest, nothing sent as it falls and walks)")
+    # ...nor while the guest holds it selected; the guest's move of it is one edit
+    if guard_c1:
+        gid = guard_c1[0]["id"]
+        _edit(c1, op="select", objs=[gid])
+        time.sleep(3.5)
+        held = _build(c1)["batches_sent"] - sent1["c1"]
+        target = [5.0, 2.0, -5.0]
+        _edit(c1, op="move", obj=gid, pos=target)
+        time.sleep(2.5)
+        moved = _build(c1)["batches_sent"] - sent1["c1"] - held
+        _edit(c1, op="select", objs=[])
+        on_host = _edit(host, op="get", obj=guard_host).get("object", {}).get("pos", [0, 0, 0])
+        m["guard_held"] = {"sent_while_held": held, "sent_for_the_move": moved, "host_pos": [round(v, 1) for v in on_host]}
+        if held != 0 or moved != 1 or abs(on_host[0] - target[0]) > 1.5 or abs(on_host[2] - target[2]) > 1.5:
+            fails.append(f"the held guard: {m['guard_held']} (want nothing while held, one edit for the move, there on the host)")
+
+    # A block the guest places while the game runs: on the host at once
+    P = [2.0, 1.0, 3.0]
+    _edit(c1, op="spawn", path=BLOCK, pos=P)
+    time.sleep(2.5)
+    m["block"] = {"host": len(_at(host, P)), "c1": len(_at(c1, P))}
+    if m["block"] != {"host": 1, "c1": 1}:
+        fails.append(f"the guest's block: {m['block']}")
+
+    # The host freezes time: everyone stops, editors work on; and lets it run again
+    _build(host, freeze=True)
+    time.sleep(2.0)
+    m["frozen"] = {"ran": clock_runs(host, c1), "c1": state(c1)}
+    _build(host, freeze=False)
+    time.sleep(2.0)
+    m["unfrozen_ran"] = clock_runs(host, c1)
+    if max(m["frozen"]["ran"]) > 0.05 or not m["frozen"]["c1"]["frozen"] or "TIME FROZEN" not in m["frozen"]["c1"]["banner"]:
+        fails.append(f"Freeze time: {m['frozen']}")
+    if min(m["unfrozen_ran"]) < 1.0:
+        fails.append(f"time didn't run again: {m['unfrozen_ran']}")
+
+    # Without building rights the guest's editor closes, and its F1 says why
+    _build(host, builder=1, may=False)
+    time.sleep(3.0)
+    c1.bridge.call("key", key="F1")
+    time.sleep(2.0)
+    m["no_rights"] = {"editor": _build(c1)["editor_open"], "line": [l for l in _build(c1).get("chat", []) if "decides who builds" in l]}
+    if m["no_rights"]["editor"] or not m["no_rights"]["line"]:
+        fails.append(f"a guest without building rights: {m['no_rights']}")
+    _build(host, builder=1, may=True)
+
+    # The host restarts the level: nothing sent for what the reset moves
+    s0 = _build(host)["batches_sent"]
+    _build(host, restart=True)
+    time.sleep(4.0)
+    m["restart_sent"] = _build(host)["batches_sent"] - s0
+    if m["restart_sent"] != 0:
+        fails.append(f"the restart was sent as {m['restart_sent']} edit(s)")
+
+    # A level saved outside the game's folders under a non-ASCII one (as a user's Документы/s.xml):
+    # a joiner gets it (its read took the path for the ANSI code page and sent nothing)
+    import tempfile
+    path = (tempfile.gettempdir() + "/ogmp_Документы/mp_build_session.xml").replace("\\", "/")  # (outside the working dir)
+    m["save_to"] = _build(host, save_to=path).get("save_to_ok")
+    time.sleep(2.0)
+    c2 = connect("client2")
+    s2 = _build(c2)
+    m["c2"] = {"received": s2["level_files_received"], "level": c2.bridge.status()["level"], "blocks": len(_at(c2, P)), "may": s2["may_edit"]}
+    if s2["level_files_received"] != 1 or m["c2"]["blocks"] != 1 or not s2["may_edit"]:
+        fails.append(f"the joiner and a level saved under a non-ASCII folder: {m['c2']} (want the file, the block, may build)")
+
+    return {"passed": not fails, "metrics": m, "notes": fails}
+

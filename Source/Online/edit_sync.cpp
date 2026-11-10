@@ -265,8 +265,22 @@ void EditSync::Reset(SceneGraph* sg) {
     }
 }
 
+// What changes by itself while the game runs: characters, items, hotspots (their scripts' params).
+// An edit to one counts only while a builder holds it
+static bool ChangesByItself(Object* obj) {
+    EntityType type = obj->GetType();
+    return type == _movement_object || type == _item_object || type == _hotspot_object;
+}
+
 void EditSync::Rebaseline(SceneGraph* sg) {
     Describe(sg, &known_, &known_sky_, &known_params_);
+    selected_before_.clear();
+    dynamic_.clear();
+    for (Object* obj : sg->objects_) {
+        if (ChangesByItself(obj)) {
+            dynamic_.insert(obj->GetID());
+        }
+    }
     have_known_ = true;
 }
 
@@ -307,14 +321,13 @@ void EditSync::NoteEdited(const Entry& e) {
 
 // ---- sending -------------------------------------------------------------------------------
 
-void EditSync::Scan(SceneGraph* sg) {
+void EditSync::Scan(SceneGraph* sg, bool after_edit) {
     Online* online = Online::Instance();
     if (sg == nullptr || !online->IsActive() || !online->MayUseEditor()) {
         return;
     }
-    // Only while building: in play things move by themselves (characters, items, scripts' params),
-    // and that isn't editing. Nor just after the switch, while the level's reset settles
-    if (!online->BuildMode() || online->EditRebaselinePending()) {
+    // Only in a build session; not just after the level restarted, while the reset settles
+    if (!online->BuildSession() || online->EditRebaselinePending()) {
         return;
     }
     if (!have_known_) {
@@ -322,9 +335,60 @@ void EditSync::Scan(SceneGraph* sg) {
         return;
     }
     ++scans;
+    // The game runs while people build (realtime). What can't move by itself (meshes, lights,
+    // decals, paths...) is compared whole, as ever. Characters, items and hotspots change by
+    // themselves (the AI, physics, scripts): a change counts only while this builder holds one
+    // (selected now, or at the last scan: just let go), and only on an editor operation; between
+    // operations what's held is kept current unsent (an AI walking the selected character isn't an
+    // edit). One made or removed counts on an operation or while held; otherwise the game made or
+    // removed it, and it's known or forgotten quietly. The sky and the level's settings (scripts and
+    // weather change them) count on an operation, or with time frozen
+    std::set<int> selected, present;
     std::unordered_map<int, std::string> now;
-    std::string sky, params;
-    Describe(sg, &now, &sky, &params);
+    for (Object* obj : sg->objects_) {
+        if (obj->parent || obj->exclude_from_undo || online->IsPlayerCharacter(obj->GetID())) {
+            continue;
+        }
+        int id = obj->GetID();
+        present.insert(id);
+        if (obj->Selected()) {
+            selected.insert(id);
+        }
+        if (!ChangesByItself(obj)) {
+            now[id] = DescribeOne(obj);
+            continue;
+        }
+        dynamic_.insert(id);
+        bool held = obj->Selected() || selected_before_.count(id) != 0;
+        auto known = known_.find(id);
+        if (known == known_.end()) {
+            now[id] = DescribeOne(obj);
+            if (!obj->Selected() && !after_edit) {
+                known_[id] = now[id];  // (the game made it: known, not sent)
+            }
+        } else if (held && after_edit) {
+            now[id] = DescribeOne(obj);
+        } else if (held) {
+            known->second = DescribeOne(obj);
+            now[id] = known->second;
+        } else {
+            now[id] = known->second;
+        }
+    }
+    for (auto it = known_.begin(); it != known_.end();) {
+        bool gone = present.count(it->first) == 0;
+        if (gone && dynamic_.count(it->first) != 0 && selected_before_.count(it->first) == 0 && !after_edit) {
+            dynamic_.erase(it->first);  // (the game removed it)
+            it = known_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    selected_before_ = selected;
+    std::string sky = known_sky_, params = known_params_;
+    if (after_edit || online->TimeFrozen()) {
+        DescribeLevel(sg, &sky, &params);
+    }
 
     std::vector<Entry> entries;
     std::vector<int> new_ids;
@@ -340,6 +404,7 @@ void EditSync::Scan(SceneGraph* sg) {
     for (const auto& obj : known_) {
         if (now.find(obj.first) == now.end()) {
             entries.push_back({kRemoved, obj.first, std::string()});
+            dynamic_.erase(obj.first);
         }
     }
     if (sky != known_sky_) {
@@ -430,7 +495,14 @@ void EditSync::Scan(SceneGraph* sg) {
         applying = false;
     }
     ++batches_sent;
-    LOGI << "Overgrowth Online editing: sent " << entries.size() << " change(s)" << std::endl;
+    {
+        static const char* kKinds[] = {"?", "changed", "new", "removed", "sky", "level settings", "restored"};
+        std::string what;
+        for (const Entry& e : entries) {
+            what += std::string(what.empty() ? "" : ", ") + kKinds[e.kind <= kRestore ? e.kind : 0] + " " + std::to_string(e.id);
+        }
+        LOGI << "Overgrowth Online editing: sent " << entries.size() << " change(s) (" << what << (after_edit ? "" : "; between operations") << ")" << std::endl;
+    }
 }
 
 std::string EditSync::CatchUpBlob(SceneGraph* sg) {
@@ -531,7 +603,7 @@ void EditSync::ApplyParams(SceneGraph* sg, const std::string& bytes) {
 void EditSync::ApplyAsHost(SceneGraph* sg, int from_peer, std::vector<Entry>& entries) {
     Online* online = Online::Instance();
     const int builder = from_peer < 0 ? 0 : online->ApiPlayerID((PeerID)from_peer);  // (-1: the host's own undo)
-    if (builder != 0 && (!online->IsBuilder(builder) || !online->BuildMode())) {
+    if (builder != 0 && (!online->IsBuilder(builder) || !online->BuildSession())) {
         ++refused;
         std::vector<Entry> fix;  // (the host's state of what it named: its view snaps back)
         for (const Entry& e : entries) {
@@ -546,7 +618,7 @@ void EditSync::ApplyAsHost(SceneGraph* sg, int from_peer, std::vector<Entry>& en
         if (!fix.empty()) {
             online->SendEditBatch(-1, Pack(fix), builder);
         }
-        online->TellPlayer(builder, online->BuildMode() ? "The host hasn't let you build: your change was put back" : "Build mode is off: your change was put back");
+        online->TellPlayer(builder, online->BuildSession() ? "The host hasn't let you build: your change was put back" : "Building is off in this session: your change was put back");
         LOGW << "Overgrowth Online editing: player " << builder << " isn't building now; " << entries.size() << " change(s) refused" << std::endl;
         return;
     }
