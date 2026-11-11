@@ -276,6 +276,7 @@ void EditSync::Rebaseline(SceneGraph* sg) {
     Describe(sg, &known_, &known_sky_, &known_params_);
     selected_before_.clear();
     dynamic_.clear();
+    previewed_.clear();
     for (Object* obj : sg->objects_) {
         if (ChangesByItself(obj)) {
             dynamic_.insert(obj->GetID());
@@ -356,6 +357,17 @@ void EditSync::Scan(SceneGraph* sg, bool after_edit) {
         }
         if (!ChangesByItself(obj)) {
             now[id] = DescribeOne(obj);
+            // (another builder's drag, shown here: theirs to send. Not ours, unless we hold it; the
+            // host's per-second scan sent a guest's drag as the host's own edit, and the guest's
+            // undo lost the move)
+            auto known = known_.find(id);
+            if (previewed_.count(id) != 0 && known != known_.end()) {
+                if (now[id] == known->second) {
+                    previewed_.erase(id);  // (their edit arrived: the drag is over)
+                } else if (!obj->Selected()) {
+                    now[id] = known->second;
+                }
+            }
             continue;
         }
         dynamic_.insert(id);
@@ -385,6 +397,9 @@ void EditSync::Scan(SceneGraph* sg, bool after_edit) {
         }
     }
     selected_before_ = selected;
+    for (auto it = previewed_.begin(); it != previewed_.end();) {
+        it = present.count(*it) != 0 ? std::next(it) : previewed_.erase(it);
+    }
     std::string sky = known_sky_, params = known_params_;
     if (after_edit || online->TimeFrozen()) {
         DescribeLevel(sg, &sky, &params);

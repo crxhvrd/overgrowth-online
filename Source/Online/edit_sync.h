@@ -51,6 +51,10 @@ class EditSync {
     // changed. The game runs while people build: what changes by itself (characters, items,
     // hotspots) counts only while this builder holds it (selected), and only on an operation
     void Scan(SceneGraph* sg, bool after_edit = true);
+    // Another machine's builder is dragging this object (its live frames, shown here): not an edit
+    // of ours. Our scan leaves it be, unless we hold it, until that builder's edit (or the host's
+    // word) arrives and it is as we know it again, or it is gone
+    void NotePreview(int local_id) { previewed_.insert(local_id); }
     // A batch from the network (applied in Online::LateUpdate, outside message handling)
     void Queue(int origin, int from_peer, const std::string& blob);
     void ApplyQueued(SceneGraph* sg);
@@ -85,6 +89,7 @@ class EditSync {
     std::string known_sky_, known_params_;
     std::set<int> selected_before_;  // (the last scan's selection: what the editor held)
     std::set<int> dynamic_;          // (known objects that change by themselves)
+    std::set<int> previewed_;        // (moved here by another builder's drag: see NotePreview)
     std::map<int, uint8_t> edited_;  // host: object id -> kNew / kChanged / kRemoved since load or save
     struct Step {
         std::vector<Entry> back, forth;  // (host ids)

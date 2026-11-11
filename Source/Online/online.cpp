@@ -1655,7 +1655,12 @@ void Online::UpdateEditing(SceneGraph* sg) {
         edit_sync.Rebaseline(sg);
     }
     editor_was_open_ = editor_open;
-    if (editor_open && OnlineClockMs() - last_edit_scan_ms_ > 1000.0) {
+    // (not mid-operation: a drag goes once, when it ends, as one step to undo; and an operation
+    // just done is scanned as one, with its history save: a character placed counted as the
+    // game's (known, never sent) when this scan fell between the placing and that save)
+    bool mid_operation = sg->map_editor != nullptr && (sg->map_editor->HistorySavePending() ||
+                                                       (sg->map_editor->state_ != MapEditor::kIdle && sg->map_editor->state_ != MapEditor::kInGame));
+    if (editor_open && !mid_operation && OnlineClockMs() - last_edit_scan_ms_ > 1000.0) {
         last_edit_scan_ms_ = OnlineClockMs();
         edit_sync.Scan(sg, false);  // (between editor operations: see EditSync::Scan)
     }

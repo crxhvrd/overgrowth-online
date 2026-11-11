@@ -209,6 +209,16 @@ def mp_build(ctx):
     settle()
     mine = _at(c1, U1)
     if mine:
+        # c1's drag, frames only for a while (the others see it move): nobody else sends it as
+        # their edit (the host's scan did, and c1's undo lost the move); then c1 lets go
+        others = {"host": host, "c2": c2}
+        sent0 = {n: _build(i)["batches_sent"] for n, i in others.items()}
+        _edit(c1, op="preview", obj=mine[0]["id"], pos=U2)
+        settle(2.5)
+        m["drag_frames"] = {"at_U2": {n: len(_at(i, U2)) for n, i in others.items()},
+                            "sent": {n: _build(i)["batches_sent"] - sent0[n] for n, i in others.items()}}
+        if any(m["drag_frames"]["sent"].values()) or any(v != 1 for v in m["drag_frames"]["at_U2"].values()):
+            fails.append(f"c1's drag frames: {m['drag_frames']} (want shown at U2 on the others, sent by none of them)")
         _edit(c1, op="move", obj=mine[0]["id"], pos=U2)
         settle()
         where = lambda: {name: (len(_at(inst, U1)), len(_at(inst, U2))) for name, inst in everyone.items()}

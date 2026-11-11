@@ -82,6 +82,14 @@ void EditorTransformChange::Execute(const OnlineMessageRef& ref, void* object, P
                 envobj->UpdateBoundingSphere();
                 envobj->UpdatePhysicsTransform();
             }
+
+            // (Overgrowth Online: another builder's drag, shown here: not an edit of ours; a
+            // group's part moves the group)
+            Object* top = obj;
+            while (top->parent != nullptr) {
+                top = top->parent;
+            }
+            Online::Instance()->edit_sync.NotePreview(top->GetID());
         }
     }
 }

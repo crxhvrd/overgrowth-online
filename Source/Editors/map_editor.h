@@ -201,6 +201,7 @@ class MapEditor {
     void SaveEntities(TiXmlNode* root);
 
     void QueueSaveHistoryState();
+    bool HistorySavePending() const { return save_countdown_ > 0; }  // (Overgrowth Online: an operation's scan is due)
     void UndoHere();  // (Overgrowth Online: in a session, this machine's own edits)
     void RedoHere();
     bool CanUndoHere();

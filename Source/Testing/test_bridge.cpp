@@ -1220,6 +1220,10 @@ void TestBridge::Dispatch(const std::string& cmd, const Json::Value& req, Json::
                 MapEditor::DeselectAll(sg);
             } else if (obj == nullptr) {
                 throw std::runtime_error("no object " + std::to_string(id));
+            } else if (op == "preview") {
+                // (a frame of a drag, as the others see it: the live preview only, nothing moved
+                // here and no editor operation)
+                online->Send<OnlineMessages::EditorTransformChange>(id, vec(req["pos"]), obj->GetScale(), obj->GetRotation());
             } else if (op == "move") {
                 obj->SetTranslation(vec(req["pos"]));
                 obj->HandleTransformationOccurred();
