@@ -53,6 +53,7 @@ void DrawGUITab() {
     Toggle("Combat log", "ohud_feed", true, "Top right: who knocked out, killed or revived whom, who fell. Players by " +
         "name, anyone else by icon and species; lines with a player in them are framed.");
     Toggle("Only players' events", "ohud_feed_players", false, "Leave out lines without a player (big battles).");
+    HudSlider("Log size", "ohud_feed_scale", 1.0f, 0.8f, 2.5f, "%.1fx", "Size of the combat log's lines, text and icons alike.");
 
     Header("Warnings");
     Toggle("Attackers out of view", "ohud_threats", true,
@@ -77,6 +78,7 @@ void ResetGUITab() {
     SetConfigValueFloat("ohud_map_size", 170.0f);
     SetConfigValueFloat("ohud_tag_range", 14.0f);
     SetConfigValueFloat("ohud_scale", 1.0f);
+    SetConfigValueFloat("ohud_feed_scale", 1.0f);
     SetConfigValueFloat("ohud_opacity", 0.9f);
     SetConfigValueBool("ohud_dmg", true);
     SetConfigValueBool("ohud_dmg_all", false);

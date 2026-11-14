@@ -22,6 +22,7 @@ float hud_map_range = 40.0f;
 float hud_map_size = 170.0f;
 float hud_tag_range = 14.0f;
 float hud_scale = 1.0f;
+float hud_feed_scale = 1.0f;  // the combat log's own size (text and icons)
 float hud_opacity = 0.9f;
 float hud_settings_next = 0.0f;
 
@@ -48,6 +49,7 @@ void HudRefreshSettings() {
     hud_map_size = HudCfgFloat("ohud_map_size", 170.0f);
     hud_tag_range = HudCfgFloat("ohud_tag_range", 14.0f);
     hud_scale = HudCfgFloat("ohud_scale", 1.0f);
+    hud_feed_scale = max(0.5f, min(3.0f, HudCfgFloat("ohud_feed_scale", 1.0f)));
     hud_opacity = HudCfgFloat("ohud_opacity", 0.9f);
     hud_dmg = HudCfgBool("ohud_dmg", true);
     hud_dmg_all = HudCfgBool("ohud_dmg_all", false);
@@ -571,22 +573,22 @@ void HudDrawNumbers() {
 }
 
 // The feed's parts, measured and drawn left to right (x: where it starts)
-float HudWhoWidth(HudFeedWho@ w) {
+float HudWhoWidth(HudFeedWho@ w, float s = 1.0f) {
     if(w.none) {
         return 0.0f;
     }
 
-    return (w.icon != 0 ? 14.0f : 0.0f) + ImGui_CalcTextSize(w.text).x;
+    return (w.icon != 0 ? 14.0f * s : 0.0f) + ImGui_CalcTextSize(w.text).x;
 }
 
-float HudDrawWho(float x, float y, HudFeedWho@ w, float a) {
+float HudDrawWho(float x, float y, HudFeedWho@ w, float a, float s = 1.0f) {
     if(w.none) {
         return x;
     }
 
     if(w.icon != 0) {
-        HudDrawIcon(vec2(x + 6.0f, y + 7.0f), 5.0f, w.icon == 2, w.color, a);
-        x += 14.0f;
+        HudDrawIcon(vec2(x + 6.0f * s, y + 7.0f * s), 5.0f * s, w.icon == 2, w.color, a);
+        x += 14.0f * s;
     }
 
     ImDrawList_AddText(vec2(x + 1.0f, y + 1.0f), HudCol(kHudDark, 0.7f * a), w.text);
@@ -594,33 +596,33 @@ float HudDrawWho(float x, float y, HudFeedWho@ w, float a) {
     return x + ImGui_CalcTextSize(w.text).x;
 }
 
-// How: a small drawing in a 16 px cell (c: its middle)
-void HudDrawGlyph(const vec2 &in c, int glyph, float a) {
+// How: a small drawing in a 16 px cell (c: its middle; s: the cell's scale)
+void HudDrawGlyph(const vec2 &in c, int glyph, float a, float s = 1.0f) {
     uint dark = HudCol(kHudDark, 0.9f * a);
 
     if(glyph == kGlyphKO) {
         uint col = HudCol(vec3(0.95f, 0.85f, 0.6f), a);
-        HudRectFilled(c + vec2(-5.0f, -1.5f), c + vec2(5.0f, 5.5f), col, 2.0f);
+        HudRectFilled(c + vec2(-5.0f, -1.5f) * s, c + vec2(5.0f, 5.5f) * s, col, 2.0f * s);
         for(int k = 0; k < 4; ++k) {
-            ImDrawList_AddCircleFilled(c + vec2(-3.6f + 2.4f * k, -2.5f), 1.6f, col, 8);
+            ImDrawList_AddCircleFilled(c + vec2(-3.6f + 2.4f * k, -2.5f) * s, 1.6f * s, col, 8);
         }
-        ImDrawList_AddLine(c + vec2(-4.0f, 1.5f), c + vec2(1.0f, 1.5f), dark, 1.0f);
+        ImDrawList_AddLine(c + vec2(-4.0f, 1.5f) * s, c + vec2(1.0f, 1.5f) * s, dark, 1.0f * s);
     } else if(glyph == kGlyphKill) {
         uint col = HudCol(vec3(0.92f), a);
-        ImDrawList_AddCircleFilled(c + vec2(0.0f, -1.5f), 5.2f, col, 16);
-        HudRectFilled(c + vec2(-3.0f, 1.5f), c + vec2(3.0f, 6.0f), col, 1.0f);
-        ImDrawList_AddCircleFilled(c + vec2(-2.1f, -1.2f), 1.5f, dark, 8);
-        ImDrawList_AddCircleFilled(c + vec2(2.1f, -1.2f), 1.5f, dark, 8);
-        ImDrawList_AddLine(c + vec2(0.0f, 4.0f), c + vec2(0.0f, 6.0f), dark, 1.0f);
+        ImDrawList_AddCircleFilled(c + vec2(0.0f, -1.5f) * s, 5.2f * s, col, 16);
+        HudRectFilled(c + vec2(-3.0f, 1.5f) * s, c + vec2(3.0f, 6.0f) * s, col, 1.0f * s);
+        ImDrawList_AddCircleFilled(c + vec2(-2.1f, -1.2f) * s, 1.5f * s, dark, 8);
+        ImDrawList_AddCircleFilled(c + vec2(2.1f, -1.2f) * s, 1.5f * s, dark, 8);
+        ImDrawList_AddLine(c + vec2(0.0f, 4.0f) * s, c + vec2(0.0f, 6.0f) * s, dark, 1.0f * s);
     } else if(glyph == kGlyphBlade) {
         uint col = HudCol(vec3(0.85f, 0.9f, 1.0f), a);
-        ImDrawList_AddLine(c + vec2(-5.0f, 5.0f), c + vec2(5.5f, -5.5f), col, 2.0f);
-        ImDrawList_AddLine(c + vec2(-5.5f, 1.0f), c + vec2(-1.0f, 5.5f), col, 2.0f);
-        ImDrawList_AddCircleFilled(c + vec2(-5.5f, 5.5f), 1.3f, col, 6);
+        ImDrawList_AddLine(c + vec2(-5.0f, 5.0f) * s, c + vec2(5.5f, -5.5f) * s, col, 2.0f * s);
+        ImDrawList_AddLine(c + vec2(-5.5f, 1.0f) * s, c + vec2(-1.0f, 5.5f) * s, col, 2.0f * s);
+        ImDrawList_AddCircleFilled(c + vec2(-5.5f, 5.5f) * s, 1.3f * s, col, 6);
     } else if(glyph == kGlyphFall) {
         uint col = HudCol(vec3(1.0f, 0.6f, 0.2f), a);
-        HudRectFilled(c + vec2(-1.5f, -6.0f), c + vec2(1.5f, -1.0f), col);
-        ImDrawList_AddTriangleFilled(c + vec2(-5.0f, -1.0f), c + vec2(5.0f, -1.0f), c + vec2(0.0f, 6.0f), col);
+        HudRectFilled(c + vec2(-1.5f, -6.0f) * s, c + vec2(1.5f, -1.0f) * s, col);
+        ImDrawList_AddTriangleFilled(c + vec2(-5.0f, -1.0f) * s, c + vec2(5.0f, -1.0f) * s, c + vec2(0.0f, 6.0f) * s, col);
     } else if(glyph == kGlyphRevive) {
         uint col = HudCol(vec3(0.35f, 0.9f, 0.45f), a);
         HudRectFilled(c + vec2(-1.8f, -6.0f), c + vec2(1.8f, 6.0f), col, 1.0f);
@@ -635,9 +637,12 @@ void HudDrawFeed() {
         }
     }
 
-    // Top right, under the minimap
+    // Top right, under the minimap, at its own size (the window's font scale
+    // sizes the text, measured and drawn alike; the icons follow)
+    float s = hud_feed_scale;
     float right = hud_w - 18.0f;
     float y = hud_map ? hud_map_size * hud_scale + 34.0f : 20.0f;
+    ImGui_SetWindowFontScale(s);
 
     for(int i = int(hud_feed_lines.length()) - 1; i >= 0; --i) {  // newest first
         HudFeedLine@ l = hud_feed_lines[i];
@@ -645,32 +650,34 @@ void HudDrawFeed() {
         float a = age < l.life - 1.2f ? 1.0f : max(0.0f, (l.life - age) / 1.2f);
         a *= l.mine ? 1.0f : 0.85f;
         string tail = l.count > 1 ? "  x" + l.count : "";
-        float gap = 6.0f;
-        float w = HudWhoWidth(l.a) + (l.a.none ? 0.0f : gap) + 16.0f + gap + HudWhoWidth(l.b) + ImGui_CalcTextSize(tail).x;
+        float gap = 6.0f * s;
+        float w = HudWhoWidth(l.a, s) + (l.a.none ? 0.0f : gap) + 16.0f * s + gap + HudWhoWidth(l.b, s) + ImGui_CalcTextSize(tail).x;
         float x = right - w;
 
-        HudRectFilled(vec2(x - 7.0f, y - 3.0f), vec2(right + 7.0f, y + 17.0f), HudCol(kHudDark, (l.mine ? 0.6f : 0.4f) * a), 3.0f);
+        HudRectFilled(vec2(x - 7.0f * s, y - 3.0f * s), vec2(right + 7.0f * s, y + 17.0f * s), HudCol(kHudDark, (l.mine ? 0.6f : 0.4f) * a), 3.0f * s);
 
         if(l.mine) {
-            HudRect(vec2(x - 7.0f, y - 3.0f), vec2(right + 7.0f, y + 17.0f), HudCol(kHudGold, 0.55f * a), 3.0f);
+            HudRect(vec2(x - 7.0f * s, y - 3.0f * s), vec2(right + 7.0f * s, y + 17.0f * s), HudCol(kHudGold, 0.55f * a), 3.0f * s);
         }
 
-        x = HudDrawWho(x, y, l.a, a);
+        x = HudDrawWho(x, y, l.a, a, s);
 
         if(!l.a.none) {
             x += gap;
         }
 
-        HudDrawGlyph(vec2(x + 8.0f, y + 7.0f), l.glyph, a);
-        x += 16.0f + gap;
-        x = HudDrawWho(x, y, l.b, a);
+        HudDrawGlyph(vec2(x + 8.0f * s, y + 7.0f * s), l.glyph, a, s);
+        x += 16.0f * s + gap;
+        x = HudDrawWho(x, y, l.b, a, s);
 
         if(tail != "") {
             ImDrawList_AddText(vec2(x, y), HudCol(vec3(1.0f, 0.9f, 0.6f), a), tail);
         }
 
-        y += 24.0f;
+        y += 24.0f * s;
     }
+
+    ImGui_SetWindowFontScale(1.0f);
 }
 
 // ---- tags above characters -------------------------------------------------------

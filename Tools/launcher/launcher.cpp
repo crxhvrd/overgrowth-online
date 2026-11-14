@@ -8,7 +8,10 @@
 //
 //                 - OvergrowthOnline\OvergrowthOnline.exe, working dir its folder,
 //                   write dir Documents\Wolfire\OvergrowthOnline (its own caches
-//                   and settings, never mixed with stock 1.4's).
+//                   and settings, never mixed with stock 1.4's). When nothing can
+//                   be written there (Windows' Controlled folder access, a OneDrive
+//                   Documents folder) the write dir is %LOCALAPPDATA%\OvergrowthOnline
+//                   instead, so the game still starts.
 //                 - Shift held at start, "-stock", or no Overgrowth Online:
 //                   the stock game, exactly as before.
 //                 - Waits for the game, so Steam shows the player in game.
@@ -97,6 +100,19 @@ static std::wstring ForStock(const std::wstring& args) {
     return out;
 }
 
+// Can we create files there? (Made if missing; a probe file, gone when closed.)
+static bool DirWritable(const std::wstring& dir) {
+    SHCreateDirectoryExW(nullptr, dir.c_str(), nullptr);
+    std::wstring probe = dir + L"\\.write_check";
+    HANDLE h = CreateFileW(probe.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                           FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+    if (h == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+    CloseHandle(h);
+    return true;
+}
+
 static std::wstring Quote(const std::wstring& s) {
     // A trailing backslash would escape the closing quote
     std::wstring t = s;
@@ -149,12 +165,20 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         return Run(stock, ForStock(args), dir);
     }
 
-    // Our own write dir: Documents\Wolfire\OvergrowthOnline
+    // Our own write dir: Documents\Wolfire\OvergrowthOnline, or, when nothing
+    // can be written there, %LOCALAPPDATA%\OvergrowthOnline
     std::wstring write_dir;
     PWSTR docs = nullptr;
     if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docs))) {
         write_dir = std::wstring(docs) + L"\\Wolfire\\OvergrowthOnline";
         CoTaskMemFree(docs);
+    }
+    if (write_dir.empty() || !DirWritable(write_dir)) {
+        PWSTR local = nullptr;
+        if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &local))) {
+            write_dir = std::wstring(local) + L"\\OvergrowthOnline";
+            CoTaskMemFree(local);
+        }
     }
 
     std::wstring ours = L"--working-dir " + Quote(online_dir);

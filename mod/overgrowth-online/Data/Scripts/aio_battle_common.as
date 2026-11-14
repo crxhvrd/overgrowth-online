@@ -23,6 +23,16 @@ const array<vec3> kTeamDefaultColors = {
     vec3(0.55f, 0.15f, 0.80f), vec3(0.98f, 0.45f, 0.05f), vec3(0.10f, 0.80f, 0.85f), vec3(0.92f, 0.92f, 0.92f)
 };
 
+const array<string> kHordePaces = {"Relaxed", "Normal", "Brutal"};
+
+// Arenas that suit Horde: enclosed, with ledges to fight from (the menu's quick
+// picks, the result panel's "Next arena", the random pick)
+const array<string> kHordeArenas = {
+    "overhaul_battles/overgrowth/rock_arena.xml", "overhaul_battles/overgrowth/waterfall_arena.xml",
+    "overhaul_battles/magma_arena.xml", "overhaul_battles/stucco_courtyard.xml", "overhaul_battles/forgotten_plains.xml"
+};
+const array<string> kHordeArenaNames = {"Rock Arena", "Waterfall Arena", "Magma Arena", "Stucco Courtyard", "Forgotten Plains"};
+
 class BattleTeam {
     string name;
     vec3 color;
@@ -63,6 +73,10 @@ class BattleSettings {
     bool horde = false;         // co-op rounds: every player on team 0, team 1 grows each round
     int horde_start = 1;        // enemies in round 1
     bool host_online = false;   // start hosting (Overgrowth Online) before the map loads
+    int horde_pace = 1;         // 0 relaxed, 1 normal, 2 brutal: how fast the rounds harden
+    int horde_color = 2;        // the Horde's clothes (kTeamDefaultColors), green by default
+    bool horde_high = true;     // the Survivors start on the highest ground near the centre
+    bool horde_random_map = false;  // Start picks one of the Horde arenas at random
 
     BattleSettings() {
         teams.resize(kMaxTeams);
@@ -107,6 +121,10 @@ class BattleSettings {
         horde = BCfgBool("horde", horde);
         horde_start = max(1, min(8, BCfgInt("horde_start", horde_start)));
         host_online = BCfgBool("host_online", host_online);
+        horde_pace = max(0, min(2, BCfgInt("horde_pace", horde_pace)));
+        horde_color = max(0, min(int(kTeamDefaultColors.length()) - 1, BCfgInt("horde_color", horde_color)));
+        horde_high = BCfgBool("horde_high", horde_high);
+        horde_random_map = BCfgBool("horde_random_map", horde_random_map);
 
         for(int i = 0; i < kMaxTeams; ++i) {
             string t = "t" + i + "_";
@@ -149,6 +167,10 @@ class BattleSettings {
         SetConfigValueBool("aiob_horde", horde);
         SetConfigValueInt("aiob_horde_start", horde_start);
         SetConfigValueBool("aiob_host_online", host_online);
+        SetConfigValueInt("aiob_horde_pace", horde_pace);
+        SetConfigValueInt("aiob_horde_color", horde_color);
+        SetConfigValueBool("aiob_horde_high", horde_high);
+        SetConfigValueBool("aiob_horde_random_map", horde_random_map);
 
         for(int i = 0; i < kMaxTeams; ++i) {
             string t = "aiob_t" + i + "_";

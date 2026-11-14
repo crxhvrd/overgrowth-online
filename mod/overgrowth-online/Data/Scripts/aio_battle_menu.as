@@ -500,6 +500,53 @@ void DrawRulesColumn() {
         if(ImGui_SliderInt("Enemies in round 1", start, 1, 8)) {
             setup.horde_start = start;
         }
+
+        int pace = setup.horde_pace;
+
+        if(ImGui_Combo("Difficulty", pace, kHordePaces)) {
+            setup.horde_pace = pace;
+        }
+
+        Tip("How fast the rounds harden. Every pace adds one enemy per round;\n" +
+            "Relaxed: slower skill and toughness, knives from round 4, swords from 8.\n" +
+            "Normal: knives from 3, swords from 6. Brutal: knives from 2, swords from 4, quick reinforcements.");
+        int color = setup.horde_color;
+
+        if(ImGui_Combo("Horde colour", color, kTeamDefaultNames)) {
+            setup.horde_color = color;
+        }
+
+        Tip("The clothes the Horde wears. Players keep their own colours.");
+        bool high = setup.horde_high;
+
+        if(ImGui_Checkbox("Survivors start on high ground", high)) {
+            setup.horde_high = high;
+        }
+
+        Tip("Every round starts you on the highest ground near the arena's middle (a ledge, a roof, a rock)\n" +
+            "that the Horde can still climb to. Off: a spot on the ring, like any team.");
+        bool random_map = setup.horde_random_map;
+
+        if(ImGui_Checkbox("Random arena each battle", random_map)) {
+            setup.horde_random_map = random_map;
+        }
+
+        Tip("Start and \"Next arena\" pick one of the Horde arenas below at random.");
+        ImGui_TextColored(kDimColor, "Horde arenas:");
+
+        for(uint i = 0; i < kHordeArenas.length(); ++i) {
+            if(i > 0) {
+                ImGui_SameLine();
+            }
+
+            if(ImGui_SmallButton(kHordeArenaNames[i])) {
+                setup.level_path = kHordeArenas[i];
+                SelectSavedMap();
+            }
+        }
+
+        Tip("Arenas that suit Horde: enclosed, with ledges. Any map from the list works too.\n" +
+            "After a battle the host's result panel has \"Next arena\": the next one of these, everyone follows.");
     }
 
     bool host = setup.host_online;
@@ -693,6 +740,12 @@ void DrawButtons() {
 }
 
 void StartBattle() {
+    // Horde with the random pick: one of the Horde arenas, if the list has it
+    if(setup.horde && setup.horde_random_map && kHordeArenas.length() > 0) {
+        setup.level_path = kHordeArenas[min(int(kHordeArenas.length()) - 1, int(RangedRandomFloat(0.0f, float(kHordeArenas.length()))))];
+        SelectSavedMap();
+    }
+
     BattleMap@ map = maps[selected_map];
     setup.level_path = map.path;
     setup.level_title = map.title;
