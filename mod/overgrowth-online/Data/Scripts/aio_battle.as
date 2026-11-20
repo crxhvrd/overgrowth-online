@@ -18,7 +18,8 @@ enum BattlePhase {
     kBattleSpawn,      // spawning in batches
     kBattleCountdown,
     kBattleFight,
-    kBattleOver
+    kBattleOver,
+    kBattleBreak       // Horde: a round is cleared, the next one comes
 }
 
 class BattleFighter {
@@ -64,11 +65,20 @@ bool battle_player_out = false;
 float battle_player_ko_time = -1.0f;
 int battle_last_go = 4;
 
+// Horde (co-op rounds): the round number and how long the break lasts
+int battle_round = 0;
+const float kHordeBreak = 7.0f;
+const float kHordeBreakDown = 12.0f;  // longer when a player had to be stood up
+float battle_break_len = kHordeBreak;
+const int kHordeMaxOnField = 8;     // bigger rounds arrive as reinforcements
+const int kHordeKeepWeapons = 10;   // dropped weapons that stay on the field between rounds
+
 // Online (overhaul_online.as): the host's other players, and a client's mirror
 array<int> battle_remote_ids;       // host: other players' characters
 array<int> battle_remote_teams;
 bool battle_mirror = false;         // client: showing the host's battle
 array<int> battle_net_reserve;      // client: each team's fighters still to come
+string battle_place_pending;        // client: the host's placement that came before we knew our character
 float battle_next_sync = 0.0f;
 float battle_next_cfg = 0.0f;
 
@@ -136,8 +146,9 @@ void BattleCheckPending() {
     battle.Load();
     battle_center_set = false;
     battle_check_level = true;
+    HordeReset();
     BattleSetPhase(kBattleWait);
-    BattleLog("battle pending");
+    BattleLog("battle pending" + (battle.horde ? " (horde)" : ""));
 }
 
 // First update: the setup menu set "pending" right before loading its map, so
@@ -173,6 +184,12 @@ void AIOBattleReceive(const string &in message) {
         BattleLog("level reset: restarting the battle");
         BattleRestart();
     }
+
+    // "aiob next_arena": what the result panel's Next arena button does (for a
+    // level script, a key binding, the test harness)
+    if(message == "aiob next_arena" && BattleActive() && battle.horde && !battle_mirror && battle_phase == kBattleOver) {
+        HordeNextArena(HordeNextArenaIndex());
+    }
 }
 
 bool AIOBattleHasFocus() {
@@ -193,6 +210,13 @@ void AIOBattleUpdate(int is_paused) {
         if(battle_phase == kBattleOver && !battle_panel_open && GetInputPressed(0, "skip_dialogue")) {
             battle_panel_open = true;
         }
+
+        if(battle_place_pending != "" && mp_me != -1) {
+            string msg = battle_place_pending;
+            battle_place_pending = "";
+            BattleMirrorReceive(MPTokens(msg));
+        }
+
         return;  // the host runs it
     }
 
@@ -259,6 +283,15 @@ void AIOBattleUpdate(int is_paused) {
             battle_next_tick = the_time + 0.25f;
             BattleTick();
         }
+    } else if(battle_phase == kBattleBreak) {
+        if(the_time >= battle_next_tick) {
+            battle_next_tick = the_time + 0.25f;
+            BattleTick();  // counts only
+        }
+
+        if(the_time - battle_phase_start >= battle_break_len) {
+            HordeNextRound();
+        }
     }
 
     if(battle_phase == kBattleOver && !battle_panel_open && GetInputPressed(0, "skip_dialogue")) {
@@ -290,6 +323,7 @@ void BattleRestart() {
     battle_panel_open = false;
     battle_winner = -1;
     battle_player_ko_time = -1.0f;
+    HordeReset();
     BattleSetPhase(kBattleWait);
 }
 
@@ -519,6 +553,18 @@ void BattlePlan() {
 
         state.facing = AIOBFlatDir(battle_center - state.base, dir * -1.0f);
         battle_teams.insertLast(state);
+    }
+
+    // Horde: the Survivors hold the highest ground near the centre (a ledge, a
+    // roof, a rock), the Horde comes up to them
+    if(battle.horde && battle.horde_high && !manual && n >= 2) {
+        vec3 high;
+
+        if(HordeHighGround(battle_teams[1].base, high)) {
+            battle_teams[0].base = high;
+            battle_teams[0].facing = AIOBFlatDir(battle_center - high, battle_teams[0].facing);
+            battle_teams[1].facing = AIOBFlatDir(high - battle_teams[1].base, battle_teams[1].facing);
+        }
     }
 
     for(int t = 0; t < n; ++t) {
@@ -1200,6 +1246,11 @@ void BattleTick() {
 
     bool timed_out = battle.time_limit > 0 && the_time - battle_fight_start > battle.time_limit * 60.0f;
 
+    if(battle.horde && standing <= 1 && !timed_out && battle_teams[0].alive > 0) {
+        HordeRoundCleared(any_ko);
+        return;
+    }
+
     if(standing <= 1 || timed_out) {
         if(timed_out && standing > 1) {
             int most = -1;
@@ -1276,10 +1327,11 @@ void BattleSetUpPlayer() {
     vec3 front = battle_teams[team].base + battle_teams[team].facing * 2.5f;
     vec3 face = battle_teams[team].facing;
     vec3 c = battle.teams[team].color;
+    // (Horde: players keep their own colours; only the Horde wears a team colour)
+    string recolor = battle.horde ? "" : "for(int i = 0; i < 4; ++i) { if(character_getter.GetChannel(i) == \"cloth\") { " +
+        "ReadObjectFromID(this_mo.GetID()).SetPaletteColor(i, vec3(" + c.x + ", " + c.y + ", " + c.z + ")); } }";
     player.Execute("this_mo.position = vec3(" + front.x + ", " + (front.y + 0.6f) + ", " + front.z + "); this_mo.velocity = vec3(0.0f); " +
-        "this_mo.SetRotationFromFacing(vec3(" + face.x + ", 0.0f, " + face.z + ")); " +
-        "for(int i = 0; i < 4; ++i) { if(character_getter.GetChannel(i) == \"cloth\") { " +
-        "ReadObjectFromID(this_mo.GetID()).SetPaletteColor(i, vec3(" + c.x + ", " + c.y + ", " + c.z + ")); } }");
+        "this_mo.SetRotationFromFacing(vec3(" + face.x + ", 0.0f, " + face.z + ")); " + recolor);
 }
 
 // Fighting on a team and knocked out: watch the rest with the spectator camera
@@ -1298,7 +1350,7 @@ void BattleUpdatePlayer() {
 
     if(battle_player_ko_time < 0.0f) {
         battle_player_ko_time = the_time;
-    } else if(the_time - battle_player_ko_time > 2.5f && battle_phase == kBattleFight) {
+    } else if(the_time - battle_player_ko_time > 2.5f && battle_phase == kBattleFight && !battle.horde) {
         battle_player_out = true;
         battle_spectating = true;
         battle_cam_pos = camera.GetPos();
@@ -1496,9 +1548,20 @@ void AIOBattleDrawGUI() {
 
     if(battle_phase == kBattleCountdown) {
         int left = max(1, battle_last_go);
+
+        if(battle.horde) {
+            BattleBigText("aiob_round", "Round " + battle_round + "  -  " + HordeRoundName(battle_round),
+                vec4(1.0f, 0.9f, 0.6f, 1.0f), 2.0f, screen_h * 0.2f);
+        }
+
         BattleBigText("aiob_count", "" + left, vec4(1.0f, 0.85f, 0.4f, 1.0f), 5.0f, screen_h * 0.3f);
     } else if(battle_phase == kBattleFight && the_time - battle_fight_start < 1.2f) {
         BattleBigText("aiob_count", "FIGHT!", vec4(1.0f, 0.4f, 0.3f, 1.0f), 5.0f, screen_h * 0.3f);
+    } else if(battle_phase == kBattleBreak) {
+        int left = max(1, int(ceil(battle_break_len - (the_time - battle_phase_start))));
+        BattleBigText("aiob_round", "Round " + battle_round + " cleared!", vec4(0.6f, 1.0f, 0.6f, 1.0f), 3.0f, screen_h * 0.25f);
+        BattleBigText("aiob_count", "Everyone up. Round " + (battle_round + 1) + " in " + left + "...",
+            vec4(1.0f, 0.9f, 0.6f, 1.0f), 1.5f, screen_h * 0.25f + 90.0f);
     }
 
     if(!menu_open) {
@@ -1530,7 +1593,9 @@ void BattleDrawScoreboard() {
     ImGui_Columns(battle.num_teams + 1, "aiob_cols", false);
     ImGui_TextColored(vec4(1.0f, 1.0f, 1.0f, 1.0f), BattleClock(clock));
 
-    if(battle.time_limit > 0) {
+    if(battle.horde) {
+        ImGui_TextColored(vec4(1.0f, 0.9f, 0.6f, 1.0f), "Round " + battle_round);
+    } else if(battle.time_limit > 0) {
         ImGui_TextColored(vec4(0.7f, 0.7f, 0.7f, 1.0f), "of " + battle.time_limit + ":00");
     }
 
@@ -1561,6 +1626,11 @@ void BattleDrawResult() {
     vec4 color = battle_winner == -2 ? vec4(0.9f, 0.9f, 0.9f, 1.0f) :
         BattleTextColor(battle.teams[battle_winner].color);
 
+    if(battle.horde) {
+        title = "Overrun in round " + battle_round;
+        color = vec4(1.0f, 0.5f, 0.4f, 1.0f);
+    }
+
     if(!battle_panel_open) {
         BattleBigText("aiob_result", title, color, 3.0f, 80.0f);
         BattleBigText("aiob_result_hint", "Press " + GetStringDescriptionForBinding("key", "skip_dialogue") + " for the results",
@@ -1577,6 +1647,12 @@ void BattleDrawResult() {
     ImGui_SetWindowFontScale(2.0f);
     ImGui_TextColored(color, title);
     ImGui_SetWindowFontScale(1.0f);
+
+    if(battle.horde) {
+        ImGui_Text(battle_round > 1 ? "You held out for " + (battle_round - 1) + " round" + (battle_round > 2 ? "s" : "") + "."
+            : "The first round got you.");
+    }
+
     ImGui_Text("Battle time " + BattleClock(battle_fight_end - battle_fight_start));
     ImGui_Separator();
 
@@ -1588,6 +1664,14 @@ void BattleDrawResult() {
     }
 
     ImGui_Separator();
+
+    if(battle.horde && !battle_mirror) {
+        int next = HordeNextArenaIndex();
+
+        if(next >= 0 && ImGui_Button("Next arena: " + kHordeArenaNames[next], vec2(430.0f, 34.0f))) {
+            HordeNextArena(next);
+        }
+    }
 
     if(!battle_mirror) {
         if(ImGui_Button("Rematch", vec2(140.0f, 34.0f))) {
@@ -1645,7 +1729,7 @@ void BattleSetUpRemotePlayers() {
         int pick = battle_pick_ids.find(id);
         int team = pick >= 0 ? battle_pick_teams[pick] : -1;
         ids.insertLast(id);
-        wish.insertLast(team >= 0 && team < battle.num_teams ? team : -1);
+        wish.insertLast(battle.horde ? 0 : (team >= 0 && team < battle.num_teams ? team : -1));
     }
 
     for(int pass = 0; pass < 2; ++pass) {
@@ -1682,7 +1766,7 @@ void BattlePlaceRemote(int id, int team, int k) {
     BattleTeamState@ state = battle_teams[team];
     vec3 right(-state.facing.z, 0.0f, state.facing.x);
     vec3 spot = state.base + state.facing * 2.5f + right * (1.4f * (k + 1) * ((k % 2) == 0 ? 1.0f : -1.0f));
-    vec3 c = battle.teams[team].color;
+    vec3 c = battle.horde ? vec3(-1.0f) : battle.teams[team].color;  // (-1: keep your own colours)
     MPToClients("aiob player " + MPRef(id) + " " + team + " " + spot.x + " " + (spot.y + 0.6f) + " " + spot.z + " " +
         state.facing.x + " " + state.facing.z + " " + c.x + " " + c.y + " " + c.z);
     BattleLog("online player " + id + " team " + team);
@@ -1718,9 +1802,10 @@ void BattleLobbySend() {
             (pick >= 0 ? battle_pick_teams[pick] : -1));
     }
 
-    string msg = "aiob lobby " + battle.num_teams;
+    int shown = battle.horde ? 1 : battle.num_teams;
+    string msg = "aiob lobby " + shown;
 
-    for(int t = 0; t < battle.num_teams; ++t) {
+    for(int t = 0; t < shown; ++t) {
         vec3 c = battle.teams[t].color;
         msg += " " + MPName(battle.teams[t].name, true) + " " + c.x + " " + c.y + " " + c.z;
     }
@@ -1762,7 +1847,7 @@ void BattleLobbyPick(const array<string> &in t) {
 void BattleLobbyReceive(const array<string> &in t) {
     int n = atoi(t[3]);
 
-    if(n < 2 || n > 8 || int(t.length()) < 4 + n * 4) {
+    if(n < 1 || n > 8 || int(t.length()) < 4 + n * 4) {
         return;
     }
 
@@ -1798,14 +1883,15 @@ string BattleLobbyName(int id) {
 }
 
 void BattleDrawLobby() {
-    int n = MPHost() ? battle.num_teams : int(battle_lobby_names.length());
+    int n = MPHost() ? (battle.horde ? 1 : battle.num_teams) : int(battle_lobby_names.length());
     float w = 420.0f;
     ImGui_SetNextWindowPos(vec2((GetScreenWidth() - w) * 0.5f, GetScreenHeight() * 0.22f), ImGuiSetCond_Always);
     ImGui_SetNextWindowSize(vec2(w, 0.0f), ImGuiSetCond_Always);
     ImGui_Begin("Battle lobby", ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
         ImGuiWindowFlags_NoSavedSettings);
-    ImGui_TextWrapped(MPHost() ? "Players pick their teams. Start when everyone is ready." :
-        "The host is setting up a battle. Pick your team:");
+    ImGui_TextWrapped(n == 1 ? (MPHost() ? "Horde: everyone fights together. Start when everyone is in." :
+        "The host is setting up a Horde battle: everyone fights together.") :
+        (MPHost() ? "Players pick their teams. Start when everyone is ready." : "The host is setting up a battle. Pick your team:"));
     ImGui_Separator();
 
     for(int t = 0; t < n; ++t) {
@@ -1895,6 +1981,7 @@ void BattleSendConfig() {
             MPName(team.name, true);
     }
 
+    msg += " " + (battle.horde ? 1 : 0) + " " + battle_round;
     MPToClients(msg);
 }
 
@@ -1909,6 +1996,7 @@ void BattleSendState() {
         msg += " " + state.alive + " " + state.fallen + " " + reserve;
     }
 
+    msg += " " + battle_round;
     MPToClients(msg);
 }
 
@@ -1952,6 +2040,11 @@ void BattleMirrorReceive(const array<string> &in t) {
 
         battle_net_reserve.resize(n);
 
+        if(int(t.length()) >= 8 + n * 6) {
+            battle.horde = atoi(t[6 + n * 6]) == 1;
+            battle_round = atoi(t[7 + n * 6]);
+        }
+
         if(!battle_mirror) {
             battle_mirror = true;
             battle_player_id = mp_me;
@@ -1986,8 +2079,24 @@ void BattleMirrorReceive(const array<string> &in t) {
             battle_teams[i].fallen = atoi(t[8 + i * 3]);
             battle_net_reserve[i] = atoi(t[9 + i * 3]);
         }
+
+        if(7 + battle.num_teams * 3 < int(t.length())) {
+            battle_round = atoi(t[7 + battle.num_teams * 3]);
+        }
     } else if(t[2] == "player" && t.length() >= 13) {
         int id = MPId(t[3]);
+
+        if(mp_me == -1) {
+            // Our character isn't known yet (the role message comes every 2 s): keep it
+            string msg;
+
+            for(uint i = 0; i < t.length(); ++i) {
+                msg += (i > 0 ? " " : "") + t[i];
+            }
+
+            battle_place_pending = msg;
+            return;
+        }
 
         if(id == -1 || id != mp_me || !MovementObjectExists(id)) {
             return;  // another machine's player
@@ -2002,10 +2111,10 @@ void BattleMirrorReceive(const array<string> &in t) {
         // Dialogue control on revives and stands the body up, off gives control back
         me.ReceiveScriptMessage("set_dialogue_control true");
         me.ReceiveScriptMessage("set_dialogue_control false");
+        string recolor = c.x < 0.0f ? "" : "for(int i = 0; i < 4; ++i) { if(character_getter.GetChannel(i) == \"cloth\") { " +
+            "ReadObjectFromID(this_mo.GetID()).SetPaletteColor(i, vec3(" + c.x + ", " + c.y + ", " + c.z + ")); } }";
         me.Execute("this_mo.position = vec3(" + p.x + ", " + p.y + ", " + p.z + "); this_mo.velocity = vec3(0.0f); " +
-            "this_mo.SetRotationFromFacing(vec3(" + f.x + ", 0.0f, " + f.z + ")); " +
-            "for(int i = 0; i < 4; ++i) { if(character_getter.GetChannel(i) == \"cloth\") { " +
-            "ReadObjectFromID(this_mo.GetID()).SetPaletteColor(i, vec3(" + c.x + ", " + c.y + ", " + c.z + ")); } }");
+            "this_mo.SetRotationFromFacing(vec3(" + f.x + ", 0.0f, " + f.z + ")); " + recolor);
         battle_player_id = id;
         battle.player_team = team;
         battle.player_mode = 1;
@@ -2053,4 +2162,254 @@ bool BattleColorOf(int id, vec3 &out color) {
 
 bool BattleSpectating() {
     return BattleActive() && battle_spectating;
+}
+
+// ---- Horde: co-op rounds ---------------------------------------------------------
+// Every player fights on team 0 ("Survivors"); team 1 ("Horde") is spawned
+// round by round: more of them, tougher, better armed, other species. A
+// cleared round stands every player up again and brings the next one. When
+// every player is down the battle is over. The host runs it, as any battle.
+
+// The round the settings describe (horde_start enemies in round 1)
+int HordeRoundSize(int round) {
+    return battle.horde_start + max(0, round - 1);
+}
+
+string HordeRoundName(int round) {
+    int species = HordeRoundSpecies(round);
+
+    if(round % 5 == 0) {
+        return "the brutes";
+    }
+
+    return species == 0 ? "rabbits" : (species == 1 ? "cats" : (species == 2 ? "dogs" : (species == 3 ? "rats" : "everyone")));
+}
+
+int HordeRoundSpecies(int round) {
+    if(round % 5 == 0) {
+        return 2;  // armoured dogs
+    }
+
+    int cycle = (round - 1) % 10;
+    return cycle < 2 ? 0 : (cycle < 4 ? 1 : (cycle < 6 ? 2 : (cycle < 8 ? 3 : 5)));
+}
+
+// Team 1's settings for a round. The pace (relaxed, normal, brutal) sets how
+// fast skill and toughness climb and when weapons arrive; the round sizes are
+// the same at every pace
+void HordeApplyRound(int round) {
+    BattleTeam@ t = battle.teams[1];
+    int size = HordeRoundSize(round);
+    bool brutes = round % 5 == 0;
+    int pace = battle.horde_pace;
+    float ramp = pace == 0 ? 0.045f : (pace == 2 ? 0.09f : 0.07f);
+    float skill0 = pace == 0 ? 0.2f : (pace == 2 ? 0.35f : 0.25f);
+    float tough0 = pace == 0 ? 0.7f : (pace == 2 ? 0.9f : 0.8f);
+    float skill_cap = pace == 0 ? 0.8f : 1.0f;
+    float tough_cap = pace == 0 ? 1.4f : (pace == 2 ? 2.0f : 1.8f);
+    int knives = pace == 0 ? 4 : (pace == 2 ? 2 : 3);   // the round knives arrive
+    int swords = pace == 0 ? 8 : (pace == 2 ? 4 : 6);
+    int mixed = pace == 0 ? 12 : (pace == 2 ? 7 : 9);
+
+    if(brutes) {
+        size = max(1, size / 2);
+    }
+
+    t.count = min(size, kHordeMaxOnField);
+    battle.waves = (size + t.count - 1) / t.count;  // the rest come as reinforcements
+    battle.wave_delay = pace == 0 ? 7.0f : (pace == 2 ? 3.5f : 5.0f);
+    t.species = HordeRoundSpecies(round);
+    t.skill = min(skill_cap, skill0 + ramp * round);
+    t.weapon = round < knives ? 0 : (round < swords ? 1 : (round < mixed ? 2 : 8));
+    t.spare_knives = round > swords;
+    t.toughness = min(tough_cap, tough0 + ramp * round) * (brutes ? 1.5f : 1.0f);
+    t.size = brutes ? 1.15f : 1.0f;
+    t.armor = brutes || (round >= swords && round % 3 == 0);
+    t.ai = 0;
+}
+
+// The highest reachable ground within the spread of the centre, well apart from
+// the Horde's base (false: nothing clearly higher than the centre)
+bool HordeHighGround(const vec3 &in horde_base, vec3 &out best) {
+    best = battle_center;
+    float best_y = battle_center.y + 1.2f;
+    bool found = false;
+
+    for(float r = 3.0f; r <= max(3.0f, battle.spread); r += 3.0f) {
+        for(int k = 0; k < 16; ++k) {
+            float a = k * 0.3927f + r * 0.1f;
+            vec3 want = battle_center + vec3(cos(a) * r, 0.0f, sin(a) * r);
+            vec3 q;
+
+            if(!BattleGround(want, battle_center, q) || q.y <= best_y || distance(q, horde_base) < 6.0f) {
+                continue;
+            }
+
+            if(BattleReachable(battle_center, q)) {
+                best = q;
+                best_y = q.y;
+                found = true;
+            }
+        }
+    }
+
+    BattleLog(found ? "horde: high ground " + BattleVec(best) + " +" + int(best.y - battle_center.y) + "m" : "horde: no high ground, the ring");
+    return found;
+}
+
+// The arena after this one in the Horde list (the current one may be any map:
+// then the first), or a random other one when the random pick is on; -1 if the
+// list is unknown here
+int HordeNextArenaIndex() {
+    int here = -1;
+
+    for(uint i = 0; i < kHordeArenas.length(); ++i) {
+        if(BattleLevelKey(kHordeArenas[i]) == BattleLevelKey(battle.level_path)) {
+            here = int(i);
+        }
+    }
+
+    if(kHordeArenas.length() == 0) {
+        return -1;
+    }
+
+    if(battle.horde_random_map && kHordeArenas.length() > 1) {
+        int pick = min(int(kHordeArenas.length()) - 2, int(RangedRandomFloat(0.0f, float(kHordeArenas.length() - 1))));
+        return pick >= here && here >= 0 ? pick + 1 : pick;
+    }
+
+    return (here + 1) % kHordeArenas.length();
+}
+
+// Host: the next battle on another arena. The level load takes the clients
+// along (Overgrowth Online), and the battle is pending there as from the menu
+void HordeNextArena(int index) {
+    if(index < 0 || index >= int(kHordeArenas.length())) {
+        return;
+    }
+
+    battle.level_path = kHordeArenas[index];
+    battle.level_title = kHordeArenaNames[index];
+    battle.Save();
+    SetConfigValueBool("aiob_pending", true);
+    SaveConfig();
+    BattleLog("horde: next arena " + battle.level_path);
+    LoadLevel(battle.level_path);
+}
+
+// Fresh settings for round 1 (a pending battle, a rematch)
+void HordeReset() {
+    battle_round = 0;
+
+    if(!battle.horde) {
+        return;
+    }
+
+    battle.num_teams = 2;
+    battle.player_mode = 1;
+    battle.player_team = 0;
+    battle.time_limit = 0;
+    battle.manual_place = false;
+    battle.never_flee = true;
+    battle.cleanup = max(1, min(battle.cleanup, 15));
+    BattleTeam@ us = battle.teams[0];
+    us.name = "Survivors";
+    us.color = vec3(0.1f, 0.3f, 0.95f);
+    us.count = 0;  // the players
+    BattleTeam@ them = battle.teams[1];
+    them.name = "Horde";
+    them.color = kTeamDefaultColors[max(0, min(int(kTeamDefaultColors.length()) - 1, battle.horde_color))];
+    battle_round = 1;
+    battle_break_len = kHordeBreak;
+    HordeApplyRound(1);
+    BattleLog("horde: pace " + kHordePaces[max(0, min(2, battle.horde_pace))] + " colour " +
+        kTeamDefaultNames[max(0, min(int(kTeamDefaultNames.length()) - 1, battle.horde_color))] + " high=" + (battle.horde_high ? 1 : 0));
+}
+
+void HordeRoundCleared(bool any_ko) {
+    battle_fight_end = the_time;
+    // A longer breather when somebody has to be stood up
+    int players = 1 + int(battle_remote_ids.length());
+    battle_break_len = battle_teams[0].alive < players ? kHordeBreakDown : kHordeBreak;
+    BattleLog("horde: round " + battle_round + " cleared, break " + int(battle_break_len) + "s");
+    BattleSetPhase(kBattleBreak);
+
+    if(battle.slowmo_finish && any_ko) {
+        TimedSlowMotion(0.25f, 1.6f, 0.0f);
+    }
+}
+
+// Clear the field, stand every player up, bring the next round
+void HordeNextRound() {
+    for(uint i = 0; i < battle_fighters.length(); ++i) {
+        if(MovementObjectExists(battle_fighters[i].id)) {
+            QueueDeleteObjectID(battle_fighters[i].id);
+        }
+    }
+
+    // Weapons lying around stay for the next round (the newest few); the ones
+    // still in a hand go with their owner
+    array<int> loose;
+
+    for(uint i = 0; i < battle_items.length(); ++i) {
+        int id = battle_items[i];
+
+        if(!ObjectExists(id)) {
+            continue;
+        }
+
+        if(ReadObjectFromID(id).GetType() == _item_object && !ReadItemID(id).IsHeld() && ReadItemID(id).StuckInWhom() == -1) {
+            loose.insertLast(id);
+        } else {
+            QueueDeleteObjectID(id);
+        }
+    }
+
+    while(int(loose.length()) > kHordeKeepWeapons) {
+        QueueDeleteObjectID(loose[0]);
+        loose.removeAt(0);
+    }
+
+    battle_fighters.resize(0);
+    battle_items = loose;
+    battle_spawn_queue.resize(0);
+    ++battle_round;
+    HordeApplyRound(battle_round);
+
+    for(int t = 0; t < battle.num_teams; ++t) {
+        BattleTeamState@ state = battle_teams[t];
+        state.spawned = 0;
+        state.alive = 0;
+        state.fallen = 0;
+        state.next_slot = 0;
+        state.reinforce_due.resize(0);
+    }
+
+    BattleMakeSlots(battle_teams[1], battle.teams[1].count);
+
+    for(int k = 0; k < battle.teams[1].count; ++k) {
+        battle_spawn_queue.insertLast(1);
+    }
+
+    // Everyone up, back at the start: the host's own, then the others (their
+    // machines stand them up on the host's message)
+    battle_player_ko_time = -1.0f;
+    battle_player_out = false;
+    BattleSetUpPlayer();
+    array<int> ids = battle_remote_ids;
+    array<int> teams = battle_remote_teams;
+    battle_remote_ids.resize(0);
+    battle_remote_teams.resize(0);
+
+    for(uint i = 0; i < ids.length(); ++i) {
+        if(MovementObjectExists(ids[i])) {
+            BattlePlaceRemote(ids[i], teams[i], i);
+        }
+    }
+
+    BattleSendConfig();
+    battle_last_go = 4;
+    BattleLog("horde: round " + battle_round + " size=" + HordeRoundSize(battle_round) + " on field=" + battle.teams[1].count +
+        " waves=" + battle.waves);
+    BattleSetPhase(kBattleSpawn);
 }

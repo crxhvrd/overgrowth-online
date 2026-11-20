@@ -483,13 +483,91 @@ void DrawTeam(int t) {
 void DrawRulesColumn() {
     Title("You");
     ImGui_PushItemWidth(-140.0f);
+    bool horde = setup.horde;
+
+    if(ImGui_Checkbox("Horde: rounds against everyone", horde)) {
+        setup.horde = horde;
+    }
+
+    Tip("Co-op survival. Every player fights on one team against the Horde, which comes in rounds:\n" +
+        "one more enemy each round, tougher and better armed, rabbits then cats, dogs, rats and wolves,\n" +
+        "armoured brutes every fifth round. A cleared round stands every player up again.\n" +
+        "The teams' own settings are not used.");
+
+    if(setup.horde) {
+        int start = setup.horde_start;
+
+        if(ImGui_SliderInt("Enemies in round 1", start, 1, 8)) {
+            setup.horde_start = start;
+        }
+
+        int pace = setup.horde_pace;
+
+        if(ImGui_Combo("Difficulty", pace, kHordePaces)) {
+            setup.horde_pace = pace;
+        }
+
+        Tip("How fast the rounds harden. Every pace adds one enemy per round;\n" +
+            "Relaxed: slower skill and toughness, knives from round 4, swords from 8.\n" +
+            "Normal: knives from 3, swords from 6. Brutal: knives from 2, swords from 4, quick reinforcements.");
+        int color = setup.horde_color;
+
+        if(ImGui_Combo("Horde colour", color, kTeamDefaultNames)) {
+            setup.horde_color = color;
+        }
+
+        Tip("The clothes the Horde wears. Players keep their own colours.");
+        bool high = setup.horde_high;
+
+        if(ImGui_Checkbox("Survivors start on high ground", high)) {
+            setup.horde_high = high;
+        }
+
+        Tip("Every round starts you on the highest ground near the arena's middle (a ledge, a roof, a rock)\n" +
+            "that the Horde can still climb to. Off: a spot on the ring, like any team.");
+        bool random_map = setup.horde_random_map;
+
+        if(ImGui_Checkbox("Random arena each battle", random_map)) {
+            setup.horde_random_map = random_map;
+        }
+
+        Tip("Start and \"Next arena\" pick one of the Horde arenas below at random.");
+        ImGui_TextColored(kDimColor, "Horde arenas:");
+
+        for(uint i = 0; i < kHordeArenas.length(); ++i) {
+            if(i > 0) {
+                ImGui_SameLine();
+            }
+
+            if(ImGui_SmallButton(kHordeArenaNames[i])) {
+                setup.level_path = kHordeArenas[i];
+                SelectSavedMap();
+            }
+        }
+
+        Tip("Arenas that suit Horde: enclosed, with ledges. Any map from the list works too.\n" +
+            "After a battle the host's result panel has \"Next arena\": the next one of these, everyone follows.");
+    }
+
+    bool host = setup.host_online;
+
+    if(ImGui_Checkbox("Host online (friends can join)", host)) {
+        setup.host_online = host;
+    }
+
+    Tip("Starts hosting like the Multiplayer menu does. At the map's loading screen press a key:\n" +
+        "then friends see you hosting and join from Steam or Multiplayer > Join a friend.\n" +
+        "The lobby waits until you press Start.");
+    ImGui_Spacing();
     int mode = setup.player_mode;
 
-    if(ImGui_Combo("Your role", mode, kPlayerModes)) {
+    if(!setup.horde && ImGui_Combo("Your role", mode, kPlayerModes)) {
         setup.player_mode = mode;
     }
 
-    if(setup.player_mode == 1) {
+    if(setup.horde) {
+        ImGui_TextColored(kDimColor, "You fight with the Survivors. Knocked out: you stay down until the round is cleared.");
+    } else if(setup.player_mode == 1) {
         array<string> names;
 
         for(int t = 0; t < setup.num_teams; ++t) {
@@ -662,11 +740,22 @@ void DrawButtons() {
 }
 
 void StartBattle() {
+    // Horde with the random pick: one of the Horde arenas, if the list has it
+    if(setup.horde && setup.horde_random_map && kHordeArenas.length() > 0) {
+        setup.level_path = kHordeArenas[min(int(kHordeArenas.length()) - 1, int(RangedRandomFloat(0.0f, float(kHordeArenas.length()))))];
+        SelectSavedMap();
+    }
+
     BattleMap@ map = maps[selected_map];
     setup.level_path = map.path;
     setup.level_title = map.title;
     setup.Save();
     SetConfigValueBool("aiob_pending", true);
+
+    // Overgrowth Online: host this map, as the Multiplayer menu would
+    if(setup.host_online) {
+        Online_Host();
+    }
 
     // Large Battles stays offline for now (Overgrowth Online is campaign co-op):
     // no "host the next map" left over from an earlier version
